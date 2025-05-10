@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Eye, Search } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 
 // Define product type
 interface Product {
@@ -121,56 +121,46 @@ export default function BakeryProductsPage() {
                 placeholder="Rechercher un produit..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="max-w-sm"
+                className="w-full max-w-sm"
               />
             </div>
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nom</TableHead>
-                    <TableHead>Description</TableHead>
-                    <TableHead>Prix</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredProducts.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={4} className="text-center py-8">
-                        Aucun produit trouvé
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredProducts.map((product) => (
-                      <TableRow key={product.id}>
-                        <TableCell className="font-medium">{product.name}</TableCell>
-                        <TableCell className="max-w-xs truncate">{product.description}</TableCell>
-                        <TableCell>{formatPrice(product.unitPrice)}</TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              setViewingProduct(product)
-                              setIsViewDialogOpen(true)
-                            }}
-                          >
-                            <Eye className="h-4 w-4" />
-                            <span className="sr-only">Voir</span>
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
+
+            {filteredProducts.length === 0 ? (
+              <div className="text-center py-8 border rounded-md">Aucun produit trouvé</div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredProducts.map((product) => (
+                  <Card key={product.id} className="overflow-hidden">
+                    <CardHeader className="p-4 pb-2">
+                      <CardTitle className="text-lg">{product.name}</CardTitle>
+                      <Badge variant="outline" className="w-fit mt-1">
+                        {formatPrice(product.unitPrice)}
+                      </Badge>
+                    </CardHeader>
+                    <CardContent className="p-4 pt-2">
+                      <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{product.description}</p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                        onClick={() => {
+                          setViewingProduct(product)
+                          setIsViewDialogOpen(true)
+                        }}
+                      >
+                        <Eye className="h-4 w-4 mr-2" />
+                        Voir détails
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 
         <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-          <DialogContent>
+          <DialogContent className="sm:max-w-md w-[95vw]">
             <DialogHeader>
               <DialogTitle>Détails du produit</DialogTitle>
               <DialogDescription>Informations détaillées sur le produit</DialogDescription>

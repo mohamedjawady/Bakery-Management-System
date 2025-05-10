@@ -361,46 +361,47 @@ export default function ProductsPage() {
                                   <span className="sr-only">Voir</span>
                                 </Button>
                               </DialogTrigger>
-                              <DialogContent>
-                                <DialogHeader>
-                                  <DialogTitle>Détails du produit</DialogTitle>
-                                </DialogHeader>
-                                {viewingProduct && (
-                                  <div className="grid gap-4 py-4">
-                                    <div>
-                                      <h3 className="font-medium">Nom</h3>
-                                      <p>{viewingProduct.name}</p>
-                                    </div>
-                                    <div>
-                                      <h3 className="font-medium">Description</h3>
-                                      <p>{viewingProduct.description}</p>
-                                    </div>
-                                    <div>
-                                      <h3 className="font-medium">Ingrédients</h3>
-                                      <ul className="list-disc pl-5">
-                                        {viewingProduct.ingredients.map((ingredient, index) => (
-                                          <li key={index}>{ingredient}</li>
-                                        ))}
-                                      </ul>
-                                    </div>
-                                    <div>
-                                      <h3 className="font-medium">Prix unitaire</h3>
-                                      <p>{formatPrice(viewingProduct.unitPrice)}</p>
-                                    </div>
-                                    <div>
-                                      <h3 className="font-medium">Statut</h3>
-                                      <p>{viewingProduct.active ? "Actif" : "Inactif"}</p>
-                                    </div>
-                                    <div>
-                                      <h3 className="font-medium">Date de création</h3>
-                                      <p>{formatDate(viewingProduct.createdAt)}</p>
-                                    </div>
-                                  </div>
-                                )}
-                                <DialogFooter>
-                                  <Button onClick={() => setIsViewDialogOpen(false)}>Fermer</Button>
-                                </DialogFooter>
-                              </DialogContent>
+                              <DialogContent className="flex flex-col items-center">
+  <DialogHeader>
+    <DialogTitle>Détails du produit</DialogTitle>
+  </DialogHeader>
+  {viewingProduct && (
+    <div className="grid gap-4 py-4 text-center w-full max-w-md">
+      <div>
+        <h3 className="font-medium">Nom</h3>
+        <p>{viewingProduct.name}</p>
+      </div>
+      <div>
+        <h3 className="font-medium">Description</h3>
+        <p>{viewingProduct.description}</p>
+      </div>
+      <div>
+        <h3 className="font-medium">Ingrédients</h3>
+        <ul className="list-disc flex flex-col items-center">
+          {viewingProduct.ingredients.map((ingredient, index) => (
+            <li key={index} className="text-center">{ingredient}</li>
+          ))}
+        </ul>
+      </div>
+      <div>
+        <h3 className="font-medium">Prix unitaire</h3>
+        <p>{formatPrice(viewingProduct.unitPrice)}</p>
+      </div>
+      <div>
+        <h3 className="font-medium">Statut</h3>
+        <p>{viewingProduct.active ? "Actif" : "Inactif"}</p>
+      </div>
+      <div>
+        <h3 className="font-medium">Date de création</h3>
+        <p>{formatDate(viewingProduct.createdAt)}</p>
+      </div>
+    </div>
+  )}
+  <DialogFooter>
+    <Button onClick={() => setIsViewDialogOpen(false)}>Fermer</Button>
+  </DialogFooter>
+</DialogContent>
+
                             </Dialog>
                             <Dialog
                               open={isEditDialogOpen && editingProduct?.id === product.id}
