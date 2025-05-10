@@ -15,7 +15,6 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { Eye, Filter, Minus, Plus, Search, ShoppingCart, Trash } from "lucide-react"
@@ -315,7 +314,7 @@ export default function BakeryOrdersPage() {
                 <Plus className="mr-2 h-4 w-4" /> Nouvelle commande
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-3xl">
+            <DialogContent className="sm:max-w-3xl w-[95vw] max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Créer une nouvelle commande</DialogTitle>
                 <DialogDescription>Ajoutez des produits à votre commande</DialogDescription>
@@ -323,9 +322,9 @@ export default function BakeryOrdersPage() {
               <div className="grid gap-4 py-4">
                 <div className="grid gap-2">
                   <Label>Produits</Label>
-                  <div className="flex gap-2">
-                    <Select value={selectedProduct} onValueChange={setSelectedProduct}>
-                      <SelectTrigger className="w-full">
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Select value={selectedProduct} onValueChange={setSelectedProduct} className="w-full">
+                      <SelectTrigger>
                         <SelectValue placeholder="Sélectionnez un produit" />
                       </SelectTrigger>
                       <SelectContent>
@@ -340,71 +339,61 @@ export default function BakeryOrdersPage() {
                       variant="outline"
                       onClick={() => addProductToOrder(selectedProduct)}
                       disabled={!selectedProduct}
+                      className="mt-1 sm:mt-0"
                     >
-                      <Plus className="h-4 w-4" />
-                      <span className="sr-only">Ajouter</span>
+                      <Plus className="h-4 w-4 mr-1" />
+                      <span>Ajouter</span>
                     </Button>
                   </div>
                 </div>
 
                 {orderItems.length > 0 && (
-                  <div className="rounded-md border">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Produit</TableHead>
-                          <TableHead>Prix unitaire</TableHead>
-                          <TableHead>Quantité</TableHead>
-                          <TableHead>Total</TableHead>
-                          <TableHead className="w-[100px]">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {orderItems.map((item, index) => (
-                          <TableRow key={index}>
-                            <TableCell>{item.productName}</TableCell>
-                            <TableCell>{formatPrice(item.unitPrice)}</TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                <Button
-                                  variant="outline"
-                                  size="icon"
-                                  className="h-8 w-8"
-                                  onClick={() => updateItemQuantity(index, item.quantity - 1)}
-                                >
-                                  <Minus className="h-3 w-3" />
-                                  <span className="sr-only">Diminuer</span>
-                                </Button>
-                                <span className="w-8 text-center">{item.quantity}</span>
-                                <Button
-                                  variant="outline"
-                                  size="icon"
-                                  className="h-8 w-8"
-                                  onClick={() => updateItemQuantity(index, item.quantity + 1)}
-                                >
-                                  <Plus className="h-3 w-3" />
-                                  <span className="sr-only">Augmenter</span>
-                                </Button>
-                              </div>
-                            </TableCell>
-                            <TableCell>{formatPrice(item.quantity * item.unitPrice)}</TableCell>
-                            <TableCell>
-                              <Button variant="ghost" size="icon" onClick={() => removeItem(index)}>
-                                <Trash className="h-4 w-4" />
-                                <span className="sr-only">Supprimer</span>
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                        <TableRow>
-                          <TableCell colSpan={3} className="text-right font-medium">
-                            Total
-                          </TableCell>
-                          <TableCell className="font-medium">{formatPrice(calculateTotalPrice())}</TableCell>
-                          <TableCell></TableCell>
-                        </TableRow>
-                      </TableBody>
-                    </Table>
+                  <div className="space-y-4">
+                    {orderItems.map((item, index) => (
+                      <div key={index} className="border rounded-md p-3 space-y-2">
+                        <div className="flex justify-between items-start">
+                          <div className="font-medium">{item.productName}</div>
+                          <Button variant="ghost" size="icon" onClick={() => removeItem(index)}>
+                            <Trash className="h-4 w-4" />
+                            <span className="sr-only">Supprimer</span>
+                          </Button>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <div className="text-sm text-muted-foreground">
+                            Prix unitaire: {formatPrice(item.unitPrice)}
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => updateItemQuantity(index, item.quantity - 1)}
+                            >
+                              <Minus className="h-3 w-3" />
+                              <span className="sr-only">Diminuer</span>
+                            </Button>
+                            <span className="w-8 text-center">{item.quantity}</span>
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => updateItemQuantity(index, item.quantity + 1)}
+                            >
+                              <Plus className="h-3 w-3" />
+                              <span className="sr-only">Augmenter</span>
+                            </Button>
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <div className="text-sm">Total:</div>
+                          <div className="font-medium">{formatPrice(item.quantity * item.unitPrice)}</div>
+                        </div>
+                      </div>
+                    ))}
+                    <div className="flex justify-between items-center p-3 border rounded-md bg-muted/50">
+                      <div className="font-medium">Total commande</div>
+                      <div className="font-bold">{formatPrice(calculateTotalPrice())}</div>
+                    </div>
                   </div>
                 )}
 
@@ -432,15 +421,15 @@ export default function BakeryOrdersPage() {
         </div>
 
         <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid grid-cols-3 md:grid-cols-7 mb-4">
+          {/* <TabsList className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-7 mb-4 w-full gap-1">
             <TabsTrigger value="all">Toutes</TabsTrigger>
             <TabsTrigger value="pending">En attente</TabsTrigger>
-            <TabsTrigger value="in_progress">En préparation</TabsTrigger>
-            <TabsTrigger value="ready">Prêt à livrer</TabsTrigger>
-            <TabsTrigger value="delivering">En livraison</TabsTrigger>
+            <TabsTrigger value="in_progress">En cours</TabsTrigger>
+            <TabsTrigger value="ready">Prêt</TabsTrigger>
+            <TabsTrigger value="delivering">Livraison</TabsTrigger>
             <TabsTrigger value="delivered">Livrées</TabsTrigger>
             <TabsTrigger value="cancelled">Annulées</TabsTrigger>
-          </TabsList>
+          </TabsList> */}
 
           <TabsContent value="all" className="space-y-4">
             <Card>
@@ -449,20 +438,20 @@ export default function BakeryOrdersPage() {
                 <CardDescription>{filteredOrders.length} commandes trouvées</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="mb-4 flex flex-col sm:flex-row items-start sm:items-center gap-2">
-                  <div className="flex items-center gap-2 w-full sm:w-auto">
-                    <Search className="h-4 w-4 text-muted-foreground" />
+                <div className="mb-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                  <div className="flex items-center gap-2 w-full">
+                    <Search className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                     <Input
                       placeholder="Rechercher une commande..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="max-w-sm"
+                      className="w-full"
                     />
                   </div>
                   <div className="flex items-center gap-2 w-full sm:w-auto mt-2 sm:mt-0">
-                    <Filter className="h-4 w-4 text-muted-foreground" />
+                    <Filter className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                     <Select value={statusFilter} onValueChange={setStatusFilter}>
-                      <SelectTrigger className="w-[180px]">
+                      <SelectTrigger className="w-full sm:w-[180px]">
                         <SelectValue placeholder="Filtrer par statut" />
                       </SelectTrigger>
                       <SelectContent>
@@ -477,49 +466,38 @@ export default function BakeryOrdersPage() {
                     </Select>
                   </div>
                 </div>
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Référence</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Montant</TableHead>
-                        <TableHead>Statut</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredOrders.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={5} className="text-center py-8">
-                            Aucune commande trouvée
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        filteredOrders.map((order) => (
-                          <TableRow key={order.id}>
-                            <TableCell className="font-medium">{order.referenceId}</TableCell>
-                            <TableCell>{formatDate(order.createdAt)}</TableCell>
-                            <TableCell>{formatPrice(order.totalPrice)}</TableCell>
-                            <TableCell>{getStatusBadge(order.status)}</TableCell>
-                            <TableCell className="text-right">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => {
-                                  setViewingOrder(order)
-                                  setIsViewDialogOpen(true)
-                                }}
-                              >
-                                <Eye className="h-4 w-4" />
-                                <span className="sr-only">Voir</span>
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
+                <div className="space-y-4">
+                  {filteredOrders.length === 0 ? (
+                    <div className="text-center py-8 border rounded-md">Aucune commande trouvée</div>
+                  ) : (
+                    <div className="grid grid-cols-1 gap-4">
+                      {filteredOrders.map((order) => (
+                        <div key={order.id} className="border rounded-md p-4 space-y-3">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <div className="font-medium">{order.referenceId}</div>
+                              <div className="text-sm text-muted-foreground">{formatDate(order.createdAt)}</div>
+                            </div>
+                            {getStatusBadge(order.status)}
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <div className="font-bold">{formatPrice(order.totalPrice)}</div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setViewingOrder(order)
+                                setIsViewDialogOpen(true)
+                              }}
+                            >
+                              <Eye className="h-4 w-4 mr-1" />
+                              Voir
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -534,49 +512,38 @@ export default function BakeryOrdersPage() {
               </CardHeader>
               <CardContent>
                 {/* Same table content as above */}
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Référence</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Montant</TableHead>
-                        <TableHead>Statut</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredOrders.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={5} className="text-center py-8">
-                            Aucune commande en attente
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        filteredOrders.map((order) => (
-                          <TableRow key={order.id}>
-                            <TableCell className="font-medium">{order.referenceId}</TableCell>
-                            <TableCell>{formatDate(order.createdAt)}</TableCell>
-                            <TableCell>{formatPrice(order.totalPrice)}</TableCell>
-                            <TableCell>{getStatusBadge(order.status)}</TableCell>
-                            <TableCell className="text-right">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => {
-                                  setViewingOrder(order)
-                                  setIsViewDialogOpen(true)
-                                }}
-                              >
-                                <Eye className="h-4 w-4" />
-                                <span className="sr-only">Voir</span>
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
+                <div className="space-y-4">
+                  {filteredOrders.length === 0 ? (
+                    <div className="text-center py-8 border rounded-md">Aucune commande trouvée</div>
+                  ) : (
+                    <div className="grid grid-cols-1 gap-4">
+                      {filteredOrders.map((order) => (
+                        <div key={order.id} className="border rounded-md p-4 space-y-3">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <div className="font-medium">{order.referenceId}</div>
+                              <div className="text-sm text-muted-foreground">{formatDate(order.createdAt)}</div>
+                            </div>
+                            {getStatusBadge(order.status)}
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <div className="font-bold">{formatPrice(order.totalPrice)}</div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setViewingOrder(order)
+                                setIsViewDialogOpen(true)
+                              }}
+                            >
+                              <Eye className="h-4 w-4 mr-1" />
+                              Voir
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -586,13 +553,13 @@ export default function BakeryOrdersPage() {
         </Tabs>
 
         <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-          <DialogContent className="max-w-3xl">
+          <DialogContent className="sm:max-w-3xl w-[95vw] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Détails de la commande</DialogTitle>
             </DialogHeader>
             {viewingOrder && (
               <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <h3 className="font-medium">Informations générales</h3>
                     <div className="mt-2 space-y-2">
@@ -617,35 +584,22 @@ export default function BakeryOrdersPage() {
                 </div>
                 <div>
                   <h3 className="font-medium mb-2">Produits commandés</h3>
-                  <div className="rounded-md border">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Produit</TableHead>
-                          <TableHead className="text-right">Quantité</TableHead>
-                          <TableHead className="text-right">Prix unitaire</TableHead>
-                          <TableHead className="text-right">Total</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {viewingOrder.items.map((item, index) => (
-                          <TableRow key={index}>
-                            <TableCell>{item.productName}</TableCell>
-                            <TableCell className="text-right">{item.quantity}</TableCell>
-                            <TableCell className="text-right">{formatPrice(item.unitPrice)}</TableCell>
-                            <TableCell className="text-right">{formatPrice(item.quantity * item.unitPrice)}</TableCell>
-                          </TableRow>
-                        ))}
-                        <TableRow>
-                          <TableCell colSpan={3} className="text-right font-medium">
-                            Total
-                          </TableCell>
-                          <TableCell className="text-right font-medium">
-                            {formatPrice(viewingOrder.totalPrice)}
-                          </TableCell>
-                        </TableRow>
-                      </TableBody>
-                    </Table>
+                  <div className="space-y-3">
+                    {viewingOrder.items.map((item, index) => (
+                      <div key={index} className="border rounded-md p-3 space-y-2">
+                        <div className="font-medium">{item.productName}</div>
+                        <div className="flex justify-between items-center">
+                          <div className="text-sm text-muted-foreground">
+                            {item.quantity} × {formatPrice(item.unitPrice)}
+                          </div>
+                          <div className="font-medium">{formatPrice(item.quantity * item.unitPrice)}</div>
+                        </div>
+                      </div>
+                    ))}
+                    <div className="flex justify-between items-center p-3 border rounded-md bg-muted/50">
+                      <div className="font-medium">Total commande</div>
+                      <div className="font-bold">{formatPrice(viewingOrder.totalPrice)}</div>
+                    </div>
                   </div>
                 </div>
               </div>
