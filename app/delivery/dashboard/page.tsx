@@ -107,7 +107,7 @@ export default function DeliveryDashboard() {
                   )}
                 </div>
               </CardContent>
-              <CardFooter className="flex justify-between pt-2">
+              <CardFooter className="flex flex-col gap-2 pt-2">
                 <Button variant="outline" size="sm">
                   <MapPin className="mr-2 h-4 w-4" /> Voir sur la carte
                 </Button>
@@ -115,6 +115,7 @@ export default function DeliveryDashboard() {
                   Démarrer <Truck className="ml-2 h-4 w-4" />
                 </Button>
               </CardFooter>
+
             </Card>
           ))}
         </div>
@@ -160,7 +161,7 @@ export default function DeliveryDashboard() {
                   </div>
                 </div>
               </CardContent>
-              <CardFooter className="flex justify-between pt-2">
+              <CardFooter className="flex flex-col gap-2 pt-2">
                 <Button variant="outline" size="sm">
                   <Calendar className="mr-2 h-4 w-4" /> Planifier un retard
                 </Button>
@@ -168,6 +169,7 @@ export default function DeliveryDashboard() {
                   Livré <CheckCircle2 className="ml-2 h-4 w-4" />
                 </Button>
               </CardFooter>
+
             </Card>
           ))}
         </div>
@@ -188,7 +190,7 @@ export default function DeliveryDashboard() {
                   <MapPin className="h-3 w-3 mr-1" />
                   {
                     ["2 Rue du Louvre, Paris", "15 Avenue du Président Wilson, Paris", "1 Place de la Concorde, Paris"][
-                      i % 3
+                    i % 3
                     ]
                   }
                 </CardDescription>
@@ -219,7 +221,7 @@ export default function DeliveryDashboard() {
                   </div>
                 </div>
               </CardContent>
-              <CardFooter className="flex justify-between pt-2">
+              <CardFooter className="flex flex-col gap-2 pt-2">
                 <Button variant="outline" size="sm">
                   Détails
                 </Button>
@@ -227,6 +229,7 @@ export default function DeliveryDashboard() {
                   Signature <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </CardFooter>
+
             </Card>
           ))}
         </div>
