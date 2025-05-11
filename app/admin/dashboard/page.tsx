@@ -2,6 +2,34 @@ import { DashboardLayout } from "@/components/layout/dashboard-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ArrowDown, ArrowUp, Banknote, BarChart3, ClipboardList, ShoppingBag, Users } from "lucide-react"
+import { SalesChart, ProductsChart, BakeriesComparisonChart } from "@/components/charts/sales-chart"
+
+const salesData = [
+  { name: 'Jan', sales: 4000 },
+  { name: 'Feb', sales: 3000 },
+  { name: 'Mar', sales: 2000 },
+  { name: 'Apr', sales: 2780 },
+  { name: 'May', sales: 1890 },
+  { name: 'Jun', sales: 2390 },
+  { name: 'Jul', sales: 3490 },
+];
+
+const productData = [
+  { name: 'Pain', sales: 4000, stock: 2400 },
+  { name: 'Croissant', sales: 3000, stock: 1398 },
+  { name: 'Baguette', sales: 2000, stock: 9800 },
+  { name: 'Éclair', sales: 2780, stock: 3908 },
+  { name: 'Tarte', sales: 1890, stock: 4800 },
+  { name: 'Macaron', sales: 2390, stock: 3800 },
+];
+
+const bakeriesData = [
+  { name: 'Saint-Michel', value: 35 },
+  { name: 'Montmartre', value: 25 },
+  { name: 'Opéra', value: 20 },
+  { name: 'Bastille', value: 15 },
+  { name: 'Marais', value: 5 },
+];
 
 export default function AdminDashboard() {
   return (
@@ -84,15 +112,12 @@ export default function AdminDashboard() {
             <TabsTrigger value="reports">Rapports</TabsTrigger>
           </TabsList>
           <TabsContent value="overview" className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-              <Card className="col-span-4">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">              <Card className="col-span-4">
                 <CardHeader>
                   <CardTitle>Aperçu des ventes</CardTitle>
                 </CardHeader>
                 <CardContent className="pl-2">
-                  <div className="h-[200px] flex items-center justify-center">
-                    <BarChart3 className="h-16 w-16 text-muted-foreground/60" />
-                  </div>
+                  <SalesChart data={salesData} />
                 </CardContent>
               </Card>
               <Card className="col-span-3">
@@ -117,28 +142,113 @@ export default function AdminDashboard() {
                 </CardContent>
               </Card>
             </div>
-          </TabsContent>
-          <TabsContent value="analytics" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Analytiques</CardTitle>
-                <CardDescription>Visualisez les performances de vos boulangeries.</CardDescription>
-              </CardHeader>
-              <CardContent className="h-[300px] flex items-center justify-center">
-                <p className="text-muted-foreground">Graphiques analytiques ici</p>
-              </CardContent>
-            </Card>
-          </TabsContent>
-          <TabsContent value="reports" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Rapports</CardTitle>
-                <CardDescription>Générez et consultez vos rapports.</CardDescription>
-              </CardHeader>
-              <CardContent className="h-[300px] flex items-center justify-center">
-                <p className="text-muted-foreground">Rapports disponibles ici</p>
-              </CardContent>
-            </Card>
+          </TabsContent>          <TabsContent value="analytics" className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+              <Card className="col-span-4">
+                <CardHeader>
+                  <CardTitle>Performance des produits</CardTitle>
+                  <CardDescription>Ventes et stocks par produit</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ProductsChart data={productData} />
+                </CardContent>
+              </Card>
+              <Card className="col-span-3">
+                <CardHeader>
+                  <CardTitle>Répartition des ventes</CardTitle>
+                  <CardDescription>Part du chiffre d'affaires par boulangerie</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <BakeriesComparisonChart data={bakeriesData} />
+                </CardContent>
+              </Card>
+              <Card className="col-span-7">
+                <CardHeader>
+                  <CardTitle>Indicateurs de Performance</CardTitle>
+                  <CardDescription>Évolution des KPIs principaux</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    {[
+                      { title: "Panier Moyen", value: "€24.50", change: "+5.3%", up: true },
+                      { title: "Taux de conversion", value: "3.2%", change: "+0.8%", up: true },
+                      { title: "Taux de retour", value: "0.7%", change: "-0.3%", up: true },
+                      { title: "Coût d'acquisition", value: "€12.40", change: "+2.1%", up: false }
+                    ].map((item, i) => (
+                      <div key={i} className="bg-slate-50 dark:bg-slate-800 p-4 rounded-lg">
+                        <p className="text-sm font-medium text-muted-foreground mb-1">{item.title}</p>
+                        <p className="text-2xl font-bold">{item.value}</p>
+                        <p className={`text-xs flex items-center ${item.up ? 'text-emerald-500' : 'text-rose-500'}`}>
+                          {item.up ? <ArrowUp className="mr-1 h-3 w-3" /> : <ArrowDown className="mr-1 h-3 w-3" />}
+                          {item.change}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>          <TabsContent value="reports" className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-7">
+              <Card className="col-span-7">
+                <CardHeader>
+                  <CardTitle>Rapports Disponibles</CardTitle>
+                  <CardDescription>Générez et consultez vos rapports d'activité.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {[
+                      { 
+                        title: "Rapport mensuel des ventes", 
+                        description: "Analyse détaillée des ventes du mois par produit et boulangerie", 
+                        date: "01/04/2025", 
+                        status: "Prêt" 
+                      },
+                      { 
+                        title: "Analyse de la performance des employés", 
+                        description: "Évaluation des performances individuelles et collectives", 
+                        date: "15/04/2025", 
+                        status: "Prêt" 
+                      },
+                      { 
+                        title: "Audit des ingrédients", 
+                        description: "Analyse des coûts et de l'utilisation des ingrédients", 
+                        date: "22/04/2025", 
+                        status: "Prêt" 
+                      },
+                      { 
+                        title: "Rapport financier trimestriel", 
+                        description: "États financiers et prévisions pour Q2 2025", 
+                        date: "01/05/2025", 
+                        status: "En attente" 
+                      },
+                      { 
+                        title: "Analyse des tendances clients", 
+                        description: "Comportements d'achat et préférences des clients", 
+                        date: "10/05/2025", 
+                        status: "En attente" 
+                      }
+                    ].map((report, i) => (
+                      <div key={i} className="flex items-center justify-between p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
+                        <div>
+                          <h4 className="font-medium text-base">{report.title}</h4>
+                          <p className="text-sm text-muted-foreground">{report.description}</p>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <div className="text-right">
+                            <p className="text-sm font-medium">{report.date}</p>
+                            <p className={`text-xs ${report.status === "Prêt" ? "text-emerald-500" : "text-amber-500"}`}>{report.status}</p>
+                          </div>
+                          <button className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 p-2 rounded">
+                            <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
         </Tabs>
       </div>
