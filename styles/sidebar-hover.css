@@ -1,0 +1,90 @@
+/* Hover-expandable sidebar styles */
+@media (min-width: 1024px) {  .sidebar-hover-expand {
+    position: fixed !important;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3.5rem;
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+    z-index: 40;
+    box-shadow: none;
+    transition-delay: 0s;
+  }
+  .sidebar-hover-expand:hover {
+    width: 16rem !important;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.15) !important;
+    overflow-y: auto !important;
+    transition-delay: 0.1s !important; /* Small delay when expanding */
+  }
+  
+  /* Make sure inner content is visible when expanded */
+  .sidebar-hover-expand:hover .sidebar-link-text,
+  .sidebar-hover-expand:hover .sidebar-collapse-button {
+    opacity: 1;
+    visibility: visible;
+  }
+  /* Hide text and keep icons centered when collapsed */
+  .sidebar-hover-expand .sidebar-link-text,
+  .sidebar-hover-expand .sidebar-collapse-button {
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease, visibility 0.2s ease;
+    display: inline-block;
+    white-space: nowrap;
+  }
+  
+  /* Keep icon centered when collapsed */
+  .sidebar-hover-expand .sidebar-icon {
+    margin: 0 auto;
+  }
+  
+  /* Hide tooltips when sidebar is expanded on hover */
+  .sidebar-hover-expand:hover .sidebar-tooltip {
+    display: none;
+  }
+  
+  /* Special styling for the content to prevent layout shift */
+  .content-with-hover-sidebar {
+    margin-left: 3.5rem;
+    transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    width: calc(100% - 3.5rem);
+  }
+  /* Prevent content elements from being covered by expanded sidebar */
+  .sidebar-hover-expand:hover ~ .content-with-hover-sidebar .prevent-overlap {
+    padding-left: calc(16rem - 3.5rem);
+    transition: padding-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition-delay: 0s; /* No delay when making space for sidebar */
+  }
+  
+  /* Ensure smooth transition back */
+  .content-with-hover-sidebar .prevent-overlap {
+    transition-delay: 0.1s; /* Small delay when returning to normal */
+  }
+
+  /* Hide collapse button since it's not needed with hover behavior */
+  .sidebar-hover-expand .sidebar-collapse-button {
+    display: none;
+  }
+
+  /* Icon alignment */
+  .sidebar-hover-expand .sidebar-nav-item {
+    display: flex;
+    align-items: center;
+  }
+
+  .sidebar-hover-expand:hover .sidebar-icon {
+    margin-right: 0.75rem;
+    margin-left: 0;
+  }
+
+  /* Make sure logo is properly aligned */
+  .sidebar-hover-expand .sidebar-logo-container .sidebar-icon {
+    margin: 0 auto;
+  }
+  
+  .sidebar-hover-expand:hover .sidebar-logo-container .sidebar-icon {
+    margin-right: 0.75rem;
+    margin-left: 0;
+  }
+}

@@ -1,0 +1,69 @@
+/* Direct hover behavior fixes - forcing highest priority */
+.sidebar-hover-expand {
+  position: fixed !important;
+  width: 3.5rem !important;
+  overflow: hidden !important;
+  transition: width 0.3s ease !important;
+  height: 100vh !important;
+}
+
+.sidebar-hover-expand:hover,
+.sidebar-hover-expand.sidebar-hovered {
+  width: 16rem !important;
+  overflow-y: auto !important;
+}
+
+.sidebar-hover-expand .sidebar-link-text {
+  opacity: 0;
+  visibility: hidden;
+  white-space: nowrap;
+  transition: opacity 0.2s ease;
+}
+
+.sidebar-hover-expand:hover .sidebar-link-text,
+.sidebar-hover-expand.sidebar-hovered .sidebar-link-text {
+  opacity: 1;
+  visibility: visible;
+}
+
+.sidebar-hover-expand .sidebar-icon {
+  margin: 0 auto;
+  transition: margin 0.3s ease;
+}
+
+.sidebar-hover-expand:hover .sidebar-icon,
+.sidebar-hover-expand.sidebar-hovered .sidebar-icon {
+  margin-right: 0.75rem !important;
+  margin-left: 0 !important;
+}
+
+/* Disable tooltips when hovering */
+.sidebar-hover-expand:hover .sidebar-tooltip {
+  display: none !important;
+}
+
+/* Make sure the sidebar has highest z-index */
+.sidebar-hover-expand {
+  z-index: 1000 !important;
+}
+
+/* Fix for potential issues with nav items */
+.sidebar-hover-expand .sidebar-nav-item {
+  justify-content: flex-start !important;
+  padding-left: 0.75rem !important;
+  padding-right: 0.75rem !important;
+  cursor: pointer !important;
+}
+
+/* Override any potential conflicting styles */
+.sidebar-collapsed.sidebar-hover-expand:hover,
+.sidebar-expanded.sidebar-hover-expand:hover {
+  width: 16rem !important;
+}
+
+/* Make sure the hover effect works for mouse interactions */
+@media (hover: hover) {
+  .sidebar-hover-expand:hover {
+    width: 16rem !important;
+  }
+}
