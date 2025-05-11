@@ -13,6 +13,7 @@ import "@/styles/delivery-management.css";
 import "@/styles/sidebar-logo.css";
 import "@/styles/mobile-nav.css";
 import "@/styles/sidebar-scroll.css";
+import "@/styles/theme-toggle.css";
 import { 
   Bell,
   ChevronLeft,
@@ -64,7 +65,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
   const [mounted, setMounted] = useState(false);
   const [localStorageAvailable, setLocalStorageAvailable] = useState<boolean>(false);
-
+  // Handle initial mounting and hydration - needed for theme toggling
   useEffect(() => {
     setMounted(true);
     
@@ -289,19 +290,18 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
                         Notifications
                       </TooltipContent>
                     </Tooltip>
-                  </TooltipProvider>
-                  
-                  <TooltipProvider>
+                  </TooltipProvider>                    <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button
-                          variant="ghost"
+                          variant="outline"
                           size="icon"
-                          className="h-8 w-8"
+                          className="h-8 w-8 rounded-full theme-toggle-button"
                           onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
                           aria-label="Toggle theme"
                         >
-                          {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                          <Sun className="h-[1.2rem] w-[1.2rem] sun-icon" />
+                          <Moon className="h-[1.2rem] w-[1.2rem] moon-icon" />
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent side={sidebarCollapsed ? "right" : "bottom"}>
@@ -383,8 +383,23 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
                           </Link>
                         </Button>
                       );
-                    })}
-                  </div>                  <div className="mt-auto p-4 border-t">
+                    })}                  </div>                  <div className="mt-auto p-4 border-t space-y-2">                    <Button 
+                      variant="outline" 
+                      className="w-full justify-start sidebar-nav-link theme-toggle-mobile"
+                      onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                    >
+                      {theme === "dark" ? (
+                        <>
+                          <Sun className="mr-3 h-5 w-5 sidebar-nav-icon theme-icon" />
+                          <span>Mode clair</span>
+                        </>
+                      ) : (
+                        <>
+                          <Moon className="mr-3 h-5 w-5 sidebar-nav-icon theme-icon" />
+                          <span>Mode sombre</span>
+                        </>
+                      )}
+                    </Button>
                     <Button variant="ghost" className="w-full justify-start sidebar-nav-link" onClick={handleLogout}>
                       <LogOut className="mr-3 h-5 w-5 sidebar-nav-icon" />
                       <span>Déconnexion</span>
