@@ -1,0 +1,120 @@
+/* Add these rules to the end of your sidebar.css file */
+
+/* Text fade-out animation in sidebar links */
+.sidebar-link-text {
+  opacity: 1;
+  transition: opacity 0.2s ease-out, margin-left 0.2s ease-out, width 0.2s ease-out;
+  width: auto;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.sidebar-collapsed .sidebar-link-text {
+  opacity: 0;
+  width: 0;
+  margin-left: 0;
+}
+
+/* Icon transition for better visual effect */
+.sidebar-icon {
+  transition: margin 0.3s ease;
+}
+
+.sidebar-collapsed .sidebar-icon {
+  margin-right: 0;
+  margin-left: 0;
+}
+
+/* Enhanced sidebar focus/hover states */
+.sidebar-nav-item {
+  position: relative;
+  overflow: hidden;
+}
+
+.sidebar-nav-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 3px;
+  background-color: hsl(var(--primary));
+  transform: scaleY(0);
+  transition: transform 0.2s;
+}
+
+.sidebar-nav-item:hover::before {
+  transform: scaleY(0.7);
+}
+
+.sidebar-nav-item.active::before {
+  transform: scaleY(1);
+}
+
+/* Improving sidebar section spacing */
+.sidebar-section {
+  margin-bottom: 0.75rem;
+}
+
+.sidebar-section-title {
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0 0.75rem;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+  color: hsl(var(--muted-foreground));
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  /* Hide sidebar toggle button on mobile */
+  .sidebar-collapse-button,
+  button.sidebar-toggle-button {
+    display: none !important;
+  }
+  
+  /* Mobile sidebar styles */
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 50;
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    width: 100% !important; /* Force full width on mobile */
+    max-width: 280px; /* Limit max width */
+  }
+  
+  .sidebar.sidebar-mobile-open {
+    transform: translateX(0);
+  }
+  
+  .sidebar-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 40;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
+  
+  .sidebar-overlay.active {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  
+  /* Ensure main content takes full width */
+  main.content-with-sidebar-expanded,
+  main.content-with-sidebar-collapsed {
+    width: 100%;
+    margin-left: 0 !important;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+}

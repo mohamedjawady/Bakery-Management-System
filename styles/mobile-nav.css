@@ -1,0 +1,59 @@
+/* Mobile navigation styles */
+.mobile-nav-wrapper {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Fix the mobile close button with proper contrast */
+.mobile-nav-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem;
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.mobile-nav-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 9999px;
+  transition: background-color 0.2s;
+}
+
+.mobile-nav-close:hover {
+  background-color: hsl(var(--accent));
+}
+
+/* Style active items in mobile navigation */
+.mobile-nav-link.active {
+  background-color: hsl(var(--accent));
+  font-weight: 500;
+}
+
+/* Transition for screen sizes */
+@media (max-width: 640px) {
+  .sidebar-sheet {
+    width: 85vw !important;
+  }
+}
+
+/* Fix for the X button in the mobile sidebar */
+.sheet-overlay {
+  z-index: 49;
+}
+
+.sidebar-sheet {
+  z-index: 50;
+}
+
+/* Ensure the close button is properly positioned */
+[data-side="left"] .sidebar-close-button {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+}

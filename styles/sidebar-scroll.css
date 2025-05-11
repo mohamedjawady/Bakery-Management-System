@@ -1,0 +1,32 @@
+/* Sidebar sticky scroll styles */
+.sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  max-height: 100vh;
+  overflow-y: auto;
+}
+
+/* Hide scrollbar but allow scrolling */
+.sidebar::-webkit-scrollbar {
+  width: 0px; /* Remove scrollbar space */
+  background: transparent; /* Optional: just make scrollbar invisible */
+}
+
+/* Ensure proper content flow with sticky sidebar */
+@media screen and (min-width: 768px) {
+  .content-with-sidebar-collapsed,
+  .content-with-sidebar-expanded {
+    min-height: 100vh;
+  }
+}
+
+/* For Firefox */
+.sidebar {
+  scrollbar-width: none;
+}
+
+/* For IE and Edge */
+.sidebar {
+  -ms-overflow-style: none;
+}

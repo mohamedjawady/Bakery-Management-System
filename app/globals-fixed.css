@@ -2,18 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Import sidebar styles */
-@import "../styles/sidebar.css";
-@import "../styles/sidebar-animations.css";
-
-@layer components {
-  /* Simple utility classes for spacing adjustments */
-  .dashboard-container {
-    display: flex;
-    height: 100%;
-  }
-}
-
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -97,4 +85,4 @@
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
-} 
+}

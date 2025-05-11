@@ -1,0 +1,87 @@
+/* Specific styles for the delivery management screen */
+.delivery-table {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.delivery-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.delivery-status-pending {
+  background-color: rgba(245, 158, 11, 0.1);
+  color: rgb(245, 158, 11);
+}
+
+.delivery-status-transit {
+  background-color: rgba(59, 130, 246, 0.1);
+  color: rgb(59, 130, 246);
+}
+
+.delivery-status-delivered {
+  background-color: rgba(34, 197, 94, 0.1);
+  color: rgb(34, 197, 94);
+}
+
+.delivery-status-failed {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: rgb(239, 68, 68);
+}
+
+/* Mobile optimizations for delivery table */
+@media (max-width: 768px) {
+  .delivery-info-row {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .delivery-info-label {
+    font-size: 0.75rem;
+    color: hsl(var(--muted-foreground));
+  }
+  
+  .delivery-info-value {
+    font-size: 0.875rem;
+    font-weight: 500;
+  }
+  
+  /* Fix the button layout on mobile */
+  .delivery-action-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    justify-content: flex-end;
+  }
+  
+  /* Make tabs scrollable on mobile */
+  .delivery-tabs-list {
+    overflow-x: auto;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+    padding-bottom: 4px;
+  }
+  
+  .delivery-tabs-list::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
+  }
+}
+
+/* Responsive filters container */
+.delivery-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .delivery-filters {
+    flex-direction: row;
+    align-items: center;
+  }
+}
