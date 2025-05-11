@@ -1,0 +1,129 @@
+/* Custom styles for the sidebar logo */
+.sidebar-logo {
+  color: hsl(var(--primary));
+}
+
+.sidebar-logo-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 4rem;
+  padding: 0 1rem;
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+/* Style for the proper X icon */
+.sidebar-close-button {
+  border-radius: 9999px;
+  transition: background-color 0.2s;
+}
+
+.sidebar-close-button:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.sidebar-close-button .lucide-x {
+  color: hsl(var(--foreground));
+}
+
+.dark .sidebar-close-button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Ensure the header has the right size */
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem;
+}
+
+/* Fix any visual issues with the Sheet content */
+.sidebar-sheet {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+/* Fix for the sidebar close button in the sheet */
+.sidebar-sheet .sidebar-close-button {
+  position: relative;
+  z-index: 50;
+}
+
+/* Override any radix UI styles that might be causing issues */
+.sidebar-sheet [data-radix-popper-content-wrapper] {
+  transform: none !important;
+}
+
+/* Ensure the X icon is visible */
+.sidebar-sheet .sidebar-close-button svg {
+  color: hsl(var(--foreground));
+  opacity: 0.8;
+}
+
+.sidebar-sheet .sidebar-close-button:hover svg {
+  opacity: 1;
+}
+
+/* Fix the look of the mobile trigger button */
+.mobile-menu-trigger {
+  position: fixed;
+  left: 1rem;
+  top: 1rem;
+  z-index: 40;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid hsl(var(--border));
+  background-color: hsl(var(--background));
+}
+
+.mobile-menu-trigger:hover {
+  background-color: hsl(var(--accent));
+}
+
+@media (max-width: 350px) {
+  .mobile-menu-trigger {
+    left: 0.5rem;
+    top: 0.5rem;
+  }
+}
+
+/* Style for active sidebar items */
+.sidebar-nav-link {
+  display: flex;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  border-radius: 0.25rem;
+  transition: all 0.2s;
+}
+
+.sidebar-nav-link.active {
+  background-color: hsl(var(--accent));
+  font-weight: 500;
+}
+
+.sidebar-nav-link .sidebar-nav-icon {
+  margin-right: 0.75rem;
+  color: hsl(var(--foreground));
+  flex-shrink: 0;
+}
+
+.sidebar-nav-link.active .sidebar-nav-icon {
+  color: hsl(var(--primary));
+}
+
+/* Mobile specific styling */
+@media (max-width: 768px) {
+  .sidebar-nav-link {
+    width: 100%;
+    padding: 0.75rem 1rem;
+  }
+  
+  .sidebar-nav-icon {
+    height: 1.25rem;
+    width: 1.25rem;
+  }
+}

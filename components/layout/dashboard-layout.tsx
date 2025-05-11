@@ -1,11 +1,22 @@
-"use client"
+"use client";
 
-import type React from "react"
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { SidebarCollapseButton } from "@/components/layout/sidebar-collapse-button";
 
-import { useState, useEffect } from "react"
-import { usePathname, useRouter } from "next/navigation"
-import {
+// Import styles
+import "@/styles/sidebar.css";
+import "@/styles/sidebar-animations.css";
+import "@/styles/responsive-tables.css";
+import "@/styles/delivery-management.css";
+import "@/styles/sidebar-logo.css";
+import "@/styles/mobile-nav.css";
+import "@/styles/sidebar-scroll.css";
+import { 
   Bell,
+  ChevronLeft,
+  ChevronRight,
   ClipboardList,
   Croissant,
   Home,
@@ -18,41 +29,101 @@ import {
   Truck,
   Users,
   X,
-} from "lucide-react"
-import { useTheme } from "@/components/theme-provider"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Button } from "@/components/ui/button"
+  PanelLeftClose,
+  PanelLeftOpen
+} from "lucide-react";
+import { useTheme } from "@/components/theme-provider";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { useMobile } from "@/hooks/use-mobile"
-import { useToast } from "@/hooks/use-toast"
+} from "@/components/ui/dropdown-menu";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useMobile } from "@/hooks/use-mobile";
+import { useToast } from "@/hooks/use-toast";
 
 interface DashboardLayoutProps {
-  children: React.ReactNode
-  role: "admin" | "bakery" | "laboratory" | "delivery"
+  children: React.ReactNode;
+  role: "admin" | "bakery" | "laboratory" | "delivery";
 }
 
 export function DashboardLayout({ children, role }: DashboardLayoutProps) {
-  const [open, setOpen] = useState(false)
-  const [user, setUser] = useState<{ email: string; role: string } | null>(null)
-  const pathname = usePathname()
-  const router = useRouter()
-  const isMobile = useMobile()
-  const { theme, setTheme } = useTheme()
-  const { toast } = useToast()
+  const [open, setOpen] = useState(false);
+  const [user, setUser] = useState<{ email: string; role: string } | null>(null);
+  const pathname = usePathname();
+  const router = useRouter();
+  const isMobile = useMobile();
+  const { theme, setTheme } = useTheme();
+  const { toast } = useToast();
+  // Get sidebar state from localStorage if available
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
+  const [mounted, setMounted] = useState(false);
+  const [localStorageAvailable, setLocalStorageAvailable] = useState<boolean>(false);
+
+  useEffect(() => {
+    setMounted(true);
+    
+    // Check if localStorage is available (avoiding exceptions in some browsers)
+    try {
+      localStorage.setItem('localStorage_test', 'yes');
+      if(localStorage.getItem('localStorage_test') === 'yes') {
+        localStorage.removeItem('localStorage_test');
+        setLocalStorageAvailable(true);
+        
+        // Load saved sidebar state
+        const saved = localStorage.getItem("sidebar-collapsed");
+        if (saved !== null) setSidebarCollapsed(JSON.parse(saved));
+      }
+    } catch (e) {
+      console.warn('localStorage not available, sidebar state will not persist');
+    }
+  }, []);
+
+  // Save sidebar state when it changes
+  const updateSidebarState = (state: boolean) => {
+    setSidebarCollapsed(state);
+    
+    // Only try to use localStorage if available
+    if (localStorageAvailable) {
+      try {
+        localStorage.setItem("sidebar-collapsed", JSON.stringify(state));
+      } catch (e) {
+        console.warn('Failed to save sidebar state', e);
+      }
+    }
+  };
+    // Toggle sidebar between collapsed and expanded states
+  const toggleSidebar = () => {
+    updateSidebarState(!sidebarCollapsed);
+  };
+  
+  // Add keyboard shortcut support for sidebar toggle
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Toggle sidebar on Ctrl+B (like VS Code)
+      if (e.ctrlKey && e.key === "b" && !isMobile) {
+        e.preventDefault();
+        toggleSidebar();
+      }
+    };
+    
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isMobile, toggleSidebar]);
 
   // Check if user is logged in and has the correct role
   useEffect(() => {
-    const storedUser = localStorage.getItem("user")
+    const storedUser = localStorage.getItem("user");
     if (storedUser) {
-      const parsedUser = JSON.parse(storedUser)
-      setUser(parsedUser)
+      const parsedUser = JSON.parse(storedUser);
+      setUser(parsedUser);
 
       // If user role doesn't match the required role for this page, redirect
       if (parsedUser.role !== role) {
@@ -60,8 +131,8 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
           title: "Accès non autorisé",
           description: `Vous n'avez pas les droits pour accéder à cette page.`,
           variant: "destructive",
-        })
-        router.push(`/${parsedUser.role}/dashboard`)
+        });
+        router.push(`/${parsedUser.role}/dashboard`);
       }
     } else {
       // If no user is logged in, redirect to login
@@ -69,25 +140,25 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
         title: "Session expirée",
         description: "Veuillez vous reconnecter",
         variant: "destructive",
-      })
-      router.push("/")
+      });
+      router.push("/");
     }
-  }, [role, router, toast])
+  }, [role, router, toast]);
 
   // Close mobile sidebar when navigating
   useEffect(() => {
-    setOpen(false)
-  }, [pathname])
+    setOpen(false);
+  }, [pathname]);
 
   const handleLogout = () => {
-    localStorage.removeItem("user")
+    localStorage.removeItem("user");
     toast({
       title: "Déconnexion réussie",
       description: "Vous avez été déconnecté avec succès",
-    })
-    router.push("/")
-  }
-
+    });
+    router.push("/");
+  };
+  // Define navigation items for each role
   const adminNavItems = [
     { href: "/admin/dashboard", label: "Tableau de bord", icon: Home },
     { href: "/admin/users", label: "Utilisateurs", icon: Users },
@@ -95,156 +166,243 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
     { href: "/admin/orders", label: "Commandes", icon: ClipboardList },
     { href: "/admin/delivery", label: "Livraisons", icon: Truck },
     { href: "/admin/settings", label: "Paramètres", icon: Settings },
-  ]
+  ];
 
   const bakeryNavItems = [
     { href: "/bakery/dashboard", label: "Tableau de bord", icon: Home },
     { href: "/bakery/orders", label: "Commandes", icon: ClipboardList },
     { href: "/bakery/products", label: "Produits", icon: ShoppingBag },
     { href: "/bakery/profile", label: "Profil", icon: Users },
-  ]
+  ];
 
   const laboratoryNavItems = [
     { href: "/laboratory/dashboard", label: "Tableau de bord", icon: Home },
     { href: "/laboratory/production", label: "Production", icon: ClipboardList },
-  ]
+  ];
 
   const deliveryNavItems = [
     { href: "/delivery/dashboard", label: "Tableau de bord", icon: Home },
     { href: "/delivery/routes", label: "Itinéraires", icon: Truck },
-  ]
+  ];
 
   const navItems = {
     admin: adminNavItems,
     bakery: bakeryNavItems,
     laboratory: laboratoryNavItems,
     delivery: deliveryNavItems,
-  }[role]
+  }[role];
 
   const roleLabels = {
     admin: "Administrateur",
     bakery: "Boulangerie",
     laboratory: "Laboratoire",
     delivery: "Livraison",
-  }
+  };  return (
+    <div className="flex min-h-screen flex-col">      {/* Main content area with sidebar */}        
+      <div className="flex flex-1 relative min-h-screen">        
+        {/* Sidebar for desktop */}
+        {!isMobile && mounted && (
+          <nav
+            className={`sidebar hidden md:flex flex-col h-screen sticky top-0 z-30 ${
+              sidebarCollapsed ? 'sidebar-collapsed' : 'sidebar-expanded'
+            } border-r border-border bg-background`}
+            aria-label="Sidebar navigation"
+          >
+            {/* Logo and brand header */}
+            <div className="flex items-center h-16 px-3 border-b border-border">
+              <Croissant className={`h-5 w-5 text-amber-500 flex-shrink-0 sidebar-icon ${
+                sidebarCollapsed ? 'mx-auto' : 'mr-3'
+              }`} />
+              {!sidebarCollapsed && (
+                <span className="text-base font-medium whitespace-nowrap overflow-hidden sidebar-link-text">
+                  {roleLabels[role]}
+                </span>
+              )}
+            </div>
+              <div className="flex-1 flex flex-col justify-between overflow-y-auto scrollbar-hide pt-1">              <div className="space-y-1 px-2 py-2">
+                {navItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = pathname === item.href;
+                  return (
+                    <TooltipProvider key={item.href}>
+                      <Tooltip delayDuration={300}>
+                        <TooltipTrigger asChild>
+                          <Button 
+                            variant={isActive ? "secondary" : "ghost"}
+                            className={`w-full ${
+                              sidebarCollapsed ? "justify-center px-2" : "justify-start px-3"
+                            } h-9 my-0.5 transition-all duration-300 sidebar-nav-item ${isActive ? 'active' : ''}`}
+                            asChild
+                            aria-label={item.label}
+                          >
+                            <Link href={item.href} className="flex items-center">
+                              <Icon className={`${sidebarCollapsed ? "mx-auto" : "mr-2.5"} h-4 w-4 sidebar-icon`} />
+                              {!sidebarCollapsed && (
+                                <span className="sidebar-link-text text-sm font-medium">{item.label}</span>
+                              )}
+                            </Link>
+                          </Button>
+                        </TooltipTrigger>
+                        {sidebarCollapsed && (
+                          <TooltipContent side="right" className="z-50">
+                            {item.label}
+                          </TooltipContent>
+                        )}
+                      </Tooltip>
+                    </TooltipProvider>
+                  );
+                })}
+              </div>                <div className="mt-3 border-t pt-3 px-2 flex flex-col gap-1">
+                <TooltipProvider>
+                  <Tooltip delayDuration={300}>
+                    <TooltipTrigger asChild>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        className={`w-full ${sidebarCollapsed ? "justify-center px-2" : "justify-start px-3"} h-9`} 
+                        onClick={handleLogout} 
+                        aria-label="Déconnexion"
+                      >
+                        <LogOut className={`${sidebarCollapsed ? "mx-auto" : "mr-2.5"} h-4 w-4 sidebar-icon`} />
+                        {!sidebarCollapsed && <span className="sidebar-link-text text-sm font-medium">Déconnexion</span>}
+                      </Button>
+                    </TooltipTrigger>
+                    {sidebarCollapsed && (
+                      <TooltipContent side="right">
+                        Déconnexion
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
+                </TooltipProvider>
+                  {/* Bottom utility buttons */}
+                <div className={`flex ${sidebarCollapsed ? 'flex-col' : 'flex-row'} gap-2 items-center ${sidebarCollapsed ? 'justify-center' : 'justify-start'} mt-3 px-2`}>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="ghost" size="icon" className="relative h-8 w-8">
+                          <Bell className="h-4 w-4" />
+                          <span className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-red-600"></span>
+                          <span className="sr-only">Notifications</span>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side={sidebarCollapsed ? "right" : "bottom"}>
+                        Notifications
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                          aria-label="Toggle theme"
+                        >
+                          {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side={sidebarCollapsed ? "right" : "bottom"}>
+                        {theme === "dark" ? "Mode clair" : "Mode sombre"}
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                    <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                        <Avatar className="h-7 w-7">
+                          <AvatarImage src="/placeholder-user.jpg" alt="User avatar" />
+                          <AvatarFallback>{user?.email?.substring(0, 2).toUpperCase() || "JD"}</AvatarFallback>
+                        </Avatar>
+                      </Button>
+                    </DropdownMenuTrigger>
 
-  const renderNavItems = () => (
-    <div className="space-y-1">
-      {navItems.map((item) => (
-        <Button
-          key={item.href}
-          variant={pathname === item.href ? "secondary" : "ghost"}
-          className="w-full justify-start"
-          asChild
-        >
-          <a href={item.href}>
-            <item.icon className="mr-2 h-4 w-4" />
-            {item.label}
-          </a>
-        </Button>
-      ))}
-    </div>
-  )
-
-  return (
-    <div className="flex min-h-screen flex-col">
-      {/* Top navigation bar */}
-      <header className="sticky top-0 z-40 border-b bg-background">
-        <div className="flex h-16 items-center px-4 md:px-6">
-          {isMobile ? (
-            <Sheet open={open} onOpenChange={setOpen}>
+                    {/* Removed nested tooltip to fix the asChild issue */}
+                    <DropdownMenuContent align="end" className="w-56">
+                      <div className="flex items-center justify-start gap-2 p-2">
+                        <div className="flex flex-col space-y-0.5 leading-none">
+                          <p className="font-medium text-sm">{user?.email || "Jean Dupont"}</p>
+                          <p className="text-xs text-muted-foreground">{roleLabels[role]}</p>
+                        </div>
+                      </div>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem asChild>
+                        <Link href={`/${role}/profile`} className="flex w-full cursor-pointer items-center">
+                          <Settings className="mr-2 h-4 w-4" />
+                          <span>Paramètres</span>
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={handleLogout}>
+                        <LogOut className="mr-2 h-4 w-4" />
+                        <span>Déconnexion</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>                </div>
+              </div>
+            </div>            {/* Sidebar toggle button with enhanced component */}
+            <SidebarCollapseButton
+              collapsed={sidebarCollapsed}
+              onClick={toggleSidebar}
+            />
+          </nav>
+        )}        {/* Mobile sidebar */}
+        {isMobile && (
+          <>            <Sheet open={open} onOpenChange={setOpen}>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="mr-2">
-                  <Menu className="h-5 w-5" />
-                  <span className="sr-only">Toggle menu</span>
+                <Button variant="outline" size="icon" className="mobile-menu-trigger md:hidden">
+                  <Menu className="h-5 w-5 text-foreground" />
+                  <span className="sr-only">Toggle Menu</span>
                 </Button>
-              </SheetTrigger>
-              <SheetContent side="left" className="w-64 sm:max-w-xs">
-                <div className="flex items-center mb-6">
-                  <Croissant className="h-6 w-6 text-amber-500 mr-2" />
-                  <span className="text-lg font-semibold">Boulangerie Manager</span>
-                  <Button variant="ghost" size="icon" className="ml-auto" onClick={() => setOpen(false)}>
-                    <X className="h-5 w-5" />
-                    <span className="sr-only">Fermer</span>
-                  </Button>
-                </div>
-                {renderNavItems()}
+              </SheetTrigger>              <SheetContent side="left" className="w-[280px] sm:w-[320px] p-0 border-r sidebar-sheet">
+                <nav className="mobile-nav-wrapper" aria-label="Mobile navigation">
+                  <div className="mobile-nav-header">
+                    <div className="flex items-center">
+                      <Croissant className="h-5 w-5 sidebar-logo mr-3" />
+                      <span className="text-base font-medium">{roleLabels[role]}</span>
+                    </div>                    <Button variant="ghost" size="sm" onClick={() => setOpen(false)} className="sidebar-close-button">
+                      <X className="h-5 w-5" />
+                      <span className="sr-only">Close</span>
+                    </Button>
+                  </div><div className="p-4 space-y-2">
+                    {navItems.map((item) => {
+                      const Icon = item.icon;
+                      const isActive = pathname === item.href;
+                      return (
+                        <Button
+                          key={item.href}
+                          variant={isActive ? "secondary" : "ghost"}
+                          className="w-full justify-start sidebar-nav-link"
+                          asChild
+                        >
+                          <Link href={item.href} className="flex items-center" onClick={() => setOpen(false)}>
+                            <Icon className="mr-3 h-5 w-5 sidebar-nav-icon" />
+                            <span>{item.label}</span>
+                          </Link>
+                        </Button>
+                      );
+                    })}
+                  </div>                  <div className="mt-auto p-4 border-t">
+                    <Button variant="ghost" className="w-full justify-start sidebar-nav-link" onClick={handleLogout}>
+                      <LogOut className="mr-3 h-5 w-5 sidebar-nav-icon" />
+                      <span>Déconnexion</span>
+                    </Button>
+                  </div>
+                </nav>
               </SheetContent>
             </Sheet>
-          ) : (
-            <div className="flex items-center mr-4">
-              <Croissant className="h-6 w-6 text-amber-500 mr-2" />
-              <span className="text-lg font-semibold hidden md:inline-block">Boulangerie Manager</span>
-            </div>
-          )}
-
-          <div className="ml-auto flex items-center gap-2">
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="h-5 w-5" />
-              <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-red-600"></span>
-              <span className="sr-only">Notifications</span>
-            </Button>
-
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-              aria-label="Toggle theme"
-            >
-              {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-            </Button>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-9 w-9 rounded-full">
-                  <Avatar className="h-9 w-9">
-                    <AvatarImage src="/placeholder-user.jpg" alt="User avatar" />
-                    <AvatarFallback>{user?.email?.substring(0, 2).toUpperCase() || "JD"}</AvatarFallback>
-                  </Avatar>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <div className="flex items-center justify-start gap-2 p-2">
-                  <div className="flex flex-col space-y-0.5 leading-none">
-                    <p className="font-medium text-sm">{user?.email || "Jean Dupont"}</p>
-                    <p className="text-xs text-muted-foreground">{roleLabels[role]}</p>
-                  </div>
-                </div>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <a href={`/${role}/profile`}>
-                    <Settings className="mr-2 h-4 w-4" />
-                    <span>Paramètres</span>
-                  </a>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>Déconnexion</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+          </>
+        )}          {/* Main content with responsive margin based on sidebar state */}
+        <main className={`flex-1 py-4 transition-all duration-300 overflow-y-auto ${
+          !isMobile ? (sidebarCollapsed ? 'content-with-sidebar-collapsed' : 'content-with-sidebar-expanded') : 'px-4 md:px-6'
+        }`}>
+          <div className="max-w-full">
+            {children}
           </div>
-        </div>
-      </header>
-
-      {/* Main content area with sidebar */}
-      <div className="flex flex-1">
-        {/* Sidebar for desktop */}
-        {!isMobile && (
-          <aside className="w-64 border-r bg-muted/40 hidden md:block">
-            <div className="flex flex-col gap-2 p-4 pt-6">
-              <div className="px-2 py-2">
-                <h2 className="text-lg font-semibold tracking-tight mb-2">{roleLabels[role]}</h2>
-                {renderNavItems()}
-              </div>
-            </div>
-          </aside>
-        )}
-
-        {/* Main content */}
-        <main className="flex-1 p-4 md:p-6">{children}</main>
+        </main>
       </div>
     </div>
-  )
+  );
 }
