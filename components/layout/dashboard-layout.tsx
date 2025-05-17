@@ -14,6 +14,11 @@ import "@/styles/sidebar-logo.css";
 import "@/styles/mobile-nav.css";
 import "@/styles/sidebar-scroll.css";
 import "@/styles/theme-toggle.css";
+import "@/styles/sidebar-hover.css";
+import "@/styles/sidebar-hover-patch.css";
+import "@/styles/sidebar-hover-ultimate.css";
+import "@/styles/sidebar-hover-fix.css";
+import "@/styles/sidebar-administrateur-fix.css";
 import { 
   Bell,
   ChevronLeft,
@@ -198,29 +203,22 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
     bakery: "Boulangerie",
     laboratory: "Laboratoire",
     delivery: "Livraison",
-  };  return (
-    <div className="flex min-h-screen flex-col">      {/* Main content area with sidebar */}        
-      <div className="flex flex-1 relative min-h-screen">        
-        {/* Sidebar for desktop */}
-        {!isMobile && mounted && (
-          <nav
-            className={`sidebar hidden md:flex flex-col h-screen sticky top-0 z-30 ${
-              sidebarCollapsed ? 'sidebar-collapsed' : 'sidebar-expanded'
-            } border-r border-border bg-background`}
+  };  return (    <div className="flex min-h-screen flex-col">
+      {/* Main content area with sidebar */}
+      <div className="flex flex-1 relative min-h-screen">
+        {/* Responsive hover-expandable sidebar for desktop */}
+        {!isMobile && mounted && (          <nav
+            className="sidebar-hover-expand sidebar hidden md:flex flex-col h-screen z-40 border-r border-border bg-background"
             aria-label="Sidebar navigation"
-          >
-            {/* Logo and brand header */}
-            <div className="flex items-center h-16 px-3 border-b border-border">
-              <Croissant className={`h-5 w-5 text-amber-500 flex-shrink-0 sidebar-icon ${
-                sidebarCollapsed ? 'mx-auto' : 'mr-3'
-              }`} />
-              {!sidebarCollapsed && (
-                <span className="text-base font-medium whitespace-nowrap overflow-hidden sidebar-link-text">
-                  {roleLabels[role]}
-                </span>
-              )}
+          >{/* Logo and brand header - optimized for role label positioning */}
+            <div className="flex items-center h-16 px-3 border-b border-border sidebar-logo-container role-label-container">
+              <Croissant className="h-5 w-5 text-amber-500 flex-shrink-0 sidebar-icon" aria-hidden="true" />
+              <span className="text-base font-medium whitespace-nowrap overflow-hidden sidebar-link-text role-label" id="role-label">
+                {roleLabels[role]}
+              </span>
             </div>
-              <div className="flex-1 flex flex-col justify-between overflow-y-auto scrollbar-hide pt-1">              <div className="space-y-1 px-2 py-2">
+              <div className="flex-1 flex flex-col justify-between overflow-y-auto scrollbar-hide pt-1">
+                <div className="space-y-1 px-2 py-2">
                 {navItems.map((item) => {
                   const Icon = item.icon;
                   const isActive = pathname === item.href;
@@ -230,67 +228,59 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
                         <TooltipTrigger asChild>
                           <Button 
                             variant={isActive ? "secondary" : "ghost"}
-                            className={`w-full ${
-                              sidebarCollapsed ? "justify-center px-2" : "justify-start px-3"
-                            } h-9 my-0.5 transition-all duration-300 sidebar-nav-item ${isActive ? 'active' : ''}`}
+                            className={`w-full h-9 my-0.5 transition-all duration-300 sidebar-nav-item ${isActive ? 'active' : ''}`}
                             asChild
                             aria-label={item.label}
                           >
                             <Link href={item.href} className="flex items-center">
-                              <Icon className={`${sidebarCollapsed ? "mx-auto" : "mr-2.5"} h-4 w-4 sidebar-icon`} />
-                              {!sidebarCollapsed && (
-                                <span className="sidebar-link-text text-sm font-medium">{item.label}</span>
-                              )}
+                              <Icon className="h-4 w-4 sidebar-icon" />
+                              <span className="sidebar-link-text text-sm font-medium">{item.label}</span>
                             </Link>
                           </Button>
                         </TooltipTrigger>
-                        {sidebarCollapsed && (
-                          <TooltipContent side="right" className="z-50">
-                            {item.label}
-                          </TooltipContent>
-                        )}
+                        <TooltipContent side="right" className="z-50 sidebar-tooltip">
+                          {item.label}
+                        </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
                   );
                 })}
-              </div>                <div className="mt-3 border-t pt-3 px-2 flex flex-col gap-1">
+              </div>
+                <div className="mt-3 border-t pt-3 px-2 flex flex-col gap-1">
                 <TooltipProvider>
                   <Tooltip delayDuration={300}>
                     <TooltipTrigger asChild>
                       <Button 
                         variant="ghost" 
                         size="sm"
-                        className={`w-full ${sidebarCollapsed ? "justify-center px-2" : "justify-start px-3"} h-9`} 
-                        onClick={handleLogout} 
-                        aria-label="Déconnexion"
+                        className="w-full h-9 sidebar-nav-item" 
+                        onClick={handleLogout}                        aria-label="Déconnexion"
                       >
-                        <LogOut className={`${sidebarCollapsed ? "mx-auto" : "mr-2.5"} h-4 w-4 sidebar-icon`} />
-                        {!sidebarCollapsed && <span className="sidebar-link-text text-sm font-medium">Déconnexion</span>}
+                        <LogOut className="h-4 w-4 sidebar-icon" />
+                        <span className="sidebar-link-text text-sm font-medium">Déconnexion</span>
                       </Button>
                     </TooltipTrigger>
-                    {sidebarCollapsed && (
-                      <TooltipContent side="right">
-                        Déconnexion
-                      </TooltipContent>
-                    )}
+                    <TooltipContent side="right" className="sidebar-tooltip">
+                      Déconnexion
+                    </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
                   {/* Bottom utility buttons */}
-                <div className={`flex ${sidebarCollapsed ? 'flex-col' : 'flex-row'} gap-2 items-center ${sidebarCollapsed ? 'justify-center' : 'justify-start'} mt-3 px-2`}>
+                <div className="flex flex-row gap-2 items-center justify-start mt-3 px-2">
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button variant="ghost" size="icon" className="relative h-8 w-8">
                           <Bell className="h-4 w-4" />
-                          <span className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-red-600"></span>
-                          <span className="sr-only">Notifications</span>
+                          <span className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-red-600"></span>                          <span className="sr-only">Notifications</span>
                         </Button>
                       </TooltipTrigger>
-                      <TooltipContent side={sidebarCollapsed ? "right" : "bottom"}>
+                      <TooltipContent side="right" className="sidebar-tooltip">
                         Notifications
                       </TooltipContent>
                     </Tooltip>
-                  </TooltipProvider>                    <TooltipProvider>
+                  </TooltipProvider>
+                  <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button
@@ -300,16 +290,14 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
                           onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
                           aria-label="Toggle theme"
                         >
-                          <Sun className="h-[1.2rem] w-[1.2rem] sun-icon" />
-                          <Moon className="h-[1.2rem] w-[1.2rem] moon-icon" />
+                          <Sun className="h-[1.2rem] w-[1.2rem] sun-icon" />                          <Moon className="h-[1.2rem] w-[1.2rem] moon-icon" />
                         </Button>
                       </TooltipTrigger>
-                      <TooltipContent side={sidebarCollapsed ? "right" : "bottom"}>
-                        {theme === "dark" ? "Mode clair" : "Mode sombre"}
-                      </TooltipContent>
+                      <TooltipContent side="right" className="sidebar-tooltip">
+                        {theme === "dark" ? "Mode clair" : "Mode sombre"}                      </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
-                    <DropdownMenu>
+                  <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                         <Avatar className="h-7 w-7">
@@ -342,31 +330,37 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
                     </DropdownMenuContent>
                   </DropdownMenu>                </div>
               </div>
-            </div>            {/* Sidebar toggle button with enhanced component */}
-            <SidebarCollapseButton
-              collapsed={sidebarCollapsed}
-              onClick={toggleSidebar}
-            />
-          </nav>
-        )}        {/* Mobile sidebar */}
+            </div>
+            {/* Sidebar toggle button - hidden with hover-expandable behavior */}
+            <div className="sidebar-collapse-button">
+              <SidebarCollapseButton
+                collapsed={sidebarCollapsed}
+                onClick={toggleSidebar}
+              />
+            </div>
+          </nav>        )}
+        {/* Mobile sidebar */}
         {isMobile && (
-          <>            <Sheet open={open} onOpenChange={setOpen}>
+          <>
+            <Sheet open={open} onOpenChange={setOpen}>
               <SheetTrigger asChild>
                 <Button variant="outline" size="icon" className="mobile-menu-trigger md:hidden">
                   <Menu className="h-5 w-5 text-foreground" />
                   <span className="sr-only">Toggle Menu</span>
                 </Button>
-              </SheetTrigger>              <SheetContent side="left" className="w-[280px] sm:w-[320px] p-0 border-r sidebar-sheet">
+              </SheetTrigger>
+              <SheetContent side="left" className="w-[280px] sm:w-[320px] p-0 border-r sidebar-sheet">
                 <nav className="mobile-nav-wrapper" aria-label="Mobile navigation">
                   <div className="mobile-nav-header">
                     <div className="flex items-center">
                       <Croissant className="h-5 w-5 sidebar-logo mr-3" />
-                      <span className="text-base font-medium">{roleLabels[role]}</span>
-                    </div>                    <Button variant="ghost" size="sm" onClick={() => setOpen(false)} className="sidebar-close-button">
+                      <span className="text-base font-medium">{roleLabels[role]}</span>                    </div>
+                    <Button variant="ghost" size="sm" onClick={() => setOpen(false)} className="sidebar-close-button">
                       <X className="h-5 w-5" />
                       <span className="sr-only">Close</span>
                     </Button>
-                  </div><div className="p-4 space-y-2">
+                  </div>
+                  <div className="p-4 space-y-2">
                     {navItems.map((item) => {
                       const Icon = item.icon;
                       const isActive = pathname === item.href;
@@ -383,7 +377,10 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
                           </Link>
                         </Button>
                       );
-                    })}                  </div>                  <div className="mt-auto p-4 border-t space-y-2">                    <Button 
+                    })}
+                  </div>
+                  <div className="mt-auto p-4 border-t space-y-2">
+                    <Button 
                       variant="outline" 
                       className="w-full justify-start sidebar-nav-link theme-toggle-mobile"
                       onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
@@ -407,14 +404,15 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
                   </div>
                 </nav>
               </SheetContent>
-            </Sheet>
-          </>
-        )}          {/* Main content with responsive margin based on sidebar state */}
-        <main className={`flex-1 py-4 transition-all duration-300 overflow-y-auto ${
-          !isMobile ? (sidebarCollapsed ? 'content-with-sidebar-collapsed' : 'content-with-sidebar-expanded') : 'px-4 md:px-6'
+            </Sheet>          </>
+        )}
+        {/* Main content with responsive margin based on sidebar state */}        <main className={`flex-1 py-4 transition-all duration-300 overflow-y-auto ${
+          !isMobile ? 'content-with-hover-sidebar px-4 md:px-6' : 'px-4 md:px-6'
         }`}>
-          <div className="max-w-full">
-            {children}
+          <div className="prevent-overlap transition-all duration-300">
+            <div className="max-w-full">
+              {children}
+            </div>
           </div>
         </main>
       </div>

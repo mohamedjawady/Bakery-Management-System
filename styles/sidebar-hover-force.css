@@ -1,0 +1,40 @@
+/* Hover expansion force fix */
+.sidebar-hover-expand {
+  /* Force position fixed */
+  position: fixed !important;
+  height: 100vh !important;
+  
+  /* Force width collapsed */
+  width: 3.5rem !important;
+  
+  /* Important transitions */
+  transition: width 0.3s ease !important;
+}
+
+.sidebar-hover-expand:hover {
+  width: 16rem !important;
+}
+
+/* Force fix the text elements */
+.sidebar-hover-expand .sidebar-link-text {
+  display: inline-block;
+  white-space: nowrap;
+  overflow: hidden;
+  opacity: 0;
+  visibility: hidden;
+}
+
+.sidebar-hover-expand:hover .sidebar-link-text {
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* Force fix the icon centering */
+.sidebar-hover-expand .sidebar-icon {
+  margin: 0 auto !important;
+}
+
+.sidebar-hover-expand:hover .sidebar-icon {
+  margin-right: 0.5rem !important;
+  margin-left: 0 !important;
+}
