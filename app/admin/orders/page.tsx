@@ -1,23 +1,14 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { DashboardLayout } from "@/components/layout/dashboard-layout"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useToast } from "@/hooks/use-toast"
-import { Eye, Search } from "lucide-react"
+import { Eye, Search, Loader2 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
@@ -38,60 +29,75 @@ interface OrderItem {
   unitPrice: number
 }
 
-const initialOrders: Order[] = [
-  {
-    id: "ORD-001",
-    customerName: "Marie Dupont",
-    status: "PENDING",
-    items: [
-      {
-        productId: "1",
-        productName: "Baguette Tradition",
-        quantity: 2,
-        unitPrice: 1.2,
-      },
-      {
-        productId: "2",
-        productName: "Pain au Chocolat",
-        quantity: 4,
-        unitPrice: 1.5,
-      },
-    ],
-    total: 8.4,
-    createdAt: "2024-01-20T08:30:00Z",
-    deliveryDate: "2024-01-21T10:00:00Z",
-  },
-  {
-    id: "ORD-002",
-    customerName: "Jean Martin",
-    status: "IN_PROGRESS",
-    items: [
-      {
-        productId: "3",
-        productName: "Croissant",
-        quantity: 6,
-        unitPrice: 1.3,
-      },
-    ],
-    total: 7.8,
-    createdAt: "2024-01-20T09:15:00Z",
-    deliveryDate: "2024-01-21T11:00:00Z",
-  },
-]
-
 export default function OrdersPage() {
-  const [orders, setOrders] = useState<Order[]>(initialOrders)
+  const [orders, setOrders] = useState<Order[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false)
   const [viewingOrder, setViewingOrder] = useState<Order | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const { toast } = useToast()
 
+  // Fetch orders from API
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        setIsLoading(true)
+        const response = await fetch("http://localhost:5000/orders")
+
+        if (!response.ok) {
+          throw new Error(`Error: ${response.status}`)
+        }
+
+        const data = await response.json()
+console.log(data);
+
+        // Validate and sanitize the data
+        const validatedOrders = data.map((order) => {
+  const items = Array.isArray(order.products) ? order.products : [];
+  const total = items.reduce((sum, item) => sum + (item.totalPrice || 0), 0);
+
+  return {
+    id: order._id?.toString() || `unknown-${Math.random().toString(36).substr(2, 9)}`,
+    customerName: order.bakeryName?.toString() || "Client inconnu",
+    status: order.status || "PENDING",
+    items,
+    total,
+    createdAt: order.createdAt || new Date().toISOString(),
+    deliveryDate: order.deliveryDate || new Date().toISOString(),
+  };
+});
+
+console.log(validatedOrders);
+
+        setOrders(validatedOrders)
+        setError(null)
+      } catch (err) {
+        console.error("Failed to fetch orders:", err)
+        setError("Impossible de charger les commandes. Veuillez réessayer plus tard.")
+        toast({
+          variant: "destructive",
+          title: "Erreur",
+          description: "Impossible de charger les commandes depuis le serveur",
+        })
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchOrders()
+  }, [toast])
+
+  // Replace the filter function with this safer version that includes null checks
   // Filter orders based on search term
-  const filteredOrders = orders.filter(
-    (order) =>
-      order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.customerName.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  const filteredOrders = orders.filter((order) => {
+    if (!searchTerm) return true
+
+    const idMatch = order?.id?.toString().toLowerCase().includes(searchTerm.toLowerCase()) || false
+    const nameMatch = order?.customerName?.toString().toLowerCase().includes(searchTerm.toLowerCase()) || false
+
+    return idMatch || nameMatch
+  })
 
   // Format date
   const formatDate = (dateString: string) => {
@@ -123,23 +129,44 @@ export default function OrdersPage() {
       CANCELLED: { bg: "bg-red-50", text: "text-red-700", border: "border-red-200", label: "Annulé" },
     }
     const variant = variants[status]
-    return (
-      <Badge variant="outline" className={`${variant.bg} ${variant.text} ${variant.border}`}>
-        {variant.label}
-      </Badge>
-    )
+    // return (
+    //   <Badge variant="outline" className={` ${variant.text} ${variant.border}`}>
+    //     {variant.label}
+    //   </Badge>
+    // )
   }
 
   // Handle status update
-  const handleStatusUpdate = (orderId: string, newStatus: Order["status"]) => {
-    const updatedOrders = orders.map((order) =>
-      order.id === orderId ? { ...order, status: newStatus } : order
-    )
-    setOrders(updatedOrders)
-    toast({
-      title: "Statut mis à jour",
-      description: `La commande ${orderId} a été mise à jour avec succès`,
-    })
+  const handleStatusUpdate = async (orderId: string, newStatus: Order["status"]) => {
+    try {
+      const response = await fetch(`http://localhost:5000/orders/${orderId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ status: newStatus }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Error: ${response.status}`)
+      }
+
+      // Update local state
+      const updatedOrders = orders.map((order) => (order.id === orderId ? { ...order, status: newStatus } : order))
+      setOrders(updatedOrders)
+
+      toast({
+        title: "Statut mis à jour",
+        description: `La commande ${orderId} a été mise à jour avec succès`,
+      })
+    } catch (err) {
+      console.error("Failed to update order status:", err)
+      toast({
+        variant: "destructive",
+        title: "Erreur",
+        description: "Impossible de mettre à jour le statut de la commande",
+      })
+    }
   }
 
   return (
@@ -153,7 +180,9 @@ export default function OrdersPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle>Liste des commandes</CardTitle>
-            <CardDescription>{filteredOrders.length} commandes trouvées</CardDescription>
+            <CardDescription>
+              {isLoading ? "Chargement..." : `${filteredOrders.length} commandes trouvées`}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="mb-4 flex items-center gap-2">
@@ -165,6 +194,9 @@ export default function OrdersPage() {
                 className="max-w-sm"
               />
             </div>
+
+            {error && <div className="rounded-md bg-red-50 p-4 mb-4 text-red-700 border border-red-200">{error}</div>}
+
             <div className="rounded-md border">
               <Table>
                 <TableHeader>
@@ -179,7 +211,16 @@ export default function OrdersPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredOrders.length === 0 ? (
+                  {isLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-8">
+                        <div className="flex justify-center items-center">
+                          <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                          Chargement des commandes...
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : filteredOrders.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={7} className="text-center py-8">
                         Aucune commande trouvée
@@ -229,7 +270,7 @@ export default function OrdersPage() {
                             </DialogTrigger>
                             <DialogContent>
                               <DialogHeader>
-                                <DialogTitle>Détails de la commande {order.id}</DialogTitle>
+                                <DialogTitle >Détails de la commande {order.id}</DialogTitle>
                               </DialogHeader>
                               {viewingOrder && (
                                 <div className="grid gap-4 py-4">
@@ -240,7 +281,7 @@ export default function OrdersPage() {
                                     </div>
                                     <div>
                                       <h3 className="font-medium">Statut</h3>
-                                      <div className="mt-1">{getStatusBadge(viewingOrder.status)}</div>
+                                      <div className="mt-1">{viewingOrder.status}</div>
                                     </div>
                                   </div>
                                   <div>
@@ -259,11 +300,9 @@ export default function OrdersPage() {
                                           <TableRow key={item.productId}>
                                             <TableCell>{item.productName}</TableCell>
                                             <TableCell className="text-right">{item.quantity}</TableCell>
+                                            <TableCell className="text-right">{formatPrice(item.pricePerUnit)}</TableCell>
                                             <TableCell className="text-right">
-                                              {formatPrice(item.unitPrice)}
-                                            </TableCell>
-                                            <TableCell className="text-right">
-                                              {formatPrice(item.quantity * item.unitPrice)}
+                                              {formatPrice(item.totalPrice)}
                                             </TableCell>
                                           </TableRow>
                                         ))}

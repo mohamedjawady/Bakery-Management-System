@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { DashboardLayout } from "@/components/layout/dashboard-layout"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -19,7 +19,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { useToast } from "@/hooks/use-toast"
-import { Edit, Eye, Plus, Search, Trash } from "lucide-react"
+import { Edit, Eye, Loader2, Plus, Search, Trash } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 
 // Define product type
@@ -33,65 +33,11 @@ interface Product {
   createdAt: string
 }
 
-// Sample data
-const initialProducts: Product[] = [
-  {
-    id: "1",
-    name: "Baguette Tradition",
-    description: "Baguette traditionnelle à la française, croustillante et moelleuse",
-    ingredients: ["Farine de blé", "Eau", "Levure", "Sel"],
-    unitPrice: 1.2,
-    active: true,
-    createdAt: "2025-01-15T10:30:00Z",
-  },
-  {
-    id: "2",
-    name: "Pain au Chocolat",
-    description: "Viennoiserie feuilletée au beurre avec deux barres de chocolat",
-    ingredients: ["Farine de blé", "Beurre", "Chocolat", "Sucre", "Levure", "Lait", "Œufs"],
-    unitPrice: 1.5,
-    active: true,
-    createdAt: "2025-01-16T09:45:00Z",
-  },
-  {
-    id: "3",
-    name: "Croissant",
-    description: "Viennoiserie feuilletée au beurre en forme de croissant",
-    ingredients: ["Farine de blé", "Beurre", "Sucre", "Levure", "Lait", "Œufs"],
-    unitPrice: 1.3,
-    active: true,
-    createdAt: "2025-01-16T09:50:00Z",
-  },
-  {
-    id: "4",
-    name: "Pain aux Céréales",
-    description: "Pain complet aux graines variées pour un petit-déjeuner équilibré",
-    ingredients: [
-      "Farine complète",
-      "Graines de tournesol",
-      "Graines de lin",
-      "Graines de sésame",
-      "Levure",
-      "Eau",
-      "Sel",
-    ],
-    unitPrice: 2.8,
-    active: true,
-    createdAt: "2025-01-17T08:30:00Z",
-  },
-  {
-    id: "5",
-    name: "Éclair au Chocolat",
-    description: "Pâtisserie à la pâte à choux fourrée à la crème pâtissière au chocolat",
-    ingredients: ["Farine", "Œufs", "Beurre", "Chocolat", "Lait", "Sucre", "Crème"],
-    unitPrice: 2.5,
-    active: false,
-    createdAt: "2025-01-18T14:20:00Z",
-  },
-]
+// API endpoint
+const API_URL = "http://localhost:5000/Products"
 
 export default function ProductsPage() {
-  const [products, setProducts] = useState<Product[]>(initialProducts)
+  const [products, setProducts] = useState<Product[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [productToDelete, setProductToDelete] = useState<Product | null>(null)
@@ -107,7 +53,34 @@ export default function ProductsPage() {
     unitPrice: 0,
     active: true,
   })
+  const [isLoading, setIsLoading] = useState(true)
   const { toast } = useToast()
+
+  // Fetch products from API
+  useEffect(() => {
+    fetchProducts()
+  }, [])
+
+  const fetchProducts = async () => {
+    setIsLoading(true)
+    try {
+      const response = await fetch(API_URL)
+      if (!response.ok) {
+        throw new Error(`Error: ${response.status}`)
+      }
+      const data = await response.json()
+      setProducts(data)
+    } catch (error) {
+      console.error("Failed to fetch products:", error)
+      toast({
+        title: "Erreur",
+        description: "Impossible de charger les produits. Veuillez réessayer plus tard.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   // Filter products based on search term
   const filteredProducts = products.filter(
@@ -117,7 +90,7 @@ export default function ProductsPage() {
   )
 
   // Handle product creation
-  const handleCreateProduct = () => {
+  const handleCreateProduct = async () => {
     if (!newProduct.name || !newProduct.description || newProduct.unitPrice === undefined) {
       toast({
         title: "Erreur",
@@ -134,33 +107,55 @@ export default function ProductsPage() {
         : newProduct.ingredients
       : []
 
-    const createdProduct: Product = {
-      id: `${products.length + 1}`,
+    const createdProduct: Omit<Product, "id" | "createdAt"> = {
       name: newProduct.name,
       description: newProduct.description,
       ingredients: ingredientsArray,
       unitPrice: Number(newProduct.unitPrice),
       active: newProduct.active || true,
-      createdAt: new Date().toISOString(),
     }
 
-    setProducts([...products, createdProduct])
-    setNewProduct({
-      name: "",
-      description: "",
-      ingredients: [],
-      unitPrice: 0,
-      active: true,
-    })
-    setIsCreateDialogOpen(false)
-    toast({
-      title: "Produit créé",
-      description: `Le produit ${createdProduct.name} a été créé avec succès`,
-    })
+    try {
+      const response = await fetch(API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(createdProduct),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Error: ${response.status}`)
+      }
+
+      const savedProduct = await response.json()
+      setProducts([...products, savedProduct])
+      setNewProduct({
+        name: "",
+        description: "",
+        ingredients: [],
+        unitPrice: 0,
+        active: true,
+      })
+      setIsCreateDialogOpen(false)
+      toast({
+        title: "Produit créé avec succès!",
+        description: `Le produit "${savedProduct.name}" a été ajouté au catalogue.`,
+        variant: "default",
+        className: "bg-green-50 border-green-200 text-green-800",
+      })
+    } catch (error) {
+      console.error("Failed to create product:", error)
+      toast({
+        title: "Erreur",
+        description: "Impossible de créer le produit. Veuillez réessayer plus tard.",
+        variant: "destructive",
+      })
+    }
   }
 
   // Handle product update
-  const handleUpdateProduct = () => {
+  const handleUpdateProduct = async () => {
     if (!editingProduct) return
 
     // Parse ingredients if it's a string
@@ -174,27 +169,70 @@ export default function ProductsPage() {
       ingredients: ingredientsArray,
     }
 
-    const updatedProducts = products.map((product) => (product.id === updatedProduct.id ? updatedProduct : product))
-    setProducts(updatedProducts)
-    setIsEditDialogOpen(false)
-    toast({
-      title: "Produit mis à jour",
-      description: `Le produit ${updatedProduct.name} a été mis à jour avec succès`,
-    })
+    try {
+      const response = await fetch(`${API_URL}/${updatedProduct.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(updatedProduct),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Error: ${response.status}`)
+      }
+
+      const savedProduct = await response.json()
+      const updatedProducts = products.map((product) => (product.id === savedProduct.id ? savedProduct : product))
+      setProducts(updatedProducts)
+      setIsEditDialogOpen(false)
+      toast({
+        title: "Produit mis à jour avec succès!",
+        description: `Le produit "${savedProduct.name}" a été mis à jour.`,
+        variant: "default",
+        className: "bg-green-50 border-green-200 text-green-800",
+      })
+    } catch (error) {
+      console.error("Failed to update product:", error)
+      toast({
+        title: "Erreur",
+        description: "Impossible de mettre à jour le produit. Veuillez réessayer plus tard.",
+        variant: "destructive",
+      })
+    }
   }
 
   // Handle product deletion
-  const handleDeleteProduct = () => {
+  const handleDeleteProduct = async () => {
     if (!productToDelete) return
 
-    const updatedProducts = products.filter((product) => product.id !== productToDelete.id)
-    setProducts(updatedProducts)
-    setIsDeleteDialogOpen(false)
-    setProductToDelete(null)
-    toast({
-      title: "Produit supprimé",
-      description: `Le produit ${productToDelete.name} a été supprimé avec succès`,
-    })
+    try {
+      const response = await fetch(`${API_URL}/${productToDelete.id}`, {
+        method: "DELETE",
+      })
+
+      if (!response.ok) {
+        throw new Error(`Error: ${response.status}`)
+      }
+
+      const updatedProducts = products.filter((product) => product.id !== productToDelete.id)
+      setProducts(updatedProducts)
+      setIsDeleteDialogOpen(false)
+      setProductToDelete(null)
+      toast({
+        title: "Produit supprimé avec succès!",
+        description: `Le produit "${productToDelete.name}" a été supprimé du catalogue.`,
+        variant: "default",
+        className: "bg-green-50 border-green-200 text-green-800",
+      })
+    } catch (error) {
+      console.error("Failed to delete product:", error)
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer le produit. Veuillez réessayer plus tard.",
+        variant: "destructive",
+      })
+    }
   }
 
   // Format date
@@ -262,7 +300,9 @@ export default function ProductsPage() {
                         ? newProduct.ingredients
                         : newProduct.ingredients?.join(", ")
                     }
-                    onChange={(e) => setNewProduct({ ...newProduct, ingredients: e.target.value.split(',').map(i => i.trim()) })}
+                    onChange={(e) =>
+                      setNewProduct({ ...newProduct, ingredients: e.target.value.split(",").map((i) => i.trim()) })
+                    }
                     placeholder="Farine, Eau, Sel, etc."
                   />
                 </div>
@@ -323,7 +363,16 @@ export default function ProductsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredProducts.length === 0 ? (
+                  {isLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-8">
+                        <div className="flex justify-center items-center">
+                          <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                          Chargement des produits...
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : filteredProducts.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={5} className="text-center py-8">
                         Aucun produit trouvé
@@ -362,46 +411,47 @@ export default function ProductsPage() {
                                 </Button>
                               </DialogTrigger>
                               <DialogContent className="flex flex-col items-center">
-  <DialogHeader>
-    <DialogTitle>Détails du produit</DialogTitle>
-  </DialogHeader>
-  {viewingProduct && (
-    <div className="grid gap-4 py-4 text-center w-full max-w-md">
-      <div>
-        <h3 className="font-medium">Nom</h3>
-        <p>{viewingProduct.name}</p>
-      </div>
-      <div>
-        <h3 className="font-medium">Description</h3>
-        <p>{viewingProduct.description}</p>
-      </div>
-      <div>
-        <h3 className="font-medium">Ingrédients</h3>
-        <ul className="list-disc flex flex-col items-center">
-          {viewingProduct.ingredients.map((ingredient, index) => (
-            <li key={index} className="text-center">{ingredient}</li>
-          ))}
-        </ul>
-      </div>
-      <div>
-        <h3 className="font-medium">Prix unitaire</h3>
-        <p>{formatPrice(viewingProduct.unitPrice)}</p>
-      </div>
-      <div>
-        <h3 className="font-medium">Statut</h3>
-        <p>{viewingProduct.active ? "Actif" : "Inactif"}</p>
-      </div>
-      <div>
-        <h3 className="font-medium">Date de création</h3>
-        <p>{formatDate(viewingProduct.createdAt)}</p>
-      </div>
-    </div>
-  )}
-  <DialogFooter>
-    <Button onClick={() => setIsViewDialogOpen(false)}>Fermer</Button>
-  </DialogFooter>
-</DialogContent>
-
+                                <DialogHeader>
+                                  <DialogTitle>Détails du produit</DialogTitle>
+                                </DialogHeader>
+                                {viewingProduct && (
+                                  <div className="grid gap-4 py-4 text-center w-full max-w-md">
+                                    <div>
+                                      <h3 className="font-medium">Nom</h3>
+                                      <p>{viewingProduct.name}</p>
+                                    </div>
+                                    <div>
+                                      <h3 className="font-medium">Description</h3>
+                                      <p>{viewingProduct.description}</p>
+                                    </div>
+                                    <div>
+                                      <h3 className="font-medium">Ingrédients</h3>
+                                      <ul className="list-disc flex flex-col items-center">
+                                        {viewingProduct.ingredients.map((ingredient, index) => (
+                                          <li key={index} className="text-center">
+                                            {ingredient}
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                    <div>
+                                      <h3 className="font-medium">Prix unitaire</h3>
+                                      <p>{formatPrice(viewingProduct.unitPrice)}</p>
+                                    </div>
+                                    <div>
+                                      <h3 className="font-medium">Statut</h3>
+                                      <p>{viewingProduct.active ? "Actif" : "Inactif"}</p>
+                                    </div>
+                                    <div>
+                                      <h3 className="font-medium">Date de création</h3>
+                                      <p>{formatDate(viewingProduct.createdAt)}</p>
+                                    </div>
+                                  </div>
+                                )}
+                                <DialogFooter>
+                                  <Button onClick={() => setIsViewDialogOpen(false)}>Fermer</Button>
+                                </DialogFooter>
+                              </DialogContent>
                             </Dialog>
                             <Dialog
                               open={isEditDialogOpen && editingProduct?.id === product.id}
@@ -461,7 +511,7 @@ export default function ProductsPage() {
                                         onChange={(e) =>
                                           setEditingProduct({
                                             ...editingProduct,
-                                            ingredients: e.target.value.split(',').map(i => i.trim()),
+                                            ingredients: e.target.value.split(",").map((i) => i.trim()),
                                           })
                                         }
                                       />
