@@ -1,0 +1,94 @@
+/* Fix for the sidebar role label (Administrateur) positioning - using extremely specific selectors with !important */
+
+/* Role label container styling - reset all conflicting properties */
+.sidebar-hover-expand .role-label-container {
+  display: flex !important;
+  position: relative !important;
+  height: 4rem !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  width: 100% !important;
+}
+
+/* Role label text styling - hide when collapsed */
+.sidebar-hover-expand .role-label-container .role-label {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  transition: opacity 0.2s ease, visibility 0.2s ease !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  display: none !important;
+}
+
+/* Icon styling in collapsed state - centered */
+.sidebar-hover-expand .role-label-container .sidebar-icon {
+  margin: 0 !important;
+  position: absolute !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  transition: all 0.3s ease !important;
+}
+
+/* Container styling in expanded state - left aligned */
+.sidebar-hover-expand:hover .role-label-container {
+  justify-content: flex-start !important;
+  padding: 0 1rem !important;
+}
+
+/* Icon styling in expanded state - left aligned */
+.sidebar-hover-expand:hover .role-label-container .sidebar-icon {
+  position: static !important;
+  transform: none !important;
+  margin-right: 0.75rem !important;
+  margin-left: 0 !important;
+  flex-shrink: 0 !important;
+}
+
+/* Role label text styling in expanded state - show it properly */
+.sidebar-hover-expand:hover .role-label-container .role-label {
+  opacity: 1 !important;
+  visibility: visible !important;
+  position: static !important; 
+  display: block !important;
+  margin-left: 0.5rem !important;
+}
+
+/* Force display flex on hover */
+.sidebar-hover-expand:hover .sidebar-logo-container.role-label-container {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+}
+
+/* Additional fix for sidebar hover state */
+.sidebar-hover-expand.sidebar-hovered .role-label-container .sidebar-icon {
+  position: static !important;
+  transform: none !important;
+  margin-right: 0.75rem !important;
+  margin-left: 0 !important;
+}
+
+.sidebar-hover-expand.sidebar-hovered .role-label-container .role-label {
+  opacity: 1 !important;
+  visibility: visible !important;
+  position: static !important;
+  display: block !important;
+  margin-left: 0.5rem !important;
+}
+
+/* Ensure compatibility with JS hover behavior */
+.sidebar-expanded-view .role-label-container .role-label {
+  opacity: 1 !important;
+  visibility: visible !important;
+  display: block !important;
+}
+
+/* Critical override for any conflicting styles - add at the very end */
+.sidebar-hover-expand:hover .sidebar-logo-container .sidebar-link-text,
+.sidebar-hover-expand.sidebar-hovered .sidebar-logo-container .sidebar-link-text {
+  opacity: 1 !important;
+  visibility: visible !important;
+  display: inline-block !important;
+}

@@ -1,0 +1,85 @@
+/* Ultimate fix for hover sidebar */
+:root {
+  --sidebar-width-collapsed: 3.5rem;
+  --sidebar-width-expanded: 16rem;
+  --sidebar-transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Base sidebar styles */
+.sidebar-hover-expand {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  bottom: 0 !important;
+  width: var(--sidebar-width-collapsed) !important;
+  transition: width var(--sidebar-transition) !important;
+  z-index: 50 !important;
+  box-shadow: none !important;
+}
+
+/* Hover state */
+.sidebar-hover-expand:hover {
+  width: var(--sidebar-width-expanded) !important;
+  box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+}
+
+/* Text visibility */
+.sidebar-hover-expand .sidebar-link-text {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.sidebar-hover-expand:hover .sidebar-link-text {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Icon positioning */
+.sidebar-hover-expand .sidebar-icon {
+  margin: 0 auto !important;
+  transition: margin 0.2s ease;
+}
+
+.sidebar-hover-expand:hover .sidebar-icon {
+  margin-right: 0.75rem !important;
+  margin-left: 0 !important;
+}
+
+/* Logo container */
+.sidebar-hover-expand .sidebar-logo-container .sidebar-icon {
+  margin: 0 auto !important;
+  transition: margin var(--sidebar-transition);
+}
+
+.sidebar-hover-expand:hover .sidebar-logo-container .sidebar-icon {
+  margin-right: 0.75rem !important;
+  margin-left: 0 !important;
+}
+
+/* Hide tooltips on hover */
+.sidebar-hover-expand:hover .sidebar-tooltip {
+  display: none !important;
+}
+
+/* Main content positioning */
+.content-with-hover-sidebar {
+  margin-left: var(--sidebar-width-collapsed);
+  transition: margin-left var(--sidebar-transition);
+}
+
+/* Overflow settings */
+.sidebar-hover-expand {
+  overflow: hidden !important;
+}
+
+.sidebar-hover-expand:hover {
+  overflow-y: auto !important;
+}
+
+/* Hide sidebar collapse button when using hover feature */
+.sidebar-hover-expand .sidebar-collapse-button {
+  display: none !important;
+}
