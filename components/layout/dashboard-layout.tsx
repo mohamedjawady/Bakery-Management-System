@@ -26,6 +26,7 @@ import {
   ClipboardList,
   Croissant,
   Home,
+  Info, // Added Info icon
   LogOut,
   Menu,
   Moon,
@@ -126,7 +127,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
 
   // Check if user is logged in and has the correct role
   useEffect(() => {
-    const storedUser = localStorage.getItem("user");
+    const storedUser = localStorage.getItem("userInfo"); // Changed "user" to "userInfo"
     if (storedUser) {
       const parsedUser = JSON.parse(storedUser);
       setUser(parsedUser);
@@ -157,7 +158,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
   }, [pathname]);
 
   const handleLogout = () => {
-    localStorage.removeItem("user");
+    localStorage.removeItem("userInfo"); // Changed "user" to "userInfo"
     toast({
       title: "Déconnexion réussie",
       description: "Vous avez été déconnecté avec succès",
@@ -176,14 +177,15 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
 
   const bakeryNavItems = [
     { href: "/bakery/dashboard", label: "Tableau de bord", icon: Home },
-    { href: "/bakery/orders", label: "Commandes", icon: ClipboardList },
-    { href: "/bakery/products", label: "Produits", icon: ShoppingBag },
     { href: "/bakery/profile", label: "Profil", icon: Users },
+    { href: "/bakery/products", label: "Produits", icon: ShoppingBag },
+    { href: "/bakery/orders", label: "Commandes", icon: ClipboardList },
   ];
 
   const laboratoryNavItems = [
     { href: "/laboratory/dashboard", label: "Tableau de bord", icon: Home },
     { href: "/laboratory/production", label: "Production", icon: ClipboardList },
+    { href: "/laboratory/information", label: "Informations", icon: Settings }, // Changed label
   ];
 
   const deliveryNavItems = [
