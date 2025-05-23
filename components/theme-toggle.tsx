@@ -59,8 +59,11 @@ export function ThemeToggle({
       onClick={toggleTheme}
       aria-label="Toggle theme"
     >
-      <Sun className="h-[1.2rem] w-[1.2rem] sun-icon" />
-      <Moon className="h-[1.2rem] w-[1.2rem] moon-icon" />
+      {theme === "light" ? (
+        <Sun className="h-[1.2rem] w-[1.2rem] sun-icon" />
+      ) : (
+        <Moon className="h-[1.2rem] w-[1.2rem] moon-icon" />
+      )}
     </Button>
   )
 
