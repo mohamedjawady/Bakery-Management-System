@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { DashboardLayout } from "@/components/layout/dashboard-layout"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -18,84 +19,85 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useToast } from "@/hooks/use-toast"
-import { Edit, Plus, Search, Trash } from "lucide-react"
+import { Edit, Plus, Search, Trash, Loader2 } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 
 // Define user type
 interface User {
-  id: string
+  _id: string
   name: string
   email: string
-  role: "ADMIN" | "BAKERY" | "LABORATORY" | "DELIVERY"
+  role: "admin" | "bakery" | "laboratory" | "delivery"
   createdAt: string
+  updatedAt?: string
+  isActive?: boolean
 }
 
-// Sample data
-const initialUsers: User[] = [
-  {
-    id: "1",
-    name: "Admin Principal",
-    email: "admin@boulangerie.fr",
-    role: "ADMIN",
-    createdAt: "2025-01-15T10:30:00Z",
-  },
-  {
-    id: "2",
-    name: "Boulangerie Saint-Michel",
-    email: "saintmichel@boulangerie.fr",
-    role: "BAKERY",
-    createdAt: "2025-01-20T14:15:00Z",
-  },
-  {
-    id: "3",
-    name: "Boulangerie Montmartre",
-    email: "montmartre@boulangerie.fr",
-    role: "BAKERY",
-    createdAt: "2025-01-22T09:45:00Z",
-  },
-  {
-    id: "4",
-    name: "Laboratoire Central",
-    email: "labo.central@boulangerie.fr",
-    role: "LABORATORY",
-    createdAt: "2025-01-10T08:20:00Z",
-  },
-  {
-    id: "5",
-    name: "Laboratoire Est",
-    email: "labo.est@boulangerie.fr",
-    role: "LABORATORY",
-    createdAt: "2025-01-12T11:10:00Z",
-  },
-  {
-    id: "6",
-    name: "Pierre Dupont",
-    email: "p.dupont@boulangerie.fr",
-    role: "DELIVERY",
-    createdAt: "2025-01-25T07:30:00Z",
-  },
-  {
-    id: "7",
-    name: "Marie Lambert",
-    email: "m.lambert@boulangerie.fr",
-    role: "DELIVERY",
-    createdAt: "2025-01-26T08:45:00Z",
-  },
-]
+const API_BASE_URL = "/api/users"
 
 export default function UsersPage() {
-  const [users, setUsers] = useState<User[]>(initialUsers)
+  const [users, setUsers] = useState<User[]>([])
+  const [isLoading, setIsLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [userToDelete, setUserToDelete] = useState<User | null>(null)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [editingUser, setEditingUser] = useState<User | null>(null)
-  const [newUser, setNewUser] = useState<Partial<User>>({
+  const [newUser, setNewUser] = useState<Partial<User> & { password?: string }>({
     name: "",
     email: "",
-    role: "BAKERY",
+    role: "bakery",
+    password: "",
   })
   const { toast } = useToast()
+  const router = useRouter()
+
+  const getToken = () => {
+    if (typeof window !== "undefined") {
+      const userInfo = localStorage.getItem("userInfo")
+      return userInfo ? JSON.parse(userInfo).token : null
+    }
+    return null
+  }
+
+  // Fetch users from API
+  useEffect(() => {
+    const token = getToken()
+    if (!token) {
+      router.push("/login")
+      return
+    }
+
+    const fetchUsers = async () => {
+      setIsLoading(true)
+      try {
+        const response = await fetch(API_BASE_URL, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+        if (!response.ok) {
+          if (response.status === 401) router.push("/login")
+          throw new Error("Failed to fetch users")
+        }
+        const data = await response.json()
+        setUsers(data)
+      } catch (error) {
+        console.error("Fetch error:", error)
+        toast({
+          title: "Erreur de chargement",
+          description: "Impossible de récupérer la liste des utilisateurs.",
+          variant: "destructive",
+        })
+        setUsers([])
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchUsers()
+  }, [toast, router])
 
   // Filter users based on search term
   const filteredUsers = users.filter(
@@ -106,62 +108,189 @@ export default function UsersPage() {
   )
 
   // Handle user creation
-  const handleCreateUser = () => {
-    if (!newUser.name || !newUser.email || !newUser.role) {
+  const handleCreateUser = async () => {
+    if (!newUser.name || !newUser.email || !newUser.role || !newUser.password) {
       toast({
         title: "Erreur",
-        description: "Veuillez remplir tous les champs obligatoires",
+        description: "Veuillez remplir tous les champs obligatoires (Nom, Email, Rôle, Mot de passe)",
         variant: "destructive",
       })
       return
     }
 
-    const createdUser: User = {
-      id: `${users.length + 1}`,
-      name: newUser.name,
-      email: newUser.email,
-      role: newUser.role as "ADMIN" | "BAKERY" | "LABORATORY" | "DELIVERY",
-      createdAt: new Date().toISOString(),
+    setIsLoading(true)
+    const token = getToken()
+    if (!token) {
+      router.push("/login")
+      toast({ title: "Authentication Error", description: "Please login again.", variant: "destructive" })
+      setIsLoading(false)
+      return
     }
+    try {
+      const response = await fetch(API_BASE_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: newUser.name,
+          email: newUser.email,
+          password: newUser.password,
+          role: newUser.role,
+        }),
+      })
 
-    setUsers([...users, createdUser])
-    setNewUser({ name: "", email: "", role: "BAKERY" })
-    setIsCreateDialogOpen(false)
-    toast({
-      title: "Utilisateur créé",
-      description: `L'utilisateur ${createdUser.name} a été créé avec succès`,
-    })
+      if (!response.ok) {
+        const errorData = await response.json()
+        if (response.status === 401) router.push("/login")
+        throw new Error(errorData.message || "Failed to create user")
+      }
+
+      const createdUser = await response.json()
+      const fetchResponse = await fetch(API_BASE_URL, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+      const updatedUsers = await fetchResponse.json()
+      setUsers(updatedUsers)
+
+      setNewUser({ name: "", email: "", role: "bakery", password: "" })
+      setIsCreateDialogOpen(false)
+      toast({
+        title: "Utilisateur créé",
+        description: `L'utilisateur ${createdUser.name} a été créé avec succès`,
+      })
+    } catch (error: any) {
+      toast({
+        title: "Erreur de création",
+        description: error.message || "Impossible de créer l'utilisateur.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   // Handle user update
-  const handleUpdateUser = () => {
-    if (!editingUser) return
+  const handleUpdateUser = async () => {
+    if (!editingUser || !editingUser._id) return
 
-    const updatedUsers = users.map((user) => (user.id === editingUser.id ? editingUser : user))
-    setUsers(updatedUsers)
-    setIsEditDialogOpen(false)
-    toast({
-      title: "Utilisateur mis à jour",
-      description: `L'utilisateur ${editingUser.name} a été mis à jour avec succès`,
-    })
+    setIsLoading(true)
+    const token = getToken()
+    if (!token) {
+      router.push("/login")
+      toast({ title: "Authentication Error", description: "Please login again.", variant: "destructive" })
+      setIsLoading(false)
+      return
+    }
+    try {
+      const payload: Partial<User> & { password?: string } = {
+        name: editingUser.name,
+        email: editingUser.email,
+        role: editingUser.role,
+        isActive: editingUser.isActive,
+      }
+      const passwordInput = document.getElementById("reset-password") as HTMLInputElement
+      if (passwordInput && passwordInput.value) {
+        payload.password = passwordInput.value
+      }
+
+      const response = await fetch(`${API_BASE_URL}/${editingUser._id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        if (response.status === 401) router.push("/login")
+        throw new Error(errorData.message || "Failed to update user")
+      }
+
+      const fetchResponse = await fetch(API_BASE_URL, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+      const refreshedUsers = await fetchResponse.json()
+      setUsers(refreshedUsers)
+
+      setIsEditDialogOpen(false)
+      setEditingUser(null)
+      toast({
+        title: "Utilisateur mis à jour",
+        description: `L'utilisateur ${editingUser.name} a été mis à jour avec succès`,
+      })
+    } catch (error: any) {
+      toast({
+        title: "Erreur de mise à jour",
+        description: error.message || "Impossible de mettre à jour l'utilisateur.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   // Handle user deletion
-  const handleDeleteUser = () => {
-    if (!userToDelete) return
+  const handleDeleteUser = async () => {
+    if (!userToDelete || !userToDelete._id) return
 
-    const updatedUsers = users.filter((user) => user.id !== userToDelete.id)
-    setUsers(updatedUsers)
-    setIsDeleteDialogOpen(false)
-    setUserToDelete(null)
-    toast({
-      title: "Utilisateur supprimé",
-      description: `L'utilisateur ${userToDelete.name} a été supprimé avec succès`,
-    })
+    setIsLoading(true)
+    const token = getToken()
+    if (!token) {
+      router.push("/login")
+      toast({ title: "Authentication Error", description: "Please login again.", variant: "destructive" })
+      setIsLoading(false)
+      return
+    }
+    try {
+      const response = await fetch(`${API_BASE_URL}/${userToDelete._id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        if (response.status === 401) router.push("/login")
+        throw new Error(errorData.message || "Failed to delete user")
+      }
+
+      const fetchResponse = await fetch(API_BASE_URL, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+      const refreshedUsers = await fetchResponse.json()
+      setUsers(refreshedUsers)
+
+      setIsDeleteDialogOpen(false)
+      setUserToDelete(null)
+      toast({
+        title: "Utilisateur désactivé",
+        description: `L'utilisateur ${userToDelete.name} a été désactivé avec succès`,
+      })
+    } catch (error: any) {
+      toast({
+        title: "Erreur de désactivation",
+        description: error.message || "Impossible de désactiver l'utilisateur.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   // Format date
   const formatDate = (dateString: string) => {
+    if (!dateString) return "N/A"
     const date = new Date(dateString)
     return new Intl.DateTimeFormat("fr-FR", {
       day: "2-digit",
@@ -173,10 +302,10 @@ export default function UsersPage() {
   // Role translation
   const translateRole = (role: string) => {
     const roles: Record<string, string> = {
-      ADMIN: "Administrateur",
-      BAKERY: "Boulangerie",
-      LABORATORY: "Laboratoire",
-      DELIVERY: "Livraison",
+      admin: "Administrateur",
+      bakery: "Boulangerie",
+      laboratory: "Laboratoire",
+      delivery: "Livraison",
     }
     return roles[role] || role
   }
@@ -191,7 +320,7 @@ export default function UsersPage() {
           </div>
           <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
             <DialogTrigger asChild>
-              <Button>
+              <Button disabled={isLoading}>
                 <Plus className="mr-2 h-4 w-4" /> Nouvel utilisateur
               </Button>
             </DialogTrigger>
@@ -227,7 +356,7 @@ export default function UsersPage() {
                     onValueChange={(value) =>
                       setNewUser({
                         ...newUser,
-                        role: value as "ADMIN" | "BAKERY" | "LABORATORY" | "DELIVERY",
+                        role: value as "admin" | "bakery" | "laboratory" | "delivery",
                       })
                     }
                   >
@@ -235,23 +364,31 @@ export default function UsersPage() {
                       <SelectValue placeholder="Sélectionnez un rôle" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="ADMIN">Administrateur</SelectItem>
-                      <SelectItem value="BAKERY">Boulangerie</SelectItem>
-                      <SelectItem value="LABORATORY">Laboratoire</SelectItem>
-                      <SelectItem value="DELIVERY">Livraison</SelectItem>
+                      <SelectItem value="admin">Administrateur</SelectItem>
+                      <SelectItem value="bakery">Boulangerie</SelectItem>
+                      <SelectItem value="laboratory">Laboratoire</SelectItem>
+                      <SelectItem value="delivery">Livraison</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="password">Mot de passe initial</Label>
-                  <Input id="password" type="password" placeholder="Mot de passe" />
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="Mot de passe"
+                    value={newUser.password}
+                    onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                  />
                 </div>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+                <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)} disabled={isLoading}>
                   Annuler
                 </Button>
-                <Button onClick={handleCreateUser}>Créer</Button>
+                <Button onClick={handleCreateUser} disabled={isLoading}>
+                  {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} Créer
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -260,7 +397,7 @@ export default function UsersPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle>Liste des utilisateurs</CardTitle>
-            <CardDescription>{filteredUsers.length} utilisateurs trouvés</CardDescription>
+            <CardDescription>{users.length} utilisateurs trouvés</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="mb-4 flex items-center gap-2">
@@ -279,35 +416,53 @@ export default function UsersPage() {
                     <TableHead>Nom</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Rôle</TableHead>
+                    <TableHead>Statut</TableHead>
                     <TableHead>Date de création</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredUsers.length === 0 ? (
+                  {isLoading ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8">
+                      <TableCell colSpan={6} className="text-center py-8">
+                        <div className="flex justify-center items-center">
+                          <Loader2 className="mr-2 h-8 w-8 animate-spin" />
+                          Chargement des utilisateurs...
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : filteredUsers.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-8">
                         Aucun utilisateur trouvé
                       </TableCell>
                     </TableRow>
                   ) : (
                     filteredUsers.map((user) => (
-                      <TableRow key={user.id}>
+                      <TableRow key={user._id} className={!user.isActive ? "opacity-50" : ""}>
                         <TableCell className="font-medium">{user.name}</TableCell>
                         <TableCell>{user.email}</TableCell>
                         <TableCell>{translateRole(user.role)}</TableCell>
+                        <TableCell>
+                          {user.isActive === false ? (
+                            <Badge variant="outline">Inactif</Badge>
+                          ) : (
+                            <Badge variant="default">Actif</Badge>
+                          )}
+                        </TableCell>
                         <TableCell>{formatDate(user.createdAt)}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
                             <Dialog
-                              open={isEditDialogOpen && editingUser?.id === user.id}
+                              open={isEditDialogOpen && editingUser?._id === user._id}
                               onOpenChange={(open) => {
                                 setIsEditDialogOpen(open)
                                 if (open) setEditingUser(user)
+                                else setEditingUser(null)
                               }}
                             >
                               <DialogTrigger asChild>
-                                <Button variant="ghost" size="icon">
+                                <Button variant="ghost" size="icon" disabled={isLoading}>
                                   <Edit className="h-4 w-4" />
                                   <span className="sr-only">Modifier</span>
                                 </Button>
@@ -353,7 +508,7 @@ export default function UsersPage() {
                                         onValueChange={(value) =>
                                           setEditingUser({
                                             ...editingUser,
-                                            role: value as "ADMIN" | "BAKERY" | "LABORATORY" | "DELIVERY",
+                                            role: value as "admin" | "bakery" | "laboratory" | "delivery",
                                           })
                                         }
                                       >
@@ -361,10 +516,30 @@ export default function UsersPage() {
                                           <SelectValue placeholder="Sélectionnez un rôle" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                          <SelectItem value="ADMIN">Administrateur</SelectItem>
-                                          <SelectItem value="BAKERY">Boulangerie</SelectItem>
-                                          <SelectItem value="LABORATORY">Laboratoire</SelectItem>
-                                          <SelectItem value="DELIVERY">Livraison</SelectItem>
+                                          <SelectItem value="admin">Administrateur</SelectItem>
+                                          <SelectItem value="bakery">Boulangerie</SelectItem>
+                                          <SelectItem value="laboratory">Laboratoire</SelectItem>
+                                          <SelectItem value="delivery">Livraison</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                    <div className="grid gap-2">
+                                      <Label htmlFor="edit-isActive">Statut</Label>
+                                      <Select
+                                        value={editingUser.isActive === false ? "false" : "true"}
+                                        onValueChange={(value) =>
+                                          setEditingUser({
+                                            ...editingUser,
+                                            isActive: value === "true",
+                                          })
+                                        }
+                                      >
+                                        <SelectTrigger>
+                                          <SelectValue placeholder="Sélectionnez un statut" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="true">Actif</SelectItem>
+                                          <SelectItem value="false">Inactif</SelectItem>
                                         </SelectContent>
                                       </Select>
                                     </div>
@@ -379,15 +554,24 @@ export default function UsersPage() {
                                   </div>
                                 )}
                                 <DialogFooter>
-                                  <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                                  <Button
+                                    variant="outline"
+                                    onClick={() => {
+                                      setIsEditDialogOpen(false)
+                                      setEditingUser(null)
+                                    }}
+                                    disabled={isLoading}
+                                  >
                                     Annuler
                                   </Button>
-                                  <Button onClick={handleUpdateUser}>Enregistrer</Button>
+                                  <Button onClick={handleUpdateUser} disabled={isLoading}>
+                                    {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} Enregistrer
+                                  </Button>
                                 </DialogFooter>
                               </DialogContent>
                             </Dialog>
                             <Dialog
-                              open={isDeleteDialogOpen && userToDelete?.id === user.id}
+                              open={isDeleteDialogOpen && userToDelete?._id === user._id}
                               onOpenChange={(open) => {
                                 setIsDeleteDialogOpen(open)
                                 if (open) setUserToDelete(user)
@@ -395,25 +579,36 @@ export default function UsersPage() {
                               }}
                             >
                               <DialogTrigger asChild>
-                                <Button variant="ghost" size="icon">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  disabled={isLoading || !user.isActive}
+                                  title={!user.isActive ? "Utilisateur déjà inactif" : "Désactiver"}
+                                >
                                   <Trash className="h-4 w-4" />
-                                  <span className="sr-only">Supprimer</span>
+                                  <span className="sr-only">Désactiver</span>
                                 </Button>
                               </DialogTrigger>
                               <DialogContent>
                                 <DialogHeader>
-                                  <DialogTitle>Confirmer la suppression</DialogTitle>
+                                  <DialogTitle>Confirmer la désactivation</DialogTitle>
                                   <DialogDescription>
-                                    Êtes-vous sûr de vouloir supprimer l'utilisateur{" "}
-                                    <strong>{userToDelete?.name}</strong> ? Cette action est irréversible.
+                                    Êtes-vous sûr de vouloir désactiver l'utilisateur <strong>{userToDelete?.name}</strong> ?
                                   </DialogDescription>
                                 </DialogHeader>
                                 <DialogFooter>
-                                  <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+                                  <Button
+                                    variant="outline"
+                                    onClick={() => {
+                                      setIsDeleteDialogOpen(false)
+                                      setUserToDelete(null)
+                                    }}
+                                    disabled={isLoading}
+                                  >
                                     Annuler
                                   </Button>
-                                  <Button variant="destructive" onClick={handleDeleteUser}>
-                                    Supprimer
+                                  <Button variant="destructive" onClick={handleDeleteUser} disabled={isLoading}>
+                                    {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} Désactiver
                                   </Button>
                                 </DialogFooter>
                               </DialogContent>
