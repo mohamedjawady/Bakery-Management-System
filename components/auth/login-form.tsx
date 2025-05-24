@@ -18,6 +18,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
 import { Croissant, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import Link from 'next/link';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Invalid email address.' }),
@@ -136,8 +137,7 @@ export function LoginForm() {
                   <FormMessage />
                 </FormItem>
               )}
-            />
-            <FormField
+            />            <FormField
               control={form.control}
               name="password"
               render={({ field }) => (
@@ -155,6 +155,11 @@ export function LoginForm() {
                 </FormItem>
               )}
             />
+            <div className="text-right">
+              <Link href="/forgot-password" className="text-sm text-muted-foreground hover:text-primary">
+                Mot de passe oublié ?
+              </Link>
+            </div>
           </CardContent>
           <CardFooter>
             <Button disabled={isLoading} className="w-full" type="submit">

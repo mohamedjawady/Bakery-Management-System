@@ -15,12 +15,12 @@ const salesData = [
 ];
 
 const productData = [
-  { name: 'Pain', sales: 4000, stock: 2400 },
-  { name: 'Croissant', sales: 3000, stock: 1398 },
-  { name: 'Baguette', sales: 2000, stock: 9800 },
-  { name: 'Éclair', sales: 2780, stock: 3908 },
-  { name: 'Tarte', sales: 1890, stock: 4800 },
-  { name: 'Macaron', sales: 2390, stock: 3800 },
+  { name: 'Pain', sales: 4000 },
+  { name: 'Croissant', sales: 3000 },
+  { name: 'Baguette', sales: 2000 },
+  { name: 'Éclair', sales: 2780 },
+  { name: 'Tarte', sales: 1890 },
+  { name: 'Macaron', sales: 2390 },
 ];
 
 const bakeriesData = [
@@ -143,11 +143,10 @@ export default function AdminDashboard() {
               </Card>
             </div>
           </TabsContent>          <TabsContent value="analytics" className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-              <Card className="col-span-4">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">              <Card className="col-span-4">
                 <CardHeader>
                   <CardTitle>Performance des produits</CardTitle>
-                  <CardDescription>Ventes et stocks par produit</CardDescription>
+                  <CardDescription>Ventes par produit</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <ProductsChart data={productData} />

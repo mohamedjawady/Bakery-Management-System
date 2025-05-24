@@ -25,12 +25,17 @@ import { Badge } from "@/components/ui/badge"
 // Define user type
 interface User {
   _id: string
-  name: string
+  firstName: string
+  lastName: string
   email: string
   role: "admin" | "bakery" | "laboratory" | "delivery"
   createdAt: string
   updatedAt?: string
   isActive?: boolean
+  phone?: string
+  address?: string
+  vehicleType?: string
+  vehicleRegistration?: string
 }
 
 const API_BASE_URL = "/api/users"
@@ -45,7 +50,8 @@ export default function UsersPage() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [editingUser, setEditingUser] = useState<User | null>(null)
   const [newUser, setNewUser] = useState<Partial<User> & { password?: string }>({
-    name: "",
+    firstName: "",
+    lastName: "",
     email: "",
     role: "bakery",
     password: "",
@@ -98,21 +104,19 @@ export default function UsersPage() {
 
     fetchUsers()
   }, [toast, router])
-
   // Filter users based on search term
   const filteredUsers = users.filter(
     (user) =>
-      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      `${user.firstName} ${user.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.role.toLowerCase().includes(searchTerm.toLowerCase()),
   )
-
   // Handle user creation
   const handleCreateUser = async () => {
-    if (!newUser.name || !newUser.email || !newUser.role || !newUser.password) {
+    if (!newUser.firstName || !newUser.lastName || !newUser.email || !newUser.role || !newUser.password) {
       toast({
         title: "Erreur",
-        description: "Veuillez remplir tous les champs obligatoires (Nom, Email, Rôle, Mot de passe)",
+        description: "Veuillez remplir tous les champs obligatoires (Prénom, Nom, Email, Rôle, Mot de passe)",
         variant: "destructive",
       })
       return
@@ -132,9 +136,9 @@ export default function UsersPage() {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          name: newUser.name,
+        },        body: JSON.stringify({
+          firstName: newUser.firstName,
+          lastName: newUser.lastName,
           email: newUser.email,
           password: newUser.password,
           role: newUser.role,
@@ -155,12 +159,11 @@ export default function UsersPage() {
       })
       const updatedUsers = await fetchResponse.json()
       setUsers(updatedUsers)
-
-      setNewUser({ name: "", email: "", role: "bakery", password: "" })
+      setNewUser({ firstName: "", lastName: "", email: "", role: "bakery", password: "" })
       setIsCreateDialogOpen(false)
       toast({
         title: "Utilisateur créé",
-        description: `L'utilisateur ${createdUser.name} a été créé avec succès`,
+        description: `L'utilisateur ${createdUser.firstName} ${createdUser.lastName} a été créé avec succès`,
       })
     } catch (error: any) {
       toast({
@@ -185,9 +188,9 @@ export default function UsersPage() {
       setIsLoading(false)
       return
     }
-    try {
-      const payload: Partial<User> & { password?: string } = {
-        name: editingUser.name,
+    try {      const payload: Partial<User> & { password?: string } = {
+        firstName: editingUser.firstName,
+        lastName: editingUser.lastName,
         email: editingUser.email,
         role: editingUser.role,
         isActive: editingUser.isActive,
@@ -219,12 +222,11 @@ export default function UsersPage() {
       })
       const refreshedUsers = await fetchResponse.json()
       setUsers(refreshedUsers)
-
       setIsEditDialogOpen(false)
       setEditingUser(null)
       toast({
         title: "Utilisateur mis à jour",
-        description: `L'utilisateur ${editingUser.name} a été mis à jour avec succès`,
+        description: `L'utilisateur ${editingUser.firstName} ${editingUser.lastName} a été mis à jour avec succès`,
       })
     } catch (error: any) {
       toast({
@@ -270,12 +272,11 @@ export default function UsersPage() {
       })
       const refreshedUsers = await fetchResponse.json()
       setUsers(refreshedUsers)
-
       setIsDeleteDialogOpen(false)
       setUserToDelete(null)
       toast({
         title: "Utilisateur désactivé",
-        description: `L'utilisateur ${userToDelete.name} a été désactivé avec succès`,
+        description: `L'utilisateur ${userToDelete.firstName} ${userToDelete.lastName} a été désactivé avec succès`,
       })
     } catch (error: any) {
       toast({
@@ -328,15 +329,23 @@ export default function UsersPage() {
               <DialogHeader>
                 <DialogTitle>Créer un nouvel utilisateur</DialogTitle>
                 <DialogDescription>Remplissez les informations pour créer un nouvel utilisateur</DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
+              </DialogHeader>              <div className="grid gap-4 py-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="name">Nom</Label>
+                  <Label htmlFor="firstName">Prénom</Label>
                   <Input
-                    id="name"
-                    value={newUser.name}
-                    onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
-                    placeholder="Nom de l'utilisateur"
+                    id="firstName"
+                    value={newUser.firstName}
+                    onChange={(e) => setNewUser({ ...newUser, firstName: e.target.value })}
+                    placeholder="Prénom de l'utilisateur"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="lastName">Nom</Label>
+                  <Input
+                    id="lastName"
+                    value={newUser.lastName}
+                    onChange={(e) => setNewUser({ ...newUser, lastName: e.target.value })}
+                    placeholder="Nom de famille"
                   />
                 </div>
                 <div className="grid gap-2">
@@ -438,9 +447,8 @@ export default function UsersPage() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredUsers.map((user) => (
-                      <TableRow key={user._id} className={!user.isActive ? "opacity-50" : ""}>
-                        <TableCell className="font-medium">{user.name}</TableCell>
+                    filteredUsers.map((user) => (                      <TableRow key={user._id} className={!user.isActive ? "opacity-50" : ""}>
+                        <TableCell className="font-medium">{user.firstName} {user.lastName}</TableCell>
                         <TableCell>{user.email}</TableCell>
                         <TableCell>{translateRole(user.role)}</TableCell>
                         <TableCell>
@@ -471,18 +479,30 @@ export default function UsersPage() {
                                 <DialogHeader>
                                   <DialogTitle>Modifier l'utilisateur</DialogTitle>
                                   <DialogDescription>Modifiez les informations de l'utilisateur</DialogDescription>
-                                </DialogHeader>
-                                {editingUser && (
+                                </DialogHeader>                                {editingUser && (
                                   <div className="grid gap-4 py-4">
                                     <div className="grid gap-2">
-                                      <Label htmlFor="edit-name">Nom</Label>
+                                      <Label htmlFor="edit-firstName">Prénom</Label>
                                       <Input
-                                        id="edit-name"
-                                        value={editingUser.name}
+                                        id="edit-firstName"
+                                        value={editingUser.firstName}
                                         onChange={(e) =>
                                           setEditingUser({
                                             ...editingUser,
-                                            name: e.target.value,
+                                            firstName: e.target.value,
+                                          })
+                                        }
+                                      />
+                                    </div>
+                                    <div className="grid gap-2">
+                                      <Label htmlFor="edit-lastName">Nom</Label>
+                                      <Input
+                                        id="edit-lastName"
+                                        value={editingUser.lastName}
+                                        onChange={(e) =>
+                                          setEditingUser({
+                                            ...editingUser,
+                                            lastName: e.target.value,
                                           })
                                         }
                                       />
@@ -591,9 +611,8 @@ export default function UsersPage() {
                               </DialogTrigger>
                               <DialogContent>
                                 <DialogHeader>
-                                  <DialogTitle>Confirmer la désactivation</DialogTitle>
-                                  <DialogDescription>
-                                    Êtes-vous sûr de vouloir désactiver l'utilisateur <strong>{userToDelete?.name}</strong> ?
+                                  <DialogTitle>Confirmer la désactivation</DialogTitle>                                  <DialogDescription>
+                                    Êtes-vous sûr de vouloir désactiver l'utilisateur <strong>{userToDelete?.firstName} {userToDelete?.lastName}</strong> ?
                                   </DialogDescription>
                                 </DialogHeader>
                                 <DialogFooter>
