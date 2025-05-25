@@ -214,8 +214,7 @@ export default function SettingsPage() {
                     }
                   />
                   <Label htmlFor="twoFactor">Authentification à deux facteurs</Label>
-                </div>
-                <div className="grid gap-2">
+                </div>                <div className="grid gap-2">
                   <Label htmlFor="sessionTimeout">Délai d'expiration de session (minutes)</Label>
                   <Input
                     id="sessionTimeout"
@@ -230,6 +229,19 @@ export default function SettingsPage() {
                       })
                     }
                   />
+                </div>
+                <Separator className="my-4" />
+                <div className="space-y-2">
+                  <Label>Mot de passe</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Changez votre mot de passe pour plus de sécurité
+                  </p>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => window.location.href = '/profile/change-password'}
+                  >
+                    Changer le mot de passe
+                  </Button>
                 </div>
               </CardContent>
             </Card>

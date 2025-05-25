@@ -110,7 +110,6 @@ export function ProductsChart({ data }: { data: any[] }) {
           <Tooltip />
           <Legend />
           <Bar dataKey="sales" name="Ventes" fill="#8884d8" radius={[4, 4, 0, 0]} />
-          <Bar dataKey="stock" name="Stock" fill="#82ca9d" radius={[4, 4, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
     </div>

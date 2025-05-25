@@ -194,8 +194,7 @@ export default function ProfilePage() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isChangingPassword, setIsChangingPassword] = useState(false);
-
-  const handleChangePassword = async () => { // Made async for potential API call
+  const handleChangePassword = async () => {
     if (newPassword !== confirmPassword) {
       toast({
         title: "Erreur",
@@ -204,17 +203,24 @@ export default function ProfilePage() {
       });
       return;
     }
-    if (newPassword.length < 8) {
+    if (newPassword.length < 6) {
       toast({
         title: "Erreur",
-        description: "Le mot de passe doit contenir au moins 8 caractères.",
+        description: "Le mot de passe doit contenir au moins 6 caractères.",
         variant: "destructive",
       });
       return;
     }
+    if (!currentPassword) {
+      toast({
+        title: "Erreur",
+        description: "Veuillez saisir votre mot de passe actuel.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setIsChangingPassword(true);
-    // TODO: Replace with actual API call to change password
-    // For now, simulating API call
     try {
       const token = localStorage.getItem("userInfo") ? JSON.parse(localStorage.getItem("userInfo")!).token : null;
       if (!token) {
@@ -226,19 +232,20 @@ export default function ProfilePage() {
         setIsChangingPassword(false);
         return;
       }
-      // const response = await fetch('/api/user/change-password', { // Example API endpoint
-      //   method: 'POST',
-      //   headers: { 
-      //     'Content-Type': 'application/json',
-      //     Authorization: `Bearer ${token}`,
-      //   },
-      //   body: JSON.stringify({ currentPassword, newPassword }),
-      // });
-      // if (!response.ok) {
-      //   const errorData = await response.json();
-      //   throw new Error(errorData.message || 'Failed to change password');
-      // }
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate delay
+      
+      const response = await fetch('/api/users/change-password', {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to change password');
+      }
 
       setCurrentPassword("");
       setNewPassword("");

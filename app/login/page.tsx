@@ -2,10 +2,10 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { LoginForm } from "@/components/auth/login-form"
-import { ThemeToggle } from "@/components/theme-toggle"
+import { LoginForm } from '@/components/auth/login-form';
+import { ThemeToggle } from "@/components/theme-toggle";
 
-export default function Home() {
+export default function LoginPage() {
   const router = useRouter();
 
   useEffect(() => {
@@ -23,7 +23,7 @@ export default function Home() {
           
           // Check if token exists and user has a role
           if (user.token && user.role) {
-            console.log('[Home Page] User authenticated as', user.role, 'redirecting...');
+            console.log('[Login Page] User authenticated as', user.role, 'redirecting...');
             
             // Redirect to appropriate dashboard based on role
             let targetPath = "/login";
@@ -48,7 +48,7 @@ export default function Home() {
           }
         }
       } catch (error) {
-        console.error('[Home Page] Error parsing user info:', error);
+        console.error('[Login Page] Error parsing user info:', error);
         // Clear invalid data
         localStorage.removeItem('userInfo');
       }
@@ -58,14 +58,11 @@ export default function Home() {
   }, [router]);
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-4 bg-gradient-to-b from-background to-muted/50 relative">
-      {/* Added ThemeToggle to top right */}
+    <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900 relative">
       <div className="absolute top-4 right-4 z-50">
-        <ThemeToggle variant="outline" /> {/* Explicitly set variant to outline */}
+        <ThemeToggle />
       </div>
-      <div className="w-full max-w-md">
-        <LoginForm />
-      </div>
-    </main>
-  )
+      <LoginForm />
+    </div>
+  );
 }
