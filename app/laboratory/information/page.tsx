@@ -7,7 +7,6 @@ import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
@@ -16,13 +15,9 @@ import { DashboardLayout } from '@/components/layout/dashboard-layout';
 const laboratoryInfoSchema = z.object({
   labName: z.string().min(1, 'Le nom du laboratoire est requis'),
   headChef: z.string().min(1, 'Le nom du chef de laboratoire est requis'),
-  address: z.string().min(1, "L'adresse est requise"),
-  phone: z.string().min(1, 'Le numéro de téléphone est requis')
+  address: z.string().min(1, "L'adresse est requise"),  phone: z.string().min(1, 'Le numéro de téléphone est requis')
     .regex(/^(\+?\d{1,3}[- ]?)?\d{9,15}$/, 'Numéro de téléphone invalide'),
   email: z.string().email('Adresse e-mail invalide'),
-  hygieneStandards: z.string().optional(),
-  equipmentMaintenanceSchedule: z.string().optional(),
-  notes: z.string().optional(),
 });
 
 type LaboratoryInfoFormValues = z.infer<typeof laboratoryInfoSchema>;
@@ -44,13 +39,9 @@ function LaboratoryInformationContent() {
     resolver: zodResolver(laboratoryInfoSchema),
     defaultValues: {
       labName: '',
-      headChef: '',
-      address: '',
+      headChef: '',      address: '',
       phone: '',
       email: '',
-      hygieneStandards: '',
-      equipmentMaintenanceSchedule: '',
-      notes: '',
     },
   });
 
@@ -192,22 +183,7 @@ function LaboratoryInformationContent() {
                 {form.formState.errors.email && (
                   <p className="text-red-500 text-sm mt-1">{form.formState.errors.email.message}</p>
                 )}
-              </div>
-            </div>
-            
-            {/* Fields kept for review, uncomment to add them to the form */}
-            {/* <div>
-              <Label htmlFor="hygieneStandards">Normes d'hygiène</Label>
-              <Textarea id="hygieneStandards" {...form.register('hygieneStandards')} className="mt-1" rows={3}/>
-            </div>
-            <div>
-              <Label htmlFor="equipmentMaintenanceSchedule">Calendrier de maintenance des équipements</Label>
-              <Textarea id="equipmentMaintenanceSchedule" {...form.register('equipmentMaintenanceSchedule')} className="mt-1" rows={3}/>
-            </div>
-            <div>
-              <Label htmlFor="notes">Notes</Label>
-              <Textarea id="notes" {...form.register('notes')} className="mt-1" rows={4}/>
-            </div> */}
+              </div>            </div>
 
           </CardContent>
           <CardFooter>

@@ -1,196 +1,281 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { DashboardLayout } from "@/components/layout/dashboard-layout"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Eye, Search } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
+import { useToast } from "@/hooks/use-toast"
+import { Plus, Loader2 } from "lucide-react"
 
-// Define product type
-interface Product {
-  id: string
-  name: string
-  description: string
-  ingredients: string[]
-  unitPrice: number
-  active: boolean
-  createdAt: string
-}
-
-// Sample data
-const initialProducts: Product[] = [
-  {
-    id: "1",
-    name: "Baguette Tradition",
-    description: "Baguette traditionnelle à la française, croustillante et moelleuse",
-    ingredients: ["Farine de blé", "Eau", "Levure", "Sel"],
-    unitPrice: 1.2,
-    active: true,
-    createdAt: "2025-01-15T10:30:00Z",
-  },
-  {
-    id: "2",
-    name: "Pain au Chocolat",
-    description: "Viennoiserie feuilletée au beurre avec deux barres de chocolat",
-    ingredients: ["Farine de blé", "Beurre", "Chocolat", "Sucre", "Levure", "Lait", "Œufs"],
-    unitPrice: 1.5,
-    active: true,
-    createdAt: "2025-01-16T09:45:00Z",
-  },
-  {
-    id: "3",
-    name: "Croissant",
-    description: "Viennoiserie feuilletée au beurre en forme de croissant",
-    ingredients: ["Farine de blé", "Beurre", "Sucre", "Levure", "Lait", "Œufs"],
-    unitPrice: 1.3,
-    active: true,
-    createdAt: "2025-01-16T09:50:00Z",
-  },
-  {
-    id: "4",
-    name: "Pain aux Céréales",
-    description: "Pain complet aux graines variées pour un petit-déjeuner équilibré",
-    ingredients: [
-      "Farine complète",
-      "Graines de tournesol",
-      "Graines de lin",
-      "Graines de sésame",
-      "Levure",
-      "Eau",
-      "Sel",
-    ],
-    unitPrice: 2.8,
-    active: true,
-    createdAt: "2025-01-17T08:30:00Z",
-  },
-  {
-    id: "5",
-    name: "Éclair au Chocolat",
-    description: "Pâtisserie à la pâte à choux fourrée à la crème pâtissière au chocolat",
-    ingredients: ["Farine", "Œufs", "Beurre", "Chocolat", "Lait", "Sucre", "Crème"],
-    unitPrice: 2.5,
-    active: false,
-    createdAt: "2025-01-18T14:20:00Z",
-  },
-]
+// Import our new components and types
+import { ProductCard } from "@/components/products/product-card"
+import { ProductFiltersComponent } from "@/components/products/product-filters"
+import { ProductModal } from "@/components/products/product-modal"
+import { ProductPagination } from "@/components/products/product-pagination"
+import { Product, ProductFilters } from "@/types/product"
+import { getProducts, getProductCategories } from "@/lib/api/products"
 
 export default function BakeryProductsPage() {
-  const [products] = useState<Product[]>(initialProducts)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false)
-  const [viewingProduct, setViewingProduct] = useState<Product | null>(null)
+  // State management
+  const [products, setProducts] = useState<Product[]>([])
+  const [categories, setCategories] = useState<string[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  
+  // Modal state
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
+  const [modalMode, setModalMode] = useState<'view' | 'edit' | 'create'>('view')
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(12)
+  const [totalProducts, setTotalProducts] = useState(0)
+    // Filter state
+  const [filters, setFilters] = useState<ProductFilters>({
+    search: '',
+    category: '',
+    available: undefined,
+    active: true, // Only show active products by default for bakery view
+    sortBy: 'name',
+    sortOrder: 'asc'
+  })
 
-  // Filter products based on search term
-  const filteredProducts = products.filter(
-    (product) =>
-      product.active &&
-      (product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.description.toLowerCase().includes(searchTerm.toLowerCase())),
-  )
+  const { toast } = useToast()
 
-  // Format price
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat("fr-FR", {
-      style: "currency",
-      currency: "EUR",
-    }).format(price)
+  // Check if user has admin/agent permissions for editing
+  const getUserRole = () => {
+    const userInfo = localStorage.getItem("userInfo")
+    if (userInfo) {
+      const parsed = JSON.parse(userInfo)
+      return parsed.role
+    }
+    return 'bakery'
   }
 
+  const userRole = getUserRole()
+  const canEdit = userRole === 'admin' || userRole === 'agent'
+
+  // Fetch products and categories
+  const fetchProducts = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+        const [productsResponse, categoriesResponse] = await Promise.all([
+        getProducts({
+          ...filters,
+          page: currentPage,
+          limit: itemsPerPage
+        }),
+        getProductCategories()
+      ])
+
+      setProducts(productsResponse.data)
+      setTotalProducts(productsResponse.pagination?.total || 0)
+      setCategories(categoriesResponse)
+    } catch (err) {
+      console.error('Error fetching products:', err)
+      setError('Erreur lors du chargement des produits')
+      toast({
+        title: "Erreur",
+        description: "Impossible de charger les produits",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Initial data fetch
+  useEffect(() => {
+    fetchProducts()
+  }, [currentPage, itemsPerPage, filters])
+
+  // Handle filter changes
+  const handleFiltersChange = (newFilters: ProductFilters) => {
+    setFilters(newFilters)
+    setCurrentPage(1) // Reset to first page when filters change
+  }
+
+  // Handle pagination changes
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page)
+  }
+
+  const handleItemsPerPageChange = (newItemsPerPage: number) => {
+    setItemsPerPage(newItemsPerPage)
+    setCurrentPage(1) // Reset to first page when items per page changes
+  }
+
+  // Modal handlers
+  const handleViewProduct = (product: Product) => {
+    setSelectedProduct(product)
+    setModalMode('view')
+    setIsModalOpen(true)
+  }
+
+  const handleEditProduct = (product: Product) => {
+    if (!canEdit) {
+      toast({
+        title: "Accès refusé",
+        description: "Vous n'avez pas les permissions pour modifier les produits",
+        variant: "destructive",
+      })
+      return
+    }
+    setSelectedProduct(product)
+    setModalMode('edit')
+    setIsModalOpen(true)
+  }
+
+  const handleCreateProduct = () => {
+    if (!canEdit) {
+      toast({
+        title: "Accès refusé",
+        description: "Vous n'avez pas les permissions pour créer des produits",
+        variant: "destructive",
+      })
+      return
+    }
+    setSelectedProduct(null)
+    setModalMode('create')
+    setIsModalOpen(true)
+  }
+
+  const handleModalClose = () => {
+    setIsModalOpen(false)
+    setSelectedProduct(null)
+  }
+
+  const handleProductSaved = () => {
+    // Refresh the products list after save
+    fetchProducts()
+    handleModalClose()
+    toast({
+      title: "Succès",
+      description: modalMode === 'create' ? "Produit créé avec succès" : "Produit modifié avec succès",
+    })
+  }
+
+  const handleProductDeleted = () => {
+    // Refresh the products list after delete
+    fetchProducts()
+    handleModalClose()
+    toast({
+      title: "Succès",
+      description: "Produit supprimé avec succès",
+    })
+  }
   return (
     <DashboardLayout role="bakery">
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-6">
+        {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Catalogue de produits</h1>
-            <p className="text-muted-foreground">Consultez les produits disponibles pour commander</p>
+            <p className="text-muted-foreground">
+              Consultez et gérez les produits de la boulangerie
+            </p>
           </div>
-        </div>
+          {canEdit && (
+            <Button onClick={handleCreateProduct}>
+              <Plus className="h-4 w-4 mr-2" />
+              Nouveau produit
+            </Button>
+          )}
+        </div>        {/* Filters */}
+        <ProductFiltersComponent
+          filters={filters}
+          categories={categories}
+          onFiltersChange={handleFiltersChange}
+        />
 
+        {/* Products Content */}
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle>Produits disponibles</CardTitle>
-            <CardDescription>{filteredProducts.length} produits trouvés</CardDescription>
+          <CardHeader className="pb-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Produits disponibles</CardTitle>
+                <CardDescription>
+                  {loading ? "Chargement..." : `${totalProducts} produit${totalProducts !== 1 ? 's' : ''} trouvé${totalProducts !== 1 ? 's' : ''}`}
+                </CardDescription>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="mb-4 flex items-center gap-2">
-              <Search className="h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Rechercher un produit..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full max-w-sm"
-              />
-            </div>
-
-            {filteredProducts.length === 0 ? (
-              <div className="text-center py-8 border rounded-md">Aucun produit trouvé</div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredProducts.map((product) => (
-                  <Card key={product.id} className="overflow-hidden">
-                    <CardHeader className="p-4 pb-2">
-                      <CardTitle className="text-lg">{product.name}</CardTitle>
-                      <Badge variant="outline" className="w-fit mt-1">
-                        {formatPrice(product.unitPrice)}
-                      </Badge>
-                    </CardHeader>
-                    <CardContent className="p-4 pt-2">
-                      <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{product.description}</p>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full"
-                        onClick={() => {
-                          setViewingProduct(product)
-                          setIsViewDialogOpen(true)
-                        }}
-                      >
-                        <Eye className="h-4 w-4 mr-2" />
-                        Voir détails
-                      </Button>
-                    </CardContent>
-                  </Card>
-                ))}
+            {/* Loading State */}
+            {loading && (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin" />
+                <span className="ml-2">Chargement des produits...</span>
               </div>
+            )}
+
+            {/* Error State */}
+            {error && !loading && (
+              <div className="text-center py-8 border rounded-md">
+                <p className="text-destructive">{error}</p>
+                <Button 
+                  variant="outline" 
+                  onClick={fetchProducts}
+                  className="mt-4"
+                >
+                  Réessayer
+                </Button>
+              </div>
+            )}
+
+            {/* No Products State */}
+            {!loading && !error && products.length === 0 && (
+              <div className="text-center py-8 border rounded-md">
+                <p>Aucun produit trouvé</p>
+                {canEdit && (
+                  <Button 
+                    variant="outline" 
+                    onClick={handleCreateProduct}
+                    className="mt-4"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Créer le premier produit
+                  </Button>
+                )}
+              </div>
+            )}
+
+            {/* Products Grid */}
+            {!loading && !error && products.length > 0 && (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6">
+                  {products.map((product) => (                    <ProductCard
+                      key={product._id}
+                      product={product}
+                      onView={handleViewProduct}
+                      onEdit={canEdit ? handleEditProduct : undefined}
+                      showActions={true}
+                    />
+                  ))}
+                </div>
+
+                {/* Pagination */}
+                <ProductPagination
+                  currentPage={currentPage}
+                  totalPages={Math.ceil(totalProducts / itemsPerPage)}
+                  itemsPerPage={itemsPerPage}
+                  totalItems={totalProducts}
+                  onPageChange={handlePageChange}
+                  onItemsPerPageChange={handleItemsPerPageChange}
+                />
+              </>
             )}
           </CardContent>
-        </Card>
-
-        <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-          <DialogContent className="sm:max-w-md w-[95vw]">
-            <DialogHeader>
-              <DialogTitle>Détails du produit</DialogTitle>
-              <DialogDescription>Informations détaillées sur le produit</DialogDescription>
-            </DialogHeader>
-            {viewingProduct && (
-              <div className="grid gap-4 py-4">
-                <div>
-                  <h3 className="font-medium">Nom</h3>
-                  <p>{viewingProduct.name}</p>
-                </div>
-                <div>
-                  <h3 className="font-medium">Description</h3>
-                  <p>{viewingProduct.description}</p>
-                </div>
-                <div>
-                  <h3 className="font-medium">Ingrédients</h3>
-                  <ul className="list-disc pl-5">
-                    {viewingProduct.ingredients.map((ingredient, index) => (
-                      <li key={index}>{ingredient}</li>
-                    ))}
-                  </ul>
-                </div>
-                <div>
-                  <h3 className="font-medium">Prix unitaire</h3>
-                  <p>{formatPrice(viewingProduct.unitPrice)}</p>
-                </div>
-              </div>
-            )}
-          </DialogContent>
-        </Dialog>
+        </Card>        {/* Product Modal */}
+        <ProductModal
+          isOpen={isModalOpen}
+          onClose={handleModalClose}
+          product={selectedProduct}
+          mode={modalMode}
+          onSave={handleProductSaved}
+        />
       </div>
     </DashboardLayout>
   )
