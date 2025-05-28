@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { DashboardLayout } from "@/components/layout/dashboard-layout"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import {
   Dialog,
   DialogContent,
@@ -17,8 +17,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
-import { Eye, Filter, Minus, Plus, Search, ShoppingCart, Trash, Loader2, Calendar } from "lucide-react"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Eye, Filter, Minus, Plus, Search, ShoppingCart, Trash, Loader2, Calendar, Menu } from "lucide-react"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { format } from "date-fns"
 import { fr } from "date-fns/locale"
@@ -26,6 +26,7 @@ import { Calendar as CalendarComponent } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { StatusBadge } from "./status-badge"
 import { StatusActions } from "./status-actions"
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 
 // Define types
 interface Product {
@@ -434,101 +435,145 @@ export default function BakeryOrdersPage() {
     }).format(price)
   }
 
-  // Get status badge
-  // const getStatusBadge = (status: string) => {
-  //   switch (status) {
-  //     case "PENDING":
-  //       return (
-  //         <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
-  //           En attente
-  //         </Badge>
-  //       )
-  //     case "IN_PROGRESS":
-  //       return <Badge variant="secondary">En préparation</Badge>
-  //     case "READY_FOR_DELIVERY":
-  //       return (
-  //         <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-  //           Prêt à livrer
-  //         </Badge>
-  //       )
-  //     case "DELIVERING":
-  //       return (
-  //         <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
-  //           En livraison
-  //         </Badge>
-  //       )
-  //     case "DELIVERED":
-  //       return (
-  //         <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-  //           Livré
-  //         </Badge>
-  //       )
-  //     case "CANCELLED":
-  //       return (
-  //         <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
-  //           Annulé
-  //         </Badge>
-  //       )
-  //     default:
-  //       return <Badge variant="outline">{status}</Badge>
-  //   }
-  // }
+  // Mobile tabs component
+  const MobileTabs = () => (
+    <Sheet>
+      <SheetTrigger asChild>
+        <Button variant="outline" size="sm" className="md:hidden">
+          <Menu className="h-4 w-4 mr-2" />
+          Filtres
+        </Button>
+      </SheetTrigger>
+      <SheetContent side="left" className="w-[280px]">
+        <div className="space-y-4 mt-6">
+          <h3 className="font-medium">Filtrer par statut</h3>
+          <div className="space-y-2">
+            {[
+              { value: "all", label: "Toutes les commandes" },
+              { value: "pending", label: "En attente" },
+              { value: "in_progress", label: "En préparation" },
+              { value: "ready", label: "Prêt à livrer" },
+              { value: "delivering", label: "En livraison" },
+              { value: "delivered", label: "Livré" },
+              { value: "cancelled", label: "Annulé" },
+            ].map((tab) => (
+              <Button
+                key={tab.value}
+                variant={activeTab === tab.value ? "default" : "ghost"}
+                className="w-full justify-start"
+                onClick={() => setActiveTab(tab.value)}
+              >
+                {tab.label}
+              </Button>
+            ))}
+          </div>
+        </div>
+      </SheetContent>
+    </Sheet>
+  )
+
+  // Order card component for better mobile layout
+  const OrderCard = ({ order }: { order: Order }) => (
+    <Card className="w-full">
+      <CardContent className="p-4">
+        <div className="space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div className="space-y-1">
+              <div className="font-medium text-sm sm:text-base">{order.orderReferenceId}</div>
+              <div className="text-xs sm:text-sm text-muted-foreground">{order.bakeryName}</div>
+              <div className="text-xs text-muted-foreground">{formatDate(order.createdAt || order.scheduledDate)}</div>
+            </div>
+            <div className="flex items-center gap-2">
+              <StatusBadge status={order.status} />
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div className="font-bold text-lg">
+              {formatPrice(order.products.reduce((total, product) => total + product.totalPrice, 0))}
+            </div>
+            <div className="flex gap-2">
+              <StatusActions
+                status={order.status}
+                orderId={order._id || order.orderId}
+                onStatusChange={updateOrderStatus}
+                disabled={isLoading}
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setViewingOrder(order)
+                  setIsViewDialogOpen(true)
+                }}
+              >
+                <Eye className="h-4 w-4 mr-1" />
+                <span className="hidden sm:inline">Voir</span>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  )
 
   return (
     <DashboardLayout role="bakery">
-      <div className="flex flex-col gap-4">
-        <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 p-4 sm:p-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Commandes</h1>
-            <p className="text-muted-foreground">Gérez vos commandes de produits</p>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Commandes</h1>
+            <p className="text-muted-foreground text-sm sm:text-base">Gérez vos commandes de produits</p>
           </div>
           <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
             <DialogTrigger asChild>
-              <Button>
-                <Plus className="mr-2 h-4 w-4" /> Nouvelle commande
+              <Button className="w-full sm:w-auto">
+                <Plus className="mr-2 h-4 w-4" />
+                <span className="sm:inline">Nouvelle commande</span>
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-3xl w-[95vw] max-h-[90vh] overflow-y-auto">
+            <DialogContent className="w-[95vw] max-w-3xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Créer une nouvelle commande</DialogTitle>
                 <DialogDescription>Ajoutez des produits à votre commande</DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
-                {/* Bakery Selection */}
-                <div className="grid gap-2">
-                  <Label htmlFor="bakery">Boulangerie</Label>
-                  <Select value={bakeryName} onValueChange={setBakeryName}>
-                    <SelectTrigger id="bakery">
-                      <SelectValue placeholder="Sélectionnez une boulangerie" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {bakeries.map((bakery) => (
-                        <SelectItem key={bakery.id} value={bakery.name}>
-                          {bakery.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                {/* Form fields with better mobile layout */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="bakery">Boulangerie</Label>
+                    <Select value={bakeryName} onValueChange={setBakeryName}>
+                      <SelectTrigger id="bakery">
+                        <SelectValue placeholder="Sélectionnez une boulangerie" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {bakeries.map((bakery) => (
+                          <SelectItem key={bakery.id} value={bakery.name}>
+                            {bakery.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label htmlFor="deliveryUser">Livreur</Label>
+                    <Select value={deliveryUserId} onValueChange={setDeliveryUserId}>
+                      <SelectTrigger id="deliveryUser">
+                        <SelectValue placeholder="Sélectionnez un livreur" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {deliveryUsers.map((user) => (
+                          <SelectItem key={user.id} value={user.id}>
+                            {user.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
-                {/* Delivery User Selection */}
-                <div className="grid gap-2">
-                  <Label htmlFor="deliveryUser">Livreur</Label>
-                  <Select value={deliveryUserId} onValueChange={setDeliveryUserId}>
-                    <SelectTrigger id="deliveryUser">
-                      <SelectValue placeholder="Sélectionnez un livreur" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {deliveryUsers.map((user) => (
-                        <SelectItem key={user.id} value={user.id}>
-                          {user.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Scheduled Date */}
                 <div className="grid gap-2">
                   <Label htmlFor="scheduledDate">Date de livraison prévue</Label>
                   <Popover>
@@ -546,7 +591,7 @@ export default function BakeryOrdersPage() {
                         )}
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
+                    <PopoverContent className="w-auto p-0" align="start">
                       <CalendarComponent
                         mode="single"
                         selected={scheduledDate}
@@ -557,7 +602,6 @@ export default function BakeryOrdersPage() {
                   </Popover>
                 </div>
 
-                {/* Delivery Address */}
                 <div className="grid gap-2">
                   <Label htmlFor="address">Adresse de livraison</Label>
                   <Input
@@ -568,11 +612,11 @@ export default function BakeryOrdersPage() {
                   />
                 </div>
 
-                {/* Product Selection */}
+                {/* Product selection with mobile-friendly layout */}
                 <div className="grid gap-2">
                   <Label>Produits</Label>
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <Select value={selectedProduct} onValueChange={setSelectedProduct} className="w-full">
+                  <div className="flex flex-col gap-2">
+                    <Select value={selectedProduct} onValueChange={setSelectedProduct}>
                       <SelectTrigger>
                         <SelectValue placeholder="Sélectionnez un produit" />
                       </SelectTrigger>
@@ -588,61 +632,60 @@ export default function BakeryOrdersPage() {
                       variant="outline"
                       onClick={() => addProductToOrder(selectedProduct)}
                       disabled={!selectedProduct}
-                      className="mt-1 sm:mt-0"
+                      className="w-full"
                     >
-                      <Plus className="h-4 w-4 mr-1" />
-                      <span>Ajouter</span>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Ajouter
                     </Button>
                   </div>
                 </div>
 
+                {/* Order products with mobile-optimized layout */}
                 {orderProducts.length > 0 && (
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     {orderProducts.map((item, index) => (
-                      <div key={index} className="border rounded-md p-3 space-y-2">
-                        <div className="flex justify-between items-start">
-                          <div className="font-medium">{item.productName}</div>
-                          <Button variant="ghost" size="icon" onClick={() => removeItem(index)}>
-                            <Trash className="h-4 w-4" />
-                            <span className="sr-only">Supprimer</span>
-                          </Button>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <div className="text-sm text-muted-foreground">
+                      <Card key={index} className="p-3">
+                        <div className="space-y-3">
+                          <div className="flex justify-between items-start">
+                            <div className="font-medium text-sm">{item.productName}</div>
+                            <Button variant="ghost" size="icon" onClick={() => removeItem(index)}>
+                              <Trash className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          <div className="text-xs text-muted-foreground">
                             Prix unitaire: {formatPrice(item.pricePerUnit)}
                           </div>
-                          <div className="flex items-center gap-1">
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={() => updateItemQuantity(index, item.quantity - 1)}
-                            >
-                              <Minus className="h-3 w-3" />
-                              <span className="sr-only">Diminuer</span>
-                            </Button>
-                            <span className="w-8 text-center">{item.quantity}</span>
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={() => updateItemQuantity(index, item.quantity + 1)}
-                            >
-                              <Plus className="h-3 w-3" />
-                              <span className="sr-only">Augmenter</span>
-                            </Button>
+                          <div className="flex justify-between items-center">
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => updateItemQuantity(index, item.quantity - 1)}
+                              >
+                                <Minus className="h-3 w-3" />
+                              </Button>
+                              <span className="w-8 text-center text-sm">{item.quantity}</span>
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => updateItemQuantity(index, item.quantity + 1)}
+                              >
+                                <Plus className="h-3 w-3" />
+                              </Button>
+                            </div>
+                            <div className="font-medium">{formatPrice(item.totalPrice)}</div>
                           </div>
                         </div>
-                        <div className="flex justify-between items-center">
-                          <div className="text-sm">Total:</div>
-                          <div className="font-medium">{formatPrice(item.totalPrice)}</div>
-                        </div>
-                      </div>
+                      </Card>
                     ))}
-                    <div className="flex justify-between items-center p-3 border rounded-md bg-muted/50">
-                      <div className="font-medium">Total commande</div>
-                      <div className="font-bold">{formatPrice(calculateTotalPrice())}</div>
-                    </div>
+                    <Card className="p-3 bg-muted/50">
+                      <div className="flex justify-between items-center">
+                        <div className="font-medium">Total commande</div>
+                        <div className="font-bold">{formatPrice(calculateTotalPrice())}</div>
+                      </div>
+                    </Card>
                   </div>
                 )}
 
@@ -653,11 +696,12 @@ export default function BakeryOrdersPage() {
                     placeholder="Instructions spéciales pour la commande..."
                     value={orderNotes}
                     onChange={(e) => setOrderNotes(e.target.value)}
+                    className="min-h-[80px]"
                   />
                 </div>
               </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+              <DialogFooter className="flex flex-col sm:flex-row gap-2">
+                <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)} className="w-full sm:w-auto">
                   Annuler
                 </Button>
                 <Button
@@ -670,6 +714,7 @@ export default function BakeryOrdersPage() {
                     !scheduledDate ||
                     !address
                   }
+                  className="w-full sm:w-auto"
                 >
                   {isSubmitting ? (
                     <>
@@ -688,287 +733,174 @@ export default function BakeryOrdersPage() {
           </Dialog>
         </div>
 
-        <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid grid-cols-3 md:grid-cols-7 mb-4">
-            <TabsTrigger value="all">Tous</TabsTrigger>
-            <TabsTrigger value="pending">En attente</TabsTrigger>
-            <TabsTrigger value="in_progress">En préparation</TabsTrigger>
-            <TabsTrigger value="ready">Prêt à livrer</TabsTrigger>
-            <TabsTrigger value="delivering">En livraison</TabsTrigger>
-            <TabsTrigger value="delivered">Livré</TabsTrigger>
-            <TabsTrigger value="cancelled">Annulé</TabsTrigger>
-          </TabsList>
+        {/* Mobile and Desktop Tabs */}
+        <div className="space-y-4">
+          {/* Mobile filter button */}
+          <div className="flex items-center gap-2 md:hidden">
+            <MobileTabs />
+            <div className="text-sm text-muted-foreground">
+              {filteredOrders.length} commande{filteredOrders.length !== 1 ? "s" : ""}
+            </div>
+          </div>
 
-          <TabsContent value="all" className="space-y-4">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle>Liste des commandes</CardTitle>
-                <CardDescription>
-                  {isLoading ? "Chargement des commandes..." : `${filteredOrders.length} commandes trouvées`}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="mb-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
-                  <div className="flex items-center gap-2 w-full">
-                    <Search className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                    <Input
-                      placeholder="Rechercher une commande..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-full"
-                    />
-                  </div>
-                  <div className="flex items-center gap-2 w-full sm:w-auto mt-2 sm:mt-0">
-                    <Filter className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                    <Select value={statusFilter} onValueChange={setStatusFilter}>
-                      <SelectTrigger className="w-full sm:w-[180px]">
-                        <SelectValue placeholder="Filtrer par statut" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Tous les statuts</SelectItem>
-                        <SelectItem value="PENDING">En attente</SelectItem>
-                        <SelectItem value="IN_PROGRESS">En préparation</SelectItem>
-                        <SelectItem value="READY_FOR_DELIVERY">Prêt à livrer</SelectItem>
-                        <SelectItem value="DELIVERING">En livraison</SelectItem>
-                        <SelectItem value="DELIVERED">Livré</SelectItem>
-                        <SelectItem value="CANCELLED">Annulé</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+          {/* Desktop tabs */}
+          <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="hidden md:block">
+            <TabsList className="grid w-full grid-cols-7">
+              <TabsTrigger value="all">Toutes</TabsTrigger>
+              <TabsTrigger value="pending">En attente</TabsTrigger>
+              <TabsTrigger value="in_progress">En préparation</TabsTrigger>
+              <TabsTrigger value="ready">Prêt</TabsTrigger>
+              <TabsTrigger value="delivering">En livraison</TabsTrigger>
+              <TabsTrigger value="delivered">Livré</TabsTrigger>
+              <TabsTrigger value="cancelled">Annulé</TabsTrigger>
+            </TabsList>
+          </Tabs>
+
+          {/* Search and filter */}
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex items-center gap-2 flex-1">
+                  <Search className="h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Rechercher une commande..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="flex-1"
+                  />
                 </div>
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <Filter className="h-4 w-4 text-muted-foreground" />
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="w-full sm:w-[180px]">
+                      <SelectValue placeholder="Filtrer par statut" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tous les statuts</SelectItem>
+                      <SelectItem value="PENDING">En attente</SelectItem>
+                      <SelectItem value="IN_PROGRESS">En préparation</SelectItem>
+                      <SelectItem value="READY_FOR_DELIVERY">Prêt à livrer</SelectItem>
+                      <SelectItem value="DELIVERING">En livraison</SelectItem>
+                      <SelectItem value="DELIVERED">Livré</SelectItem>
+                      <SelectItem value="CANCELLED">Annulé</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="flex justify-center items-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <span className="ml-2 text-sm sm:text-lg">Chargement des commandes...</span>
+                </div>
+              ) : error ? (
+                <div className="text-center py-8 border rounded-md text-red-500">
+                  <p className="text-sm sm:text-base">{error}</p>
+                  <Button variant="outline" className="mt-4" onClick={() => window.location.reload()}>
+                    Réessayer
+                  </Button>
+                </div>
+              ) : filteredOrders.length === 0 ? (
+                <div className="text-center py-8 border rounded-md text-sm sm:text-base">Aucune commande trouvée</div>
+              ) : (
+                <div className="space-y-3">
+                  {filteredOrders.map((order) => (
+                    <OrderCard key={order._id || order.orderId} order={order} />
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
 
-                {isLoading ? (
-                  <div className="flex justify-center items-center py-12">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                    <span className="ml-2 text-lg">Chargement des commandes...</span>
-                  </div>
-                ) : error ? (
-                  <div className="text-center py-8 border rounded-md text-red-500">
-                    <p>{error}</p>
-                    <Button variant="outline" className="mt-4" onClick={() => window.location.reload()}>
-                      Réessayer
-                    </Button>
-                  </div>
-                ) : filteredOrders.length === 0 ? (
-                  <div className="text-center py-8 border rounded-md">Aucune commande trouvée</div>
-                ) : (
-                  <div className="grid grid-cols-1 gap-4">
-                    {filteredOrders.map((order) => (
-                      <div key={order._id || order.orderId} className="border rounded-md p-4 space-y-3">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <div className="font-medium">{order.orderReferenceId}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {order.bakeryName} • {formatDate(order.createdAt || order.scheduledDate)}
-                            </div>
-                          </div>
-                          <StatusActions
-                            status={order.status}
-                            orderId={order._id || order.orderId}
-                            onStatusChange={updateOrderStatus}
-                            disabled={isLoading}
-                          />
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <div className="font-bold">
-                            {formatPrice(order.products.reduce((total, product) => total + product.totalPrice, 0))}
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setViewingOrder(order)
-                              setIsViewDialogOpen(true)
-                            }}
-                          >
-                            <Eye className="h-4 w-4 mr-1" />
-                            Voir
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Other tabs will show the same content but filtered by status */}
-          <TabsContent value="pending" className="space-y-4">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle>Commandes en attente</CardTitle>
-                <CardDescription>
-                  {isLoading ? "Chargement des commandes..." : `${filteredOrders.length} commandes trouvées`}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {/* Same content as above */}
-                {isLoading ? (
-                  <div className="flex justify-center items-center py-12">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                    <span className="ml-2 text-lg">Chargement des commandes...</span>
-                  </div>
-                ) : error ? (
-                  <div className="text-center py-8 border rounded-md text-red-500">
-                    <p>{error}</p>
-                    <Button variant="outline" className="mt-4" onClick={() => window.location.reload()}>
-                      Réessayer
-                    </Button>
-                  </div>
-                ) : filteredOrders.length === 0 ? (
-                  <div className="text-center py-8 border rounded-md">Aucune commande trouvée</div>
-                ) : (
-                  <div className="grid grid-cols-1 gap-4">
-                    {filteredOrders.map((order) => (
-                      <div key={order._id || order.orderId} className="border rounded-md p-4 space-y-3">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <div className="font-medium">{order.orderReferenceId}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {order.bakeryName} • {formatDate(order.createdAt || order.scheduledDate)}
-                            </div>
-                          </div>
-                          <StatusActions
-                            status={order.status}
-                            orderId={order._id || order.orderId}
-                            onStatusChange={updateOrderStatus}
-                            disabled={isLoading}
-                          />
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <div className="font-bold">
-                            {formatPrice(order.products.reduce((total, product) => total + product.totalPrice, 0))}
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setViewingOrder(order)
-                              setIsViewDialogOpen(true)
-                            }}
-                          >
-                            <Eye className="h-4 w-4 mr-1" />
-                            Voir
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Similar content for other tabs */}
-          <TabsContent value="in_progress" className="space-y-4">
-            {/* Similar content as above */}
-          </TabsContent>
-          <TabsContent value="ready" className="space-y-4">
-            {/* Similar content as above */}
-          </TabsContent>
-          <TabsContent value="delivering" className="space-y-4">
-            {/* Similar content as above */}
-          </TabsContent>
-          <TabsContent value="delivered" className="space-y-4">
-            {/* Similar content as above */}
-          </TabsContent>
-          <TabsContent value="cancelled" className="space-y-4">
-            {/* Similar content as above */}
-          </TabsContent>
-        </Tabs>
-
+        {/* View Order Dialog */}
         <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-          <DialogContent className="sm:max-w-3xl w-[95vw] max-h-[90vh] overflow-y-auto">
+          <DialogContent className="w-[95vw] max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Détails de la commande</DialogTitle>
             </DialogHeader>
             {viewingOrder && (
               <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <h3 className="font-medium">Informations générales</h3>
-                    <div className="mt-2 space-y-2">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Référence:</span>
-                        <span>{viewingOrder.orderReferenceId}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Boulangerie:</span>
-                        <span>{viewingOrder.bakeryName}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Livreur:</span>
-                        <span>{viewingOrder.deliveryUserName}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Date prévue:</span>
-                        <span>{formatDate(viewingOrder.scheduledDate)}</span>
-                      </div>
-                      {viewingOrder.actualDeliveryDate && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="font-medium mb-2">Informations générales</h3>
+                      <div className="space-y-2 text-sm">
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Date de livraison:</span>
-                          <span>{formatDate(viewingOrder.actualDeliveryDate)}</span>
+                          <span className="text-muted-foreground">Référence:</span>
+                          <span className="font-medium">{viewingOrder.orderReferenceId}</span>
                         </div>
-                      )}
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Statut:</span>
-                        <div className="flex items-center gap-2">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Boulangerie:</span>
+                          <span>{viewingOrder.bakeryName}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Livreur:</span>
+                          <span>{viewingOrder.deliveryUserName}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Date prévue:</span>
+                          <span>{formatDate(viewingOrder.scheduledDate)}</span>
+                        </div>
+                        {viewingOrder.actualDeliveryDate && (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Date de livraison:</span>
+                            <span>{formatDate(viewingOrder.actualDeliveryDate)}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between items-center">
+                          <span className="text-muted-foreground">Statut:</span>
                           <StatusBadge status={viewingOrder.status} />
-                          {viewingOrder.status !== "DELIVERED" && viewingOrder.status !== "CANCELLED" && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                const nextStatus = getNextStatus(viewingOrder.status)
-                                if (nextStatus) {
-                                  updateOrderStatus(viewingOrder._id || viewingOrder.orderId, nextStatus)
-                                }
-                              }}
-                              disabled={isLoading}
-                            >
-                              {getNextStatusLabel(viewingOrder.status)}
-                            </Button>
-                          )}
                         </div>
                       </div>
                     </div>
                   </div>
-                  <div>
-                    <h3 className="font-medium">Adresse de livraison</h3>
-                    <p className="mt-2 text-sm">{viewingOrder.address}</p>
 
-                    <h3 className="font-medium mt-4">Notes</h3>
-                    <p className="mt-2 text-sm">{viewingOrder.notes || "Aucune note"}</p>
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="font-medium mb-2">Adresse de livraison</h3>
+                      <p className="text-sm bg-muted p-3 rounded-md">{viewingOrder.address}</p>
+                    </div>
+
+                    <div>
+                      <h3 className="font-medium mb-2">Notes</h3>
+                      <p className="text-sm bg-muted p-3 rounded-md">{viewingOrder.notes || "Aucune note"}</p>
+                    </div>
                   </div>
                 </div>
+
                 <div>
-                  <h3 className="font-medium mb-2">Produits commandés</h3>
-                  <div className="space-y-3">
+                  <h3 className="font-medium mb-3">Produits commandés</h3>
+                  <div className="space-y-2">
                     {viewingOrder.products.map((product, index) => (
-                      <div key={index} className="border rounded-md p-3 space-y-2">
-                        <div className="font-medium">{product.productName}</div>
+                      <Card key={index} className="p-3">
                         <div className="flex justify-between items-center">
-                          <div className="text-sm text-muted-foreground">
-                            {product.quantity} × {formatPrice(product.pricePerUnit)}
+                          <div>
+                            <div className="font-medium text-sm">{product.productName}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {product.quantity} × {formatPrice(product.pricePerUnit)}
+                            </div>
                           </div>
                           <div className="font-medium">{formatPrice(product.totalPrice)}</div>
                         </div>
-                      </div>
+                      </Card>
                     ))}
-                    <div className="flex justify-between items-center p-3 border rounded-md bg-muted/50">
-                      <div className="font-medium">Total commande</div>
-                      <div className="font-bold">
-                        {formatPrice(viewingOrder.products.reduce((total, product) => total + product.totalPrice, 0))}
+                    <Card className="p-3 bg-muted/50">
+                      <div className="flex justify-between items-center">
+                        <div className="font-medium">Total commande</div>
+                        <div className="font-bold text-lg">
+                          {formatPrice(viewingOrder.products.reduce((total, product) => total + product.totalPrice, 0))}
+                        </div>
                       </div>
-                    </div>
+                    </Card>
                   </div>
                 </div>
               </div>
             )}
-            <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:gap-0 items-stretch sm:items-center">
-              <div className="flex-1 flex flex-col sm:flex-row gap-2 items-start">
-                <Label htmlFor="status-update" className="mt-2 sm:mt-0">
+            <DialogFooter className="flex flex-col sm:flex-row gap-2">
+              <div className="flex flex-col sm:flex-row gap-2 flex-1">
+                <Label htmlFor="status-update" className="text-sm font-medium mt-2 sm:mt-0 sm:mr-2">
                   Mettre à jour le statut:
                 </Label>
                 <Select
@@ -991,7 +923,9 @@ export default function BakeryOrdersPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <Button onClick={() => setIsViewDialogOpen(false)}>Fermer</Button>
+              <Button onClick={() => setIsViewDialogOpen(false)} className="w-full sm:w-auto">
+                Fermer
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

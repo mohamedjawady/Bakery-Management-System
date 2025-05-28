@@ -5,7 +5,7 @@ import { DashboardLayout } from "@/components/layout/dashboard-layout"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useToast } from "@/hooks/use-toast"
-import { Plus, Loader2 } from "lucide-react"
+import { Plus, Loader2 } from 'lucide-react'
 
 // Import our new components and types
 import { ProductCard } from "@/components/products/product-card"
@@ -168,19 +168,19 @@ export default function BakeryProductsPage() {
   }
   return (
     <DashboardLayout role="bakery">
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-4 sm:gap-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Catalogue de produits</h1>
-            <p className="text-muted-foreground">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex-1">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Catalogue de produits</h1>
+            <p className="text-muted-foreground text-sm sm:text-base">
               Consultez et gérez les produits de la boulangerie
             </p>
           </div>
           {canEdit && (
-            <Button onClick={handleCreateProduct}>
+            <Button onClick={handleCreateProduct} className="w-full sm:w-auto">
               <Plus className="h-4 w-4 mr-2" />
-              Nouveau produit
+              <span className="sm:inline">Nouveau produit</span>
             </Button>
           )}
         </div>        {/* Filters */}
@@ -192,28 +192,28 @@ export default function BakeryProductsPage() {
 
         {/* Products Content */}
         <Card>
-          <CardHeader className="pb-4">
+          <CardHeader className="pb-3 sm:pb-4 px-4 sm:px-6">
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle>Produits disponibles</CardTitle>
-                <CardDescription>
+                <CardTitle className="text-lg sm:text-xl">Produits disponibles</CardTitle>
+                <CardDescription className="text-sm sm:text-base">
                   {loading ? "Chargement..." : `${totalProducts} produit${totalProducts !== 1 ? 's' : ''} trouvé${totalProducts !== 1 ? 's' : ''}`}
                 </CardDescription>
               </div>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-4 sm:px-6">
             {/* Loading State */}
             {loading && (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin" />
-                <span className="ml-2">Chargement des produits...</span>
+              <div className="flex flex-col sm:flex-row items-center justify-center py-8 sm:py-12 gap-2 sm:gap-0">
+                <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin" />
+                <span className="sm:ml-2 text-sm sm:text-base">Chargement des produits...</span>
               </div>
             )}
 
             {/* Error State */}
             {error && !loading && (
-              <div className="text-center py-8 border rounded-md">
+              <div className="text-center py-6 sm:py-8 border rounded-md px-4">
                 <p className="text-destructive">{error}</p>
                 <Button 
                   variant="outline" 
@@ -227,7 +227,7 @@ export default function BakeryProductsPage() {
 
             {/* No Products State */}
             {!loading && !error && products.length === 0 && (
-              <div className="text-center py-8 border rounded-md">
+              <div className="text-center py-6 sm:py-8 border rounded-md px-4">
                 <p>Aucun produit trouvé</p>
                 {canEdit && (
                   <Button 
@@ -245,7 +245,7 @@ export default function BakeryProductsPage() {
             {/* Products Grid */}
             {!loading && !error && products.length > 0 && (
               <>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
                   {products.map((product) => (                    <ProductCard
                       key={product._id}
                       product={product}
