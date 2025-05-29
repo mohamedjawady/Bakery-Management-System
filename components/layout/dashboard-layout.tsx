@@ -19,7 +19,7 @@ import "@/styles/sidebar-hover-patch.css";
 import "@/styles/sidebar-hover-ultimate.css";
 import "@/styles/sidebar-hover-fix.css";
 import "@/styles/sidebar-administrateur-fix.css";
-import { 
+import {
   Bell,
   ChevronLeft,
   ChevronRight,
@@ -344,79 +344,103 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
         {/* Mobile sidebar */}
         {isMobile && (
           <>
-            <Sheet open={open} onOpenChange={setOpen}>
-              <SheetTrigger asChild>
-                <Button variant="outline" size="icon" className="mobile-menu-trigger md:hidden">
-                  <Menu className="h-5 w-5 text-foreground" />
-                  <span className="sr-only">Toggle Menu</span>
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="left" className="w-[280px] sm:w-[320px] p-0 border-r sidebar-sheet [&>button]:hidden">
-                <nav className="mobile-nav-wrapper" aria-label="Mobile navigation">
-                  <div className="mobile-nav-header">
-                    <div className="flex items-center">
-                      <Croissant className="h-5 w-5 sidebar-logo mr-3" />
-                      <span className="text-base font-medium">{roleLabels[role]}</span>                    </div>
-                    <Button variant="ghost" size="sm" onClick={() => setOpen(false)} className="sidebar-close-button">
-                      <X className="h-5 w-5" />
-                      <span className="sr-only">Close</span>
+            {/* NEW: Wrapper for Mobile Top Bar AND Main Content */}
+            <div className="flex-1 flex flex-col">
+
+              {/* Mobile Experience: Top Bar with Trigger + Sidebar Sheet */}
+              <Sheet open={open} onOpenChange={setOpen}>
+                {/* Mobile Top Bar */}
+                <div className="bg-background border-b p-3 flex items-center shadow-sm md:hidden h-14">
+                  <SheetTrigger asChild>
+                    <Button variant="ghost" size="icon" className="mr-3">
+                      <Menu className="h-6 w-6 text-foreground" />
+                      <span className="sr-only">Toggle Menu</span>
                     </Button>
+                  </SheetTrigger>
+                  <h1 className="text-lg font-semibold">{roleLabels[role]}</h1>
+                </div>
+
+                {/* Mobile Sidebar Content */}
+                <SheetContent side="left" className="w-[280px] sm:w-[320px] p-0 border-r sidebar-sheet [&>button]:hidden">
+                  {/* Content from original mobile nav structure */}
+                  <nav className="mobile-nav-wrapper" aria-label="Mobile navigation">
+                    <div className="mobile-nav-header">
+                      <div className="flex items-center">
+                        <Croissant className="h-5 w-5 sidebar-logo mr-3" />
+                        <span className="text-base font-medium">{roleLabels[role]}</span>
+                      </div>
+                      <Button variant="ghost" size="sm" onClick={() => setOpen(false)} className="sidebar-close-button">
+                        <X className="h-5 w-5" />
+                        <span className="sr-only">Close</span>
+                      </Button>
+                    </div>
+                    <div className="p-4 space-y-2">
+                      {navItems.map((item) => {
+                        const Icon = item.icon;
+                        const isActive = pathname === item.href;
+                        return (
+                          <Button
+                            key={item.href}
+                            variant={isActive ? "secondary" : "ghost"}
+                            className="w-full justify-start sidebar-nav-link"
+                            asChild
+                          >
+                            <Link href={item.href} className="flex items-center" onClick={() => setOpen(false)}>
+                              <Icon className="mr-3 h-5 w-5 sidebar-nav-icon" />
+                              <span>{item.label}</span>
+                            </Link>
+                          </Button>
+                        );
+                      })}
+                    </div>
+                    <div className="mt-auto p-4 border-t space-y-2">
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start sidebar-nav-link theme-toggle-mobile"
+                        onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                      >
+                        {theme === "dark" ? (
+                          <>
+                            <Sun className="mr-3 h-5 w-5 sidebar-nav-icon theme-icon" />
+                            <span>Mode clair</span>
+                          </>
+                        ) : (
+                          <>
+                            <Moon className="mr-3 h-5 w-5 sidebar-nav-icon theme-icon" />
+                            <span>Mode sombre</span>
+                          </>
+                        )}
+                      </Button>
+                      <Button variant="ghost" className="w-full justify-start sidebar-nav-link" onClick={handleLogout}>
+                        <LogOut className="mr-3 h-5 w-5 sidebar-nav-icon" />
+                        <span>Déconnexion</span>
+                      </Button>
+                    </div>
+                  </nav>
+                </SheetContent>
+              </Sheet>
+
+              {/* Main content for MOBILE, now correctly placed under the top bar */}
+              <main className="flex-1 py-4 overflow-y-auto px-4 md:px-6">
+                <div className="prevent-overlap transition-all duration-300">
+                  <div className="max-w-full">
+                    {children}
                   </div>
-                  <div className="p-4 space-y-2">
-                    {navItems.map((item) => {
-                      const Icon = item.icon;
-                      const isActive = pathname === item.href;
-                      return (
-                        <Button
-                          key={item.href}
-                          variant={isActive ? "secondary" : "ghost"}
-                          className="w-full justify-start sidebar-nav-link"
-                          asChild
-                        >
-                          <Link href={item.href} className="flex items-center" onClick={() => setOpen(false)}>
-                            <Icon className="mr-3 h-5 w-5 sidebar-nav-icon" />
-                            <span>{item.label}</span>
-                          </Link>
-                        </Button>
-                      );
-                    })}
-                  </div>
-                  <div className="mt-auto p-4 border-t space-y-2">
-                    <Button 
-                      variant="outline" 
-                      className="w-full justify-start sidebar-nav-link theme-toggle-mobile"
-                      onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                    >
-                      {theme === "dark" ? (
-                        <>
-                          <Sun className="mr-3 h-5 w-5 sidebar-nav-icon theme-icon" />
-                          <span>Mode clair</span>
-                        </>
-                      ) : (
-                        <>
-                          <Moon className="mr-3 h-5 w-5 sidebar-nav-icon theme-icon" />
-                          <span>Mode sombre</span>
-                        </>
-                      )}
-                    </Button>
-                    <Button variant="ghost" className="w-full justify-start sidebar-nav-link" onClick={handleLogout}>
-                      <LogOut className="mr-3 h-5 w-5 sidebar-nav-icon" />
-                      <span>Déconnexion</span>
-                    </Button>
-                  </div>
-                </nav>
-              </SheetContent>
-            </Sheet>          </>
-        )}
-        {/* Main content with responsive margin based on sidebar state */}        <main className={`flex-1 py-4 transition-all duration-300 overflow-y-auto ${
-          !isMobile ? 'content-with-hover-sidebar px-4 md:px-6' : 'px-4 md:px-6'
-        }`}>
-          <div className="prevent-overlap transition-all duration-300">
-            <div className="max-w-full">
-              {children}
+                </div>
+              </main>
             </div>
-          </div>
-        </main>
+          </>
+        )}
+        {/* Main content for DESKTOP ONLY */}
+        {!isMobile && (
+          <main className={`flex-1 py-4 transition-all duration-300 overflow-y-auto content-with-hover-sidebar px-4 md:px-6`}>
+            <div className="prevent-overlap transition-all duration-300">
+              <div className="max-w-full">
+                {children}
+              </div>
+            </div>
+          </main>
+        )}
       </div>
     </div>
   );
