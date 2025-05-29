@@ -351,7 +351,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
                   <span className="sr-only">Toggle Menu</span>
                 </Button>
               </SheetTrigger>
-              <SheetContent side="left" className="w-[280px] sm:w-[320px] p-0 border-r sidebar-sheet">
+              <SheetContent side="left" className="w-[280px] sm:w-[320px] p-0 border-r sidebar-sheet [&>button]:hidden">
                 <nav className="mobile-nav-wrapper" aria-label="Mobile navigation">
                   <div className="mobile-nav-header">
                     <div className="flex items-center">
