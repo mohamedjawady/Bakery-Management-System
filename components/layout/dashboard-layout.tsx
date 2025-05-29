@@ -205,7 +205,9 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
     bakery: "Boulangerie",
     laboratory: "Laboratoire",
     delivery: "Livraison",
-  };  return (    <div className="flex min-h-screen flex-col">
+  };
+  return (
+    <div className="flex min-h-screen flex-col">
       {/* Main content area with sidebar */}
       <div className="flex flex-1 relative min-h-screen">
         {/* Responsive hover-expandable sidebar for desktop */}
@@ -267,70 +269,84 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
-                  {/* Bottom utility buttons */}
-                <div className="flex flex-row gap-2 items-center justify-start mt-3 px-2">
+                {/* Utility buttons are now direct children of the above div */}
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="ghost" className="w-full h-9 sidebar-nav-item relative">
+                        <span className="relative flex items-center">
+                          <Bell className="h-4 w-4 sidebar-icon" />
+                          <span className="absolute top-0 right-0 h-1.5 w-1.5 rounded-full bg-red-600 transform translate-x-1/2 -translate-y-1/2"></span>
+                        </span>
+                        <span className="sidebar-link-text text-sm font-medium">Notifications</span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="sidebar-tooltip">
+                      Notifications
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        className="w-full h-9 sidebar-nav-item theme-toggle-button"
+                        onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                        aria-label="Toggle theme"
+                      >
+                        <Sun className="h-4 w-4 sidebar-icon sun-icon" />
+                        <Moon className="h-4 w-4 sidebar-icon moon-icon" />
+                        <span className="sidebar-link-text text-sm font-medium">
+                          {theme === "dark" ? "Mode clair" : "Mode sombre"}
+                        </span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="sidebar-tooltip">
+                      {theme === "dark" ? "Mode clair" : "Mode sombre"}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <DropdownMenu>
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button variant="ghost" size="icon" className="relative h-8 w-8">
-                          <Bell className="h-4 w-4" />
-                          <span className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-red-600"></span>                          <span className="sr-only">Notifications</span>
-                        </Button>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="w-full h-9 sidebar-nav-item">
+                            <Avatar className="h-4 w-4 sidebar-icon">
+                              <AvatarImage src="/placeholder-user.jpg" alt="User avatar" />
+                              <AvatarFallback>{user?.email?.substring(0, 2).toUpperCase() || "JD"}</AvatarFallback>
+                            </Avatar>
+                            <span className="sidebar-link-text text-sm font-medium">Mon Compte</span>
+                          </Button>
+                        </DropdownMenuTrigger>
                       </TooltipTrigger>
                       <TooltipContent side="right" className="sidebar-tooltip">
-                        Notifications
+                        Mon Compte
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-8 w-8 rounded-full theme-toggle-button"
-                          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                          aria-label="Toggle theme"
-                        >
-                          <Sun className="h-[1.2rem] w-[1.2rem] sun-icon" />                          <Moon className="h-[1.2rem] w-[1.2rem] moon-icon" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="right" className="sidebar-tooltip">
-                        {theme === "dark" ? "Mode clair" : "Mode sombre"}                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                        <Avatar className="h-7 w-7">
-                          <AvatarImage src="/placeholder-user.jpg" alt="User avatar" />
-                          <AvatarFallback>{user?.email?.substring(0, 2).toUpperCase() || "JD"}</AvatarFallback>
-                        </Avatar>
-                      </Button>
-                    </DropdownMenuTrigger>
-
-                    {/* Removed nested tooltip to fix the asChild issue */}
-                    <DropdownMenuContent align="end" className="w-56">
-                      <div className="flex items-center justify-start gap-2 p-2">
-                        <div className="flex flex-col space-y-0.5 leading-none">
-                          <p className="font-medium text-sm">{user?.email || "Jean Dupont"}</p>
-                          <p className="text-xs text-muted-foreground">{roleLabels[role]}</p>
-                        </div>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <div className="flex items-center justify-start gap-2 p-2">
+                      <div className="flex flex-col space-y-0.5 leading-none">
+                        <p className="font-medium text-sm">{user?.email || "Jean Dupont"}</p>
+                        <p className="text-xs text-muted-foreground">{roleLabels[role]}</p>
                       </div>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem asChild>
-                        <Link href={`/${role}/profile`} className="flex w-full cursor-pointer items-center">
-                          <Settings className="mr-2 h-4 w-4" />
-                          <span>Paramètres</span>
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={handleLogout}>
-                        <LogOut className="mr-2 h-4 w-4" />
-                        <span>Déconnexion</span>
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>                </div>
+                    </div>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link href={`/${role}/profile`} className="flex w-full cursor-pointer items-center">
+                        <Settings className="mr-2 h-4 w-4" />
+                        <span>Paramètres</span>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleLogout}>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      <span>Déconnexion</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
             {/* Sidebar toggle button - hidden with hover-expandable behavior */}
