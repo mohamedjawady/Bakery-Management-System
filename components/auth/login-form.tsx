@@ -15,7 +15,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { useToast } from '@/components/ui/use-toast';
+// import { useToast } from '@/components/ui/use-toast'; Removed useToast
 import { Croissant, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from 'next/link';
@@ -29,8 +29,9 @@ type UserFormValue = z.infer<typeof formSchema>;
 
 export function LoginForm() {
   const router = useRouter();
-  const { toast } = useToast();
+  // const { toast } = useToast(); Removed useToast
   const [isLoading, setIsLoading] = React.useState(false);
+  const [loginError, setLoginError] = React.useState<string | null>(null); // Added loginError state
 
   const defaultValues = {
     email: '',
@@ -44,6 +45,8 @@ export function LoginForm() {
 
   const onSubmit = async (data: UserFormValue) => {
     setIsLoading(true);
+    setLoginError(null); // Clear previous errors
+    let targetPath = "/";
     try {
       const response = await fetch('/api/users/login', {
         method: 'POST',
@@ -53,21 +56,30 @@ export function LoginForm() {
         body: JSON.stringify(data),
       });
 
-      const result = await response.json();
-
       if (!response.ok) {
-        throw new Error(result.message || 'Login failed');
+        if (response.status === 401) {
+          setLoginError('Email ou mot de passe incorrect.');
+        } else {
+          try {
+            const errorResult = await response.json();
+            setLoginError(errorResult.message || `Erreur ${response.status}: Une erreur est survenue.`);
+          } catch (e) {
+            setLoginError(`Erreur ${response.status}: Une erreur est survenue.`);
+          }
+        }
+        setIsLoading(false); // Set loading to false on error
+        return; 
       }
 
+      const result = await response.json();
       localStorage.setItem('userInfo', JSON.stringify(result));
-      toast({
-        title: 'Connexion réussie',
-        description: `Bienvenue, ${result.name}!`,
-      });
+      // toast({ // Success toast can remain or be removed based on preference, focusing on error handling now
+      //   title: 'Connexion réussie',
+      //   description: `Bienvenue, ${result.name}!`,
+      // });
 
       console.log('[Login Form] User role:', result.role);
 
-      let targetPath = "/";
       switch (result.role) {
         case "admin":
           targetPath = "/admin/dashboard";
@@ -91,21 +103,17 @@ export function LoginForm() {
         console.log(`[Login Form] Successfully initiated navigation to ${targetPath}`);
       } catch (navError: any) {
         console.error('[Login Form] Navigation error:', navError);
-        toast({
-          title: 'Erreur de redirection',
-          description: navError.message || `Impossible de naviguer vers ${targetPath}.`,
-          variant: 'destructive',
-        });
+        setLoginError(navError.message || `Impossible de naviguer vers ${targetPath}. Une erreur de redirection est survenue.`);
+        setIsLoading(false); // Set loading to false on navigation error
+        return; // Stop execution if navigation fails
       }
-    } catch (error: any) {
-      toast({
-        title: 'Erreur de connexion',
-        description: error.message || 'Une erreur est survenue lors de la connexion.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsLoading(false);
+    } catch (error: any) { 
+      setLoginError(error.message || 'Une erreur réseau ou inattendue est survenue.');
+      setIsLoading(false); // Set loading to false on catch-all error
+      return; // Stop execution on error
     }
+    // Removed finally block, setIsLoading(false) is handled in all paths including success
+    setIsLoading(false); // Ensure loading is false on successful completion before potential redirect
   };
 
   return (
@@ -120,6 +128,12 @@ export function LoginForm() {
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <CardContent className="space-y-4">
+            {loginError && (
+              <div className="mb-4 text-center text-sm text-red-600 dark:text-red-400 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-700/50 shadow-sm">
+                <p className="font-medium">Erreur de connexion</p>
+                <p>{loginError}</p>
+              </div>
+            )}
             <FormField
               control={form.control}
               name="email"
