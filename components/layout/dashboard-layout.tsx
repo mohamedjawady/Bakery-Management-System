@@ -19,7 +19,7 @@ import "@/styles/sidebar-hover-patch.css";
 import "@/styles/sidebar-hover-ultimate.css";
 import "@/styles/sidebar-hover-fix.css";
 import "@/styles/sidebar-administrateur-fix.css";
-import { 
+import {
   Bell,
   ChevronLeft,
   ChevronRight,
@@ -209,7 +209,9 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
     bakery: "Boulangerie",
     laboratory: "Laboratoire",
     delivery: "Livraison",
-  };  return (    <div className="flex min-h-screen flex-col">
+  };
+  return (
+    <div className="flex min-h-screen flex-col">
       {/* Main content area with sidebar */}
       <div className="flex flex-1 relative min-h-screen">
         {/* Responsive hover-expandable sidebar for desktop */}
@@ -271,70 +273,84 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
-                  {/* Bottom utility buttons */}
-                <div className="flex flex-row gap-2 items-center justify-start mt-3 px-2">
+                {/* Utility buttons are now direct children of the above div */}
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="ghost" className="w-full h-9 sidebar-nav-item relative">
+                        <span className="relative flex items-center">
+                          <Bell className="h-4 w-4 sidebar-icon" />
+                          <span className="absolute top-0 right-0 h-1.5 w-1.5 rounded-full bg-red-600 transform translate-x-1/2 -translate-y-1/2"></span>
+                        </span>
+                        <span className="sidebar-link-text text-sm font-medium">Notifications</span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="sidebar-tooltip">
+                      Notifications
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        className="w-full h-9 sidebar-nav-item theme-toggle-button"
+                        onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                        aria-label="Toggle theme"
+                      >
+                        <Sun className="h-4 w-4 sidebar-icon sun-icon" />
+                        <Moon className="h-4 w-4 sidebar-icon moon-icon" />
+                        <span className="sidebar-link-text text-sm font-medium">
+                          {theme === "dark" ? "Mode clair" : "Mode sombre"}
+                        </span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="sidebar-tooltip">
+                      {theme === "dark" ? "Mode clair" : "Mode sombre"}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <DropdownMenu>
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button variant="ghost" size="icon" className="relative h-8 w-8">
-                          <Bell className="h-4 w-4" />
-                          <span className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-red-600"></span>                          <span className="sr-only">Notifications</span>
-                        </Button>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="w-full h-9 sidebar-nav-item">
+                            <Avatar className="h-4 w-4 sidebar-icon">
+                              <AvatarImage src="/placeholder-user.jpg" alt="User avatar" />
+                              <AvatarFallback>{user?.email?.substring(0, 2).toUpperCase() || "JD"}</AvatarFallback>
+                            </Avatar>
+                            <span className="sidebar-link-text text-sm font-medium">Mon Compte</span>
+                          </Button>
+                        </DropdownMenuTrigger>
                       </TooltipTrigger>
                       <TooltipContent side="right" className="sidebar-tooltip">
-                        Notifications
+                        Mon Compte
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-8 w-8 rounded-full theme-toggle-button"
-                          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                          aria-label="Toggle theme"
-                        >
-                          <Sun className="h-[1.2rem] w-[1.2rem] sun-icon" />                          <Moon className="h-[1.2rem] w-[1.2rem] moon-icon" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="right" className="sidebar-tooltip">
-                        {theme === "dark" ? "Mode clair" : "Mode sombre"}                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                        <Avatar className="h-7 w-7">
-                          <AvatarImage src="/placeholder-user.jpg" alt="User avatar" />
-                          <AvatarFallback>{user?.email?.substring(0, 2).toUpperCase() || "JD"}</AvatarFallback>
-                        </Avatar>
-                      </Button>
-                    </DropdownMenuTrigger>
-
-                    {/* Removed nested tooltip to fix the asChild issue */}
-                    <DropdownMenuContent align="end" className="w-56">
-                      <div className="flex items-center justify-start gap-2 p-2">
-                        <div className="flex flex-col space-y-0.5 leading-none">
-                          <p className="font-medium text-sm">{user?.email || "Jean Dupont"}</p>
-                          <p className="text-xs text-muted-foreground">{roleLabels[role]}</p>
-                        </div>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <div className="flex items-center justify-start gap-2 p-2">
+                      <div className="flex flex-col space-y-0.5 leading-none">
+                        <p className="font-medium text-sm">{user?.email || "Jean Dupont"}</p>
+                        <p className="text-xs text-muted-foreground">{roleLabels[role]}</p>
                       </div>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem asChild>
-                        <Link href={`/${role}/profile`} className="flex w-full cursor-pointer items-center">
-                          <Settings className="mr-2 h-4 w-4" />
-                          <span>Paramètres</span>
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={handleLogout}>
-                        <LogOut className="mr-2 h-4 w-4" />
-                        <span>Déconnexion</span>
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>                </div>
+                    </div>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link href={`/${role}/profile`} className="flex w-full cursor-pointer items-center">
+                        <Settings className="mr-2 h-4 w-4" />
+                        <span>Paramètres</span>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleLogout}>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      <span>Déconnexion</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
             {/* Sidebar toggle button - hidden with hover-expandable behavior */}
@@ -348,79 +364,103 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
         {/* Mobile sidebar */}
         {isMobile && (
           <>
-            <Sheet open={open} onOpenChange={setOpen}>
-              <SheetTrigger asChild>
-                <Button variant="outline" size="icon" className="mobile-menu-trigger md:hidden">
-                  <Menu className="h-5 w-5 text-foreground" />
-                  <span className="sr-only">Toggle Menu</span>
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="left" className="w-[280px] sm:w-[320px] p-0 border-r sidebar-sheet">
-                <nav className="mobile-nav-wrapper" aria-label="Mobile navigation">
-                  <div className="mobile-nav-header">
-                    <div className="flex items-center">
-                      <Croissant className="h-5 w-5 sidebar-logo mr-3" />
-                      <span className="text-base font-medium">{roleLabels[role]}</span>                    </div>
-                    <Button variant="ghost" size="sm" onClick={() => setOpen(false)} className="sidebar-close-button">
-                      <X className="h-5 w-5" />
-                      <span className="sr-only">Close</span>
+            {/* NEW: Wrapper for Mobile Top Bar AND Main Content */}
+            <div className="flex-1 flex flex-col">
+
+              {/* Mobile Experience: Top Bar with Trigger + Sidebar Sheet */}
+              <Sheet open={open} onOpenChange={setOpen}>
+                {/* Mobile Top Bar */}
+                <div className="bg-background border-b p-3 flex items-center shadow-sm md:hidden h-14">
+                  <SheetTrigger asChild>
+                    <Button variant="ghost" size="icon" className="mr-3">
+                      <Menu className="h-6 w-6 text-foreground" />
+                      <span className="sr-only">Toggle Menu</span>
                     </Button>
+                  </SheetTrigger>
+                  <h1 className="text-lg font-semibold">{roleLabels[role]}</h1>
+                </div>
+
+                {/* Mobile Sidebar Content */}
+                <SheetContent side="left" className="w-[280px] sm:w-[320px] p-0 border-r sidebar-sheet [&>button]:hidden">
+                  {/* Content from original mobile nav structure */}
+                  <nav className="mobile-nav-wrapper" aria-label="Mobile navigation">
+                    <div className="mobile-nav-header">
+                      <div className="flex items-center">
+                        <Croissant className="h-5 w-5 sidebar-logo mr-3" />
+                        <span className="text-base font-medium">{roleLabels[role]}</span>
+                      </div>
+                      <Button variant="ghost" size="sm" onClick={() => setOpen(false)} className="sidebar-close-button">
+                        <X className="h-5 w-5" />
+                        <span className="sr-only">Close</span>
+                      </Button>
+                    </div>
+                    <div className="p-4 space-y-2">
+                      {navItems.map((item) => {
+                        const Icon = item.icon;
+                        const isActive = pathname === item.href;
+                        return (
+                          <Button
+                            key={item.href}
+                            variant={isActive ? "secondary" : "ghost"}
+                            className="w-full justify-start sidebar-nav-link"
+                            asChild
+                          >
+                            <Link href={item.href} className="flex items-center" onClick={() => setOpen(false)}>
+                              <Icon className="mr-3 h-5 w-5 sidebar-nav-icon" />
+                              <span>{item.label}</span>
+                            </Link>
+                          </Button>
+                        );
+                      })}
+                    </div>
+                    <div className="mt-auto p-4 border-t space-y-2">
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start sidebar-nav-link theme-toggle-mobile"
+                        onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                      >
+                        {theme === "dark" ? (
+                          <>
+                            <Sun className="mr-3 h-5 w-5 sidebar-nav-icon theme-icon" />
+                            <span>Mode clair</span>
+                          </>
+                        ) : (
+                          <>
+                            <Moon className="mr-3 h-5 w-5 sidebar-nav-icon theme-icon" />
+                            <span>Mode sombre</span>
+                          </>
+                        )}
+                      </Button>
+                      <Button variant="ghost" className="w-full justify-start sidebar-nav-link" onClick={handleLogout}>
+                        <LogOut className="mr-3 h-5 w-5 sidebar-nav-icon" />
+                        <span>Déconnexion</span>
+                      </Button>
+                    </div>
+                  </nav>
+                </SheetContent>
+              </Sheet>
+
+              {/* Main content for MOBILE, now correctly placed under the top bar */}
+              <main className="flex-1 py-4 overflow-y-auto px-4 md:px-6">
+                <div className="prevent-overlap transition-all duration-300">
+                  <div className="max-w-full">
+                    {children}
                   </div>
-                  <div className="p-4 space-y-2">
-                    {navItems.map((item) => {
-                      const Icon = item.icon;
-                      const isActive = pathname === item.href;
-                      return (
-                        <Button
-                          key={item.href}
-                          variant={isActive ? "secondary" : "ghost"}
-                          className="w-full justify-start sidebar-nav-link"
-                          asChild
-                        >
-                          <Link href={item.href} className="flex items-center" onClick={() => setOpen(false)}>
-                            <Icon className="mr-3 h-5 w-5 sidebar-nav-icon" />
-                            <span>{item.label}</span>
-                          </Link>
-                        </Button>
-                      );
-                    })}
-                  </div>
-                  <div className="mt-auto p-4 border-t space-y-2">
-                    <Button 
-                      variant="outline" 
-                      className="w-full justify-start sidebar-nav-link theme-toggle-mobile"
-                      onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                    >
-                      {theme === "dark" ? (
-                        <>
-                          <Sun className="mr-3 h-5 w-5 sidebar-nav-icon theme-icon" />
-                          <span>Mode clair</span>
-                        </>
-                      ) : (
-                        <>
-                          <Moon className="mr-3 h-5 w-5 sidebar-nav-icon theme-icon" />
-                          <span>Mode sombre</span>
-                        </>
-                      )}
-                    </Button>
-                    <Button variant="ghost" className="w-full justify-start sidebar-nav-link" onClick={handleLogout}>
-                      <LogOut className="mr-3 h-5 w-5 sidebar-nav-icon" />
-                      <span>Déconnexion</span>
-                    </Button>
-                  </div>
-                </nav>
-              </SheetContent>
-            </Sheet>          </>
-        )}
-        {/* Main content with responsive margin based on sidebar state */}        <main className={`flex-1 py-4 transition-all duration-300 overflow-y-auto ${
-          !isMobile ? 'content-with-hover-sidebar px-4 md:px-6' : 'px-4 md:px-6'
-        }`}>
-          <div className="prevent-overlap transition-all duration-300">
-            <div className="max-w-full">
-              {children}
+                </div>
+              </main>
             </div>
-          </div>
-        </main>
+          </>
+        )}
+        {/* Main content for DESKTOP ONLY */}
+        {!isMobile && (
+          <main className={`flex-1 py-4 transition-all duration-300 overflow-y-auto content-with-hover-sidebar px-4 md:px-6`}>
+            <div className="prevent-overlap transition-all duration-300">
+              <div className="max-w-full">
+                {children}
+              </div>
+            </div>
+          </main>
+        )}
       </div>
     </div>
   );
