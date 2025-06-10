@@ -35,6 +35,7 @@ import {
   Sun,
   Truck,
   Users,
+  Megaphone,
   X,
   PanelLeftClose,
   PanelLeftOpen
@@ -172,6 +173,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
     { href: "/admin/products", label: "Produits", icon: ShoppingBag },
     { href: "/admin/orders", label: "Commandes", icon: ClipboardList },
     { href: "/admin/delivery", label: "Livraisons", icon: Truck },
+    { href: "/admin/annoucements", label: "Annoucements", icon: Megaphone },
     { href: "/admin/settings", label: "Paramètres", icon: Settings },
   ];
 
@@ -179,12 +181,14 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
     { href: "/bakery/dashboard", label: "Tableau de bord", icon: Home },
     { href: "/bakery/profile", label: "Profil", icon: Users },
     { href: "/bakery/products", label: "Produits", icon: ShoppingBag },
+    { href: "/bakery/annoucements", label: "Annoucements", icon: Megaphone },
     { href: "/bakery/orders", label: "Commandes", icon: ClipboardList },
   ];
 
   const laboratoryNavItems = [
     { href: "/laboratory/dashboard", label: "Tableau de bord", icon: Home },
     { href: "/laboratory/production", label: "Production", icon: ClipboardList },
+     { href: "/laboratory/annoucements", label: "Annoucements", icon: Megaphone },
     { href: "/laboratory/information", label: "Informations", icon: Settings }, // Changed label
   ];
 
