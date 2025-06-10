@@ -65,32 +65,6 @@
   opacity: 1;
 }
 
-/* Fix the look of the mobile trigger button */
-.mobile-menu-trigger {
-  position: fixed;
-  left: 1rem;
-  top: 1rem;
-  z-index: 40;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  border-radius: 9999px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid hsl(var(--border));
-  background-color: hsl(var(--background));
-}
-
-.mobile-menu-trigger:hover {
-  background-color: hsl(var(--accent));
-}
-
-@media (max-width: 350px) {
-  .mobile-menu-trigger {
-    left: 0.5rem;
-    top: 0.5rem;
-  }
-}
-
 /* Style for active sidebar items */
 .sidebar-nav-link {
   display: flex;
