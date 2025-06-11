@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
-import { Eye, Filter, Minus, Plus, Search, ShoppingCart, Trash, Loader2, Calendar, Menu } from "lucide-react"
+import { Eye, Filter, Minus, Plus, Search, ShoppingCart, Trash, Loader2, Calendar, Menu, AlertCircle, Info, Truck } from "lucide-react"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { format } from "date-fns"
@@ -27,14 +27,11 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { StatusBadge } from "./status-badge"
 import { StatusActions } from "./status-actions"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { getProducts } from "@/lib/api/products"
+import { Product } from "@/types/product"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 
 // Define types
-interface Product {
-  id: string
-  name: string
-  unitPrice: number
-}
-
 interface OrderProduct {
   productName: string
   pricePerUnit: number
@@ -47,43 +44,35 @@ interface Order {
   orderId: string
   orderReferenceId: string
   bakeryName: string
-  deliveryUserId: string
-  deliveryUserName: string
+  deliveryUserId?: string // Now optional for dispatch mode
+  deliveryUserName?: string // Now optional for dispatch mode
+  assignedDeliveryUserId?: string // New field for when order is picked up
+  assignedDeliveryUserName?: string // New field for when order is picked up
   scheduledDate: string
   actualDeliveryDate: string | null
-  status: "PENDING" | "IN_PROGRESS" | "READY_FOR_DELIVERY" | "DELIVERING" | "DELIVERED" | "CANCELLED"
+  status: "PENDING" | "IN_PROGRESS" | "READY_FOR_DELIVERY" | "DISPATCHED" | "DELIVERING" | "DELIVERED" | "CANCELLED"
   notes: string
   address: string
   products: OrderProduct[]
   createdAt?: string
   updatedAt?: string
+  isDispatched?: boolean // Flag to indicate if order is in dispatch mode
 }
 
-// Sample products data - this could also come from an API
-const availableProducts: Product[] = [
-  { id: "1", name: "Baguette Tradition", unitPrice: 1.2 },
-  { id: "2", name: "Pain au Chocolat", unitPrice: 1.5 },
-  { id: "3", name: "Croissant", unitPrice: 1.3 },
-  { id: "4", name: "Pain aux Céréales", unitPrice: 2.8 },
-  { id: "5", name: "Éclair au Chocolat", unitPrice: 2.5 },
-]
-
-// Sample delivery users - this could also come from an API
-const deliveryUsers = [
-  { id: "1", name: "Jean Dupont" },
-  { id: "2", name: "Marie Martin" },
-  { id: "3", name: "Pierre Durand" },
-]
-
-// Sample bakeries - this could also come from an API
-const bakeries = [
-  { id: "1", name: "Boulangerie Centrale" },
-  { id: "2", name: "Aux Délices du Pain" },
-  { id: "3", name: "La Mie Dorée" },
-]
+interface Bakery {
+  _id: string
+  bakeryname: string
+  bakeryLocation: string
+}
 
 export default function BakeryOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([])
+  const [products, setProducts] = useState<Product[]>([])
+  const [bakeries, setBakeries] = useState<Bakery[]>([])
+  const [deliveryUsersFromAPI, setDeliveryUsersFromAPI] = useState<any[]>([])
+  const [isLoadingUsers, setIsLoadingUsers] = useState(true)
+  const [isLoadingProducts, setIsLoadingProducts] = useState(true)
+  const [isLoadingBakeries, setIsLoadingBakeries] = useState(true)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
@@ -104,7 +93,87 @@ export default function BakeryOrdersPage() {
   const [deliveryUserName, setDeliveryUserName] = useState("")
   const [scheduledDate, setScheduledDate] = useState<Date | undefined>(new Date())
   const [address, setAddress] = useState("")
+  // Hardcoded fallback delivery users for backward compatibility
+  const fallbackDeliveryUsers = [
+    { id: "1", name: "Jean Dupont" },
+    { id: "2", name: "Marie Martin" },
+    { id: "3", name: "Pierre Durand" },
+  ]
 
+  // Fetch products from API
+  const fetchProducts = async () => {
+    try {
+      setIsLoadingProducts(true)
+      const response = await getProducts({
+        active: true,
+        available: true,
+        sortBy: 'name',
+        sortOrder: 'asc'
+      })
+      
+      if (response.success) {
+        setProducts(response.data)
+      } else {
+        throw new Error("Failed to fetch products")
+      }
+    } catch (error) {
+      console.error("Error fetching products:", error)
+      toast({
+        title: "Erreur",
+        description: "Impossible de charger les produits. Certaines fonctionnalités peuvent être limitées.",
+        variant: "destructive",
+      })
+      // No fallback products - empty array is better than fake data
+      setProducts([])
+    } finally {
+      setIsLoadingProducts(false)
+    }
+  }  // Fetch bakeries from API - currently not available, so we'll use manual input
+  const fetchBakeries = async () => {
+    try {
+      setIsLoadingBakeries(true)
+      // Since the bakery API endpoint doesn't exist yet on the backend,
+      // we'll skip the API call and go straight to manual input
+      // This provides a better user experience than showing errors
+      
+      console.log("Bakery API not available - using manual input mode")
+      setBakeries([])
+    } catch (error) {
+      console.error("Error in fetchBakeries:", error)
+      setBakeries([])
+    } finally {
+      setIsLoadingBakeries(false)
+    }
+  }
+
+  // Fetch delivery users from API
+  const fetchDeliveryUsers = async () => {
+    try {
+      setIsLoadingUsers(true)
+      const response = await fetch("/api/users")
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch users: ${response.status}`)
+      }
+      
+      const users = await response.json()
+      const activeDeliveryUsers = users.filter((user: any) => 
+        user.role === 'delivery' && user.isActive
+      )
+      
+      setDeliveryUsersFromAPI(activeDeliveryUsers)
+    } catch (error) {
+      console.error("Error fetching delivery users:", error)
+      // Fall back to hardcoded users if API fails
+      toast({
+        title: "Avertissement",
+        description: "Impossible de charger les livreurs depuis l'API. Utilisation de données de test.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoadingUsers(false)
+    }
+  }
   // Fetch orders from the backend
   useEffect(() => {
     const fetchOrders = async () => {
@@ -133,27 +202,44 @@ export default function BakeryOrdersPage() {
       }
     }
 
-    fetchOrders()
-  }, [toast])
+    // Fetch all data on component mount
+    const fetchAllData = async () => {
+      await Promise.all([
+        fetchOrders(),
+        fetchDeliveryUsers(),
+        fetchProducts(),
+        fetchBakeries()
+      ])
+    }
 
-  // Update delivery user name when delivery user ID changes
+    fetchAllData()
+  }, [toast])  // Update delivery user name when delivery user ID changes
   useEffect(() => {
     if (deliveryUserId) {
-      const user = deliveryUsers.find((user) => user.id === deliveryUserId)
+      // Try to find user in API data first, fall back to hardcoded data
+      const allUsers = [...deliveryUsersFromAPI, ...fallbackDeliveryUsers]
+      const user = allUsers.find((user) => 
+        user._id === deliveryUserId || user.id === deliveryUserId
+      )
+      
       if (user) {
-        setDeliveryUserName(user.name)
+        // Handle both API format and hardcoded format
+        const userName = user.firstName && user.lastName 
+          ? `${user.firstName} ${user.lastName}`
+          : user.name
+        setDeliveryUserName(userName)
       }
     } else {
       setDeliveryUserName("")
     }
-  }, [deliveryUserId])
+  }, [deliveryUserId, deliveryUsersFromAPI])
 
   // Filter orders based on search term and status
-  const filteredOrders = orders.filter((order) => {
-    const matchesSearch =
+  const filteredOrders = orders.filter((order) => {    const matchesSearch =
       order.orderReferenceId.toLowerCase().includes(searchTerm.toLowerCase()) ||
       order.bakeryName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.deliveryUserName.toLowerCase().includes(searchTerm.toLowerCase())
+      (order.deliveryUserName && order.deliveryUserName !== "À assigner" && 
+       order.deliveryUserName.toLowerCase().includes(searchTerm.toLowerCase()))
 
     const matchesStatus = statusFilter === "all" || order.status === statusFilter
 
@@ -162,16 +248,16 @@ export default function BakeryOrdersPage() {
       (activeTab === "pending" && order.status === "PENDING") ||
       (activeTab === "in_progress" && order.status === "IN_PROGRESS") ||
       (activeTab === "ready" && order.status === "READY_FOR_DELIVERY") ||
+      (activeTab === "dispatched" && order.status === "DISPATCHED") ||
       (activeTab === "delivering" && order.status === "DELIVERING") ||
       (activeTab === "delivered" && order.status === "DELIVERED") ||
       (activeTab === "cancelled" && order.status === "CANCELLED")
 
     return matchesSearch && matchesStatus && matchesTab
   })
-
   // Add product to order
   const addProductToOrder = (productId: string) => {
-    const product = availableProducts.find((p) => p.id === productId)
+    const product = products.find((p) => p._id === productId)
     if (!product) return
 
     const existingItemIndex = orderProducts.findIndex((item) => item.productName === product.name)
@@ -236,7 +322,6 @@ export default function BakeryOrdersPage() {
   const generateReferenceId = () => {
     return `CMD-2025-${String(orders.length + 1).padStart(3, "0")}`
   }
-
   // Handle order creation
   const handleCreateOrder = async () => {
     if (orderProducts.length === 0) {
@@ -252,15 +337,6 @@ export default function BakeryOrdersPage() {
       toast({
         title: "Erreur",
         description: "Veuillez sélectionner une boulangerie",
-        variant: "destructive",
-      })
-      return
-    }
-
-    if (!deliveryUserId) {
-      toast({
-        title: "Erreur",
-        description: "Veuillez sélectionner un livreur",
         variant: "destructive",
       })
       return
@@ -290,14 +366,16 @@ export default function BakeryOrdersPage() {
       orderId: generateOrderId(),
       orderReferenceId: generateReferenceId(),
       bakeryName,
-      deliveryUserId,
-      deliveryUserName,
+      // Dispatch mode - use placeholder values for required backend fields
+      deliveryUserId: "DISPATCH_PENDING", // Placeholder for dispatch mode
+      deliveryUserName: "À assigner", // Placeholder for dispatch mode
       scheduledDate: scheduledDate.toISOString(),
       actualDeliveryDate: null,
       status: "PENDING",
       notes: orderNotes,
       address,
       products: orderProducts,
+      isDispatched: true, // Mark as dispatch mode
     }
 
     try {
@@ -316,14 +394,10 @@ export default function BakeryOrdersPage() {
       const createdOrder = await response.json()
 
       // Update the orders list with the new order
-      setOrders([createdOrder, ...orders])
-
-      // Reset form
+      setOrders([createdOrder, ...orders])      // Reset form
       setOrderProducts([])
       setOrderNotes("")
       setBakeryName("")
-      setDeliveryUserId("")
-      setDeliveryUserName("")
       setScheduledDate(new Date())
       setAddress("")
       setIsCreateDialogOpen(false)
@@ -389,7 +463,6 @@ export default function BakeryOrdersPage() {
       setIsLoading(false)
     }
   }
-
   function getNextStatus(currentStatus: string): string | null {
     switch (currentStatus) {
       case "PENDING":
@@ -397,6 +470,8 @@ export default function BakeryOrdersPage() {
       case "IN_PROGRESS":
         return "READY_FOR_DELIVERY"
       case "READY_FOR_DELIVERY":
+        return "DISPATCHED"
+      case "DISPATCHED":
         return "DELIVERING"
       case "DELIVERING":
         return "DELIVERED"
@@ -412,6 +487,8 @@ export default function BakeryOrdersPage() {
       case "IN_PROGRESS":
         return "Marquer prêt à livrer"
       case "READY_FOR_DELIVERY":
+        return "Dispatcher"
+      case "DISPATCHED":
         return "Marquer en livraison"
       case "DELIVERING":
         return "Marquer comme livré"
@@ -447,12 +524,12 @@ export default function BakeryOrdersPage() {
       <SheetContent side="left" className="w-[280px]">
         <div className="space-y-4 mt-6">
           <h3 className="font-medium">Filtrer par statut</h3>
-          <div className="space-y-2">
-            {[
+          <div className="space-y-2">            {[
               { value: "all", label: "Toutes les commandes" },
               { value: "pending", label: "En attente" },
               { value: "in_progress", label: "En préparation" },
               { value: "ready", label: "Prêt à livrer" },
+              { value: "dispatched", label: "Dispatché" },
               { value: "delivering", label: "En livraison" },
               { value: "delivered", label: "Livré" },
               { value: "cancelled", label: "Annulé" },
@@ -519,8 +596,7 @@ export default function BakeryOrdersPage() {
 
   return (
     <DashboardLayout role="bakery">
-      <div className="flex flex-col gap-4 p-4 sm:p-6">
-        {/* Header */}
+      <div className="flex flex-col gap-4 p-4 sm:p-6">        {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Commandes</h1>
@@ -540,37 +616,57 @@ export default function BakeryOrdersPage() {
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 {/* Form fields with better mobile layout */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="grid gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">                  <div className="grid gap-2">
                     <Label htmlFor="bakery">Boulangerie</Label>
-                    <Select value={bakeryName} onValueChange={setBakeryName}>
-                      <SelectTrigger id="bakery">
-                        <SelectValue placeholder="Sélectionnez une boulangerie" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {bakeries.map((bakery) => (
-                          <SelectItem key={bakery.id} value={bakery.name}>
-                            {bakery.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="grid gap-2">
-                    <Label htmlFor="deliveryUser">Livreur</Label>
-                    <Select value={deliveryUserId} onValueChange={setDeliveryUserId}>
-                      <SelectTrigger id="deliveryUser">
-                        <SelectValue placeholder="Sélectionnez un livreur" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {deliveryUsers.map((user) => (
-                          <SelectItem key={user.id} value={user.id}>
-                            {user.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    {isLoadingBakeries ? (
+                      <div className="flex items-center gap-2 p-2 text-sm text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Chargement des boulangeries...
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {bakeries.length > 0 && (
+                          <Select value={bakeryName} onValueChange={setBakeryName}>
+                            <SelectTrigger id="bakery">
+                              <SelectValue placeholder="Sélectionnez une boulangerie" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {bakeries.map((bakery) => (
+                                <SelectItem key={bakery._id} value={bakery.bakeryname}>
+                                  {bakery.bakeryname}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                        <Input
+                          id="bakery-manual"
+                          placeholder="Ou saisissez le nom de la boulangerie"
+                          value={bakeryName}
+                          onChange={(e) => setBakeryName(e.target.value)}
+                        />
+                        {bakeries.length === 0 && (
+                          <p className="text-xs text-muted-foreground">
+                            Service de boulangeries indisponible. Veuillez saisir le nom manuellement.
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>                  <div className="grid gap-2">
+                    <Label htmlFor="dispatchInfo" className="flex items-center gap-2">
+                      <Truck className="h-4 w-4" />
+                      Livraison
+                    </Label>
+                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+                      <div className="flex items-center gap-2 text-blue-700 text-sm">
+                        <Info className="h-4 w-4" />
+                        <span className="font-medium">Système de dispatching</span>
+                      </div>
+                      <p className="text-blue-600 text-xs mt-1">
+                        Cette commande sera disponible pour tous les livreurs. 
+                        Le premier livreur disponible pourra prendre en charge la livraison.
+                      </p>
+                    </div>
                   </div>
                 </div>
 
@@ -610,34 +706,46 @@ export default function BakeryOrdersPage() {
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
                   />
-                </div>
-
-                {/* Product selection with mobile-friendly layout */}
+                </div>                {/* Product selection with mobile-friendly layout */}
                 <div className="grid gap-2">
                   <Label>Produits</Label>
-                  <div className="flex flex-col gap-2">
-                    <Select value={selectedProduct} onValueChange={setSelectedProduct}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sélectionnez un produit" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availableProducts.map((product) => (
-                          <SelectItem key={product.id} value={product.id}>
-                            {product.name} - {formatPrice(product.unitPrice)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Button
-                      variant="outline"
-                      onClick={() => addProductToOrder(selectedProduct)}
-                      disabled={!selectedProduct}
-                      className="w-full"
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Ajouter
-                    </Button>
-                  </div>
+                  {isLoadingProducts ? (
+                    <div className="flex items-center gap-2 p-2 text-sm text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Chargement des produits...
+                    </div>
+                  ) : products.length > 0 ? (
+                    <div className="flex flex-col gap-2">
+                      <Select value={selectedProduct} onValueChange={setSelectedProduct}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Sélectionnez un produit" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {products.map((product) => (
+                            <SelectItem key={product._id} value={product._id}>
+                              {product.name} - {formatPrice(product.unitPrice)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        variant="outline"
+                        onClick={() => addProductToOrder(selectedProduct)}
+                        disabled={!selectedProduct}
+                        className="w-full"
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Ajouter
+                      </Button>
+                    </div>
+                  ) : (
+                    <Alert>
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>
+                        Aucun produit disponible. Veuillez vérifier que des produits sont activés dans le catalogue.
+                      </AlertDescription>
+                    </Alert>
+                  )}
                 </div>
 
                 {/* Order products with mobile-optimized layout */}
@@ -705,12 +813,10 @@ export default function BakeryOrdersPage() {
                   Annuler
                 </Button>
                 <Button
-                  onClick={handleCreateOrder}
-                  disabled={
+                  onClick={handleCreateOrder}                  disabled={
                     orderProducts.length === 0 ||
                     isSubmitting ||
                     !bakeryName ||
-                    !deliveryUserId ||
                     !scheduledDate ||
                     !address
                   }
@@ -744,12 +850,12 @@ export default function BakeryOrdersPage() {
           </div>
 
           {/* Desktop tabs */}
-          <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="hidden md:block">
-            <TabsList className="grid w-full grid-cols-7">
+          <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="hidden md:block">            <TabsList className="grid w-full grid-cols-8">
               <TabsTrigger value="all">Toutes</TabsTrigger>
               <TabsTrigger value="pending">En attente</TabsTrigger>
               <TabsTrigger value="in_progress">En préparation</TabsTrigger>
               <TabsTrigger value="ready">Prêt</TabsTrigger>
+              <TabsTrigger value="dispatched">Dispatché</TabsTrigger>
               <TabsTrigger value="delivering">En livraison</TabsTrigger>
               <TabsTrigger value="delivered">Livré</TabsTrigger>
               <TabsTrigger value="cancelled">Annulé</TabsTrigger>
@@ -774,12 +880,12 @@ export default function BakeryOrdersPage() {
                   <Select value={statusFilter} onValueChange={setStatusFilter}>
                     <SelectTrigger className="w-full sm:w-[180px]">
                       <SelectValue placeholder="Filtrer par statut" />
-                    </SelectTrigger>
-                    <SelectContent>
+                    </SelectTrigger>                    <SelectContent>
                       <SelectItem value="all">Tous les statuts</SelectItem>
                       <SelectItem value="PENDING">En attente</SelectItem>
                       <SelectItem value="IN_PROGRESS">En préparation</SelectItem>
                       <SelectItem value="READY_FOR_DELIVERY">Prêt à livrer</SelectItem>
+                      <SelectItem value="DISPATCHED">Dispatché</SelectItem>
                       <SelectItem value="DELIVERING">En livraison</SelectItem>
                       <SelectItem value="DELIVERED">Livré</SelectItem>
                       <SelectItem value="CANCELLED">Annulé</SelectItem>
@@ -912,11 +1018,11 @@ export default function BakeryOrdersPage() {
                 >
                   <SelectTrigger id="status-update" className="w-full sm:w-[200px]">
                     <SelectValue placeholder="Sélectionner un statut" />
-                  </SelectTrigger>
-                  <SelectContent>
+                  </SelectTrigger>                  <SelectContent>
                     <SelectItem value="PENDING">En attente</SelectItem>
                     <SelectItem value="IN_PROGRESS">En préparation</SelectItem>
                     <SelectItem value="READY_FOR_DELIVERY">Prêt à livrer</SelectItem>
+                    <SelectItem value="DISPATCHED">Dispatché</SelectItem>
                     <SelectItem value="DELIVERING">En livraison</SelectItem>
                     <SelectItem value="DELIVERED">Livré</SelectItem>
                     <SelectItem value="CANCELLED">Annulé</SelectItem>

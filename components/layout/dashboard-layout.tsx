@@ -38,7 +38,8 @@ import {
   Megaphone,
   X,
   PanelLeftClose,
-  PanelLeftOpen
+  PanelLeftOpen,
+  AlertTriangle
 } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -164,8 +165,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
       title: "Déconnexion réussie",
       description: "Vous avez été déconnecté avec succès",
     });
-    router.push("/");
-  };
+    router.push("/");  };
   // Define navigation items for each role
   const adminNavItems = [
     { href: "/admin/dashboard", label: "Tableau de bord", icon: Home },
@@ -173,6 +173,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
     { href: "/admin/products", label: "Produits", icon: ShoppingBag },
     { href: "/admin/orders", label: "Commandes", icon: ClipboardList },
     { href: "/admin/delivery", label: "Livraisons", icon: Truck },
+    { href: "/admin/delivery/validation", label: "Validation Livraisons", icon: AlertTriangle },
     { href: "/admin/annoucements", label: "Annoucements", icon: Megaphone },
     { href: "/admin/settings", label: "Paramètres", icon: Settings },
   ];

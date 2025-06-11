@@ -32,6 +32,11 @@ export function StatusBadge({ status }: StatusBadgeProps) {
           Livré
         </Badge>
       )
+    case "DISPATCHED":
+      return (        <Badge variant="outline" className="bg-cyan-50 text-cyan-700 border-cyan-200">
+          Dispatché
+        </Badge>
+      )
     case "CANCELLED":
       return (
         <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">

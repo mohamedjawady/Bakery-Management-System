@@ -37,6 +37,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Separator } from "@/components/ui/separator"
+import { deliveryApi, type Delivery, getStatusLabel, getStatusColor, formatDeliveryDate } from "@/lib/api/deliveries"
 
 // Enhanced product interface matching your schema
 interface Product {
@@ -44,22 +45,6 @@ interface Product {
   pricePerUnit: number
   quantity: number
   totalPrice: number
-}
-
-// Enhanced order interface matching your schema
-interface Order {
-  id: string
-  orderId: string
-  orderReferenceId: string
-  bakeryName: string
-  deliveryUserId: string
-  deliveryUserName?: string
-  scheduledDate?: string
-  actualDeliveryDate?: string | null
-  status: "READY_FOR_DELIVERY" | string
-  notes?: string
-  address?: string
-  products: Product[] // Enhanced products array
 }
 
 // Enhanced delivery stop interface
@@ -70,9 +55,10 @@ interface DeliveryStop {
   address: string
   scheduledTime: string
   status: "PENDING" | "COMPLETED" | "DELAYED"
-  products: Product[] // Enhanced products with pricing
+  products: Product[]
   orderId: string
   totalOrderValue: number
+  delivery: Delivery // Store the full delivery object
 }
 
 interface DeliveryRoute {
@@ -85,85 +71,97 @@ interface DeliveryRoute {
 }
 
 export default function RoutesPage() {
-  const [orders, setOrders] = useState<Order[]>([])
+  const [deliveries, setDeliveries] = useState<Delivery[]>([])
   const [routes, setRoutes] = useState<DeliveryRoute[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
-  const [activeTab, setActiveTab] = useState("upcoming")
+  const [activeTab, setActiveTab] = useState("available")
   const [selectedRoute, setSelectedRoute] = useState<DeliveryRoute | null>(null)
   const [isRouteDetailsOpen, setIsRouteDetailsOpen] = useState(false)
   const [expandedRoutes, setExpandedRoutes] = useState<Set<string>>(new Set())
   const [selectedStop, setSelectedStop] = useState<DeliveryStop | null>(null)
   const [isProductDetailsOpen, setIsProductDetailsOpen] = useState(false)
+  const [isPickupDialogOpen, setIsPickupDialogOpen] = useState(false)
+  const [selectedDeliveryForPickup, setSelectedDeliveryForPickup] = useState<Delivery | null>(null)
+  const [currentUserId] = useState("delivery-user-001") // This should come from auth context
+  const [currentUserName] = useState("Livreur Principal") // This should come from auth context
   const { toast } = useToast()
 
-  // Fetch orders from API for logged-in user
-  const fetchOrders = async () => {
+  // Fetch deliveries from our delivery API
+  const fetchDeliveries = async () => {
     try {
       setLoading(true)
       setError(null)
 
-      const response = await fetch("http://localhost:5000/orders?status=READY_FOR_DELIVERY&userId=8")
+      console.log("Fetching deliveries from API...")
+      const deliveriesData = await deliveryApi.getAllDeliveries()
+      
+      console.log("Deliveries fetched:", deliveriesData)
+      setDeliveries(deliveriesData)
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-
-      const data = await response.json()
-
-      const filteredOrders = data.filter(
-        (order: Order) => order.status === "READY_FOR_DELIVERY" && order.deliveryUserId === "684236af775bc2727768d6d9",
-      )
-
-      setOrders(filteredOrders)
-
-      const transformedRoutes = transformOrdersToRoutes(filteredOrders)
+      // Transform deliveries into routes
+      const transformedRoutes = transformDeliveriesToRoutes(deliveriesData)
       setRoutes(transformedRoutes)
+
     } catch (err) {
-      console.error("Error fetching orders:", err)
-      setError(err instanceof Error ? err.message : "Failed to fetch orders")
+      console.error("Error fetching deliveries:", err)
+      setError(err instanceof Error ? err.message : "Failed to fetch deliveries")
       toast({
         title: "Erreur",
-        description: "Impossible de charger les commandes",
+        description: "Impossible de charger les livraisons",
         variant: "destructive",
       })
     } finally {
       setLoading(false)
     }
   }
+  // Enhanced transformation with delivery data
+  const transformDeliveriesToRoutes = (deliveries: Delivery[]): DeliveryRoute[] => {
+    // Filter deliveries based on active tab
+    const filteredDeliveries = deliveries.filter(delivery => {
+      switch (activeTab) {
+        case "available":
+          return delivery.status === "READY_FOR_DELIVERY"
+        case "my-orders":
+          return delivery.status === "IN_TRANSIT" && delivery.deliveryUserId === currentUserId
+        case "completed":
+          return delivery.status === "DELIVERED"
+        default:
+          return true
+      }
+    })
 
-  // Enhanced transformation with product pricing
-  const transformOrdersToRoutes = (orders: Order[]): DeliveryRoute[] => {
-    const ordersByDate = orders.reduce(
-      (acc, order) => {
-        const date = order.scheduledDate ? order.scheduledDate.split("T")[0] : new Date().toISOString().split("T")[0]
+    const deliveriesByDate = filteredDeliveries.reduce(
+      (acc, delivery) => {
+        const date = delivery.scheduledDate ? delivery.scheduledDate.split("T")[0] : new Date().toISOString().split("T")[0]
         if (!acc[date]) {
           acc[date] = []
         }
-        acc[date].push(order)
+        acc[date].push(delivery)
         return acc
       },
-      {} as Record<string, Order[]>,
+      {} as Record<string, Delivery[]>,
     )
 
-    return Object.entries(ordersByDate)
-      .map(([date, dateOrders], index) => {
-        const stops: DeliveryStop[] = dateOrders.map((order) => {
-          const totalOrderValue = order.products?.reduce((sum, product) => sum + product.totalPrice, 0) || 0
+    return Object.entries(deliveriesByDate)
+      .map(([date, dateDeliveries], index) => {
+        const stops: DeliveryStop[] = dateDeliveries.map((delivery) => {
+          const totalOrderValue = delivery.products?.reduce((sum, product) => sum + product.totalPrice, 0) || 0
 
           return {
-            id: order.id,
-            orderReferenceId: order.orderReferenceId,
-            bakeryName: order.bakeryName || "Boulangerie",
-            address: order.address || "Adresse non définie",
-            scheduledTime: order.scheduledDate
-              ? new Date(order.scheduledDate).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })
+            id: delivery._id,
+            orderReferenceId: delivery.orderReferenceId,
+            bakeryName: delivery.bakeryName || "Boulangerie",
+            address: delivery.address || "Adresse non définie",
+            scheduledTime: delivery.scheduledDate
+              ? new Date(delivery.scheduledDate).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })
               : "Non défini",
-            status: "PENDING" as const,
-            products: order.products || [],
-            orderId: order.id,
+            status: delivery.status === "DELIVERED" ? "COMPLETED" : "PENDING",
+            products: delivery.products || [],
+            orderId: delivery.orderId,
             totalOrderValue,
+            delivery, // Store the full delivery object for API calls
           }
         })
 
@@ -175,18 +173,22 @@ export default function RoutesPage() {
           id: `route-${date}-${index}`,
           date,
           name: `Livraisons ${formatDate(date)}`,
-          stops,
-          status: "PLANNED" as const,
+          stops,          status: stops.every(stop => stop.status === "COMPLETED") ? "COMPLETED" as const : 
+                  stops.some(stop => stop.delivery.status === "IN_TRANSIT") ? "IN_PROGRESS" as const : "PLANNED" as const,
           totalValue,
-        }
-      })
+        }      })
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
   }
 
   useEffect(() => {
-    fetchOrders()
+    fetchDeliveries()
   }, [])
 
+  useEffect(() => {
+    // Update routes when tab changes
+    const transformedRoutes = transformDeliveriesToRoutes(deliveries)
+    setRoutes(transformedRoutes)
+  }, [activeTab, deliveries])
   const filteredRoutes = routes.filter((route) => {
     const matchesSearch =
       route.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -197,7 +199,8 @@ export default function RoutesPage() {
       )
 
     const matchesTab =
-      (activeTab === "upcoming" && route.status !== "COMPLETED") ||
+      (activeTab === "available") ||
+      (activeTab === "my-orders" && route.status !== "COMPLETED") ||
       (activeTab === "completed" && route.status === "COMPLETED")
 
     return matchesSearch && matchesTab
@@ -229,31 +232,19 @@ export default function RoutesPage() {
       const route = routes.find((r) => r.id === routeId)
       const stop = route?.stops.find((s) => s.id === stopId)
 
-      if (stop) {
-        const updatedRoutes = routes.map((route) => {
-          if (route.id === routeId) {
-            const updatedStops = route.stops.map((stop) =>
-              stop.id === stopId ? { ...stop, status: "COMPLETED" as const } : stop,
-            )
+      if (stop) {        // Update delivery status to DELIVERED via API
+        await deliveryApi.updateDeliveryStatus(stop.delivery._id, { status: "DELIVERED" })
+        
+        // Refresh deliveries to get updated data
+        await fetchDeliveries()
 
-            const allCompleted = updatedStops.every((stop) => stop.status === "COMPLETED")
-
-            return {
-              ...route,
-              stops: updatedStops,
-              status: allCompleted ? ("COMPLETED" as const) : route.status,
-            }
-          }
-          return route
-        })
-
-        setRoutes(updatedRoutes)
         toast({
-          title: "Arrêt terminé",
-          description: "La livraison a été marquée comme terminée",
+          title: "Livraison terminée",
+          description: `Commande ${stop.orderReferenceId} marquée comme livrée`,
         })
       }
-    } catch (err) {
+    } catch (error) {
+      console.error("Error completing delivery:", error)
       toast({
         title: "Erreur",
         description: "Impossible de marquer la livraison comme terminée",
@@ -262,6 +253,30 @@ export default function RoutesPage() {
     }
   }
 
+  const handlePickupDelivery = async (delivery: Delivery) => {
+    try {      // Update delivery status to IN_TRANSIT and assign to current user
+      await deliveryApi.assignDeliveryUser(delivery._id, { deliveryUserId: currentUserId, deliveryUserName: currentUserName })
+      await deliveryApi.updateDeliveryStatus(delivery._id, { status: "IN_TRANSIT" })
+
+      // Refresh deliveries to get updated data
+      await fetchDeliveries()
+
+      toast({
+        title: "Commande récupérée",
+        description: `Commande ${delivery.orderReferenceId} assignée et en transit`,
+      })
+
+      setIsPickupDialogOpen(false)
+      setSelectedDeliveryForPickup(null)
+    } catch (error) {
+      console.error("Error picking up delivery:", error)
+      toast({
+        title: "Erreur",
+        description: "Impossible de récupérer la commande",
+        variant: "destructive",
+      })
+    }
+  }
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
     return new Intl.DateTimeFormat("fr-FR", {
@@ -270,7 +285,6 @@ export default function RoutesPage() {
       year: "numeric",
     }).format(date)
   }
-
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("fr-FR", {
       style: "currency",
@@ -335,6 +349,79 @@ export default function RoutesPage() {
         )
     }
   }
+
+  // Pickup Order Dialog Component
+  const PickupOrderDialog = () => (
+    <Dialog open={isPickupDialogOpen} onOpenChange={setIsPickupDialogOpen}>
+      <DialogContent className="w-[95vw] max-w-md">
+        <DialogHeader>
+          <DialogTitle>Récupérer cette commande</DialogTitle>
+          <DialogDescription>
+            Voulez-vous prendre en charge cette commande pour livraison ?
+          </DialogDescription>
+        </DialogHeader>        {selectedDeliveryForPickup && (
+          <div className="space-y-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg">{selectedDeliveryForPickup.bakeryName}</CardTitle>
+                <CardDescription>Commande {selectedDeliveryForPickup.orderReferenceId}</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span>Adresse:</span>
+                  <span className="font-medium">{selectedDeliveryForPickup.address || "Non définie"}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span>Date prévue:</span>
+                  <span className="font-medium">
+                    {selectedDeliveryForPickup.scheduledDate
+                      ? formatDeliveryDate(selectedDeliveryForPickup.scheduledDate)
+                      : "Non définie"}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span>Produits:</span>
+                  <span className="font-medium">{selectedDeliveryForPickup.products?.length || 0}</span>
+                </div>
+                <div className="flex justify-between text-sm font-semibold">
+                  <span>Valeur totale:</span>
+                  <span className="text-green-600">
+                    {formatPrice(
+                      selectedDeliveryForPickup.products?.reduce((sum, product) => sum + product.totalPrice, 0) || 0
+                    )}
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+            <Alert>
+              <Truck className="h-4 w-4" />
+              <AlertDescription>
+                En récupérant cette commande, elle vous sera assignée et passera en statut "En transit".
+              </AlertDescription>
+            </Alert>
+          </div>
+        )}        <DialogFooter className="flex-col sm:flex-row gap-2">
+          <Button
+            variant="outline"
+            onClick={() => {
+              setIsPickupDialogOpen(false)
+              setSelectedDeliveryForPickup(null)
+            }}
+            className="w-full sm:w-auto"
+          >
+            Annuler
+          </Button>
+          <Button
+            onClick={() => selectedDeliveryForPickup && handlePickupDelivery(selectedDeliveryForPickup)}
+            className="w-full sm:w-auto"
+          >
+            <Truck className="mr-2 h-4 w-4" />
+            Récupérer
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
 
   // Enhanced Product Details Component
   const ProductDetailsDialog = () => (
@@ -417,7 +504,6 @@ export default function RoutesPage() {
       </DialogContent>
     </Dialog>
   )
-
   const MobileFilters = () => (
     <Sheet>
       <SheetTrigger asChild>
@@ -428,21 +514,28 @@ export default function RoutesPage() {
       </SheetTrigger>
       <SheetContent side="left" className="w-[280px]">
         <div className="space-y-4 mt-6">
-          <h3 className="font-medium">Filtrer les itinéraires</h3>
+          <h3 className="font-medium">Filtrer les commandes</h3>
           <div className="space-y-2">
             <Button
-              variant={activeTab === "upcoming" ? "default" : "ghost"}
+              variant={activeTab === "available" ? "default" : "ghost"}
               className="w-full justify-start"
-              onClick={() => setActiveTab("upcoming")}
+              onClick={() => setActiveTab("available")}
             >
-              À venir
+              Disponibles
+            </Button>
+            <Button
+              variant={activeTab === "my-orders" ? "default" : "ghost"}
+              className="w-full justify-start"
+              onClick={() => setActiveTab("my-orders")}
+            >
+              Mes commandes
             </Button>
             <Button
               variant={activeTab === "completed" ? "default" : "ghost"}
               className="w-full justify-start"
               onClick={() => setActiveTab("completed")}
             >
-              Terminés
+              Terminées
             </Button>
           </div>
         </div>
@@ -591,12 +684,24 @@ export default function RoutesPage() {
                               </div>
                             )}
                           </div>
-                        </div>
-
-                        {route.status === "IN_PROGRESS" && stop.status === "PENDING" && (
+                        </div>                        {route.status === "IN_PROGRESS" && stop.status === "PENDING" && (
                           <Button size="sm" onClick={() => handleCompleteStop(route.id, stop.id)} className="w-full">
                             <CheckCircle2 className="mr-2 h-4 w-4" />
                             Marquer comme livré
+                          </Button>
+                        )}
+
+                        {activeTab === "available" && route.status === "PLANNED" && (
+                          <Button
+                            size="sm"                            onClick={() => {
+                              setSelectedDeliveryForPickup(stop.delivery)
+                              setIsPickupDialogOpen(true)
+                            }}
+                            className="w-full"
+                            variant="outline"
+                          >
+                            <Truck className="mr-2 h-4 w-4" />
+                            Récupérer cette commande
                           </Button>
                         )}
                       </div>
@@ -626,23 +731,32 @@ export default function RoutesPage() {
 
   return (
     <DashboardLayout role="delivery">
-      <div className="flex flex-col gap-4 p-4 sm:p-6">
-        {/* Header */}
+      <div className="flex flex-col gap-4 p-4 sm:p-6">        {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Mes Itinéraires</h1>
-            <p className="text-muted-foreground text-sm sm:text-base">Vos commandes prêtes pour livraison</p>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Commandes Disponibles</h1>
+            <p className="text-muted-foreground text-sm sm:text-base">
+              Commandes prêtes à être récupérées pour livraison
+            </p>
           </div>
-          <Button onClick={fetchOrders} variant="outline" size="sm">
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Actualiser
-          </Button>
-        </div>
-
-        {error && (
+          <div className="flex gap-2">            <Button onClick={fetchDeliveries} variant="outline" size="sm">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Actualiser
+            </Button>
+          </div>
+        </div>        {error && (
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>Erreur lors du chargement: {error}</AlertDescription>
+          </Alert>
+        )}        {/* Dispatch System Info */}
+        {deliveries.filter(d => d.status === "READY_FOR_DELIVERY").length > 0 && (
+          <Alert>
+            <Truck className="h-4 w-4" />
+            <AlertDescription>
+              {deliveries.filter(d => d.status === "READY_FOR_DELIVERY").length} commande{deliveries.filter(d => d.status === "READY_FOR_DELIVERY").length !== 1 ? "s" : ""} disponible{deliveries.filter(d => d.status === "READY_FOR_DELIVERY").length !== 1 ? "s" : ""} pour récupération. 
+              Cliquez sur "Récupérer cette commande" pour prendre en charge une livraison.
+            </AlertDescription>
           </Alert>
         )}
 
@@ -653,22 +767,22 @@ export default function RoutesPage() {
             <div className="text-sm text-muted-foreground">
               {filteredRoutes.length} itinéraire{filteredRoutes.length !== 1 ? "s" : ""}
             </div>
-          </div>
-
-          <Tabs defaultValue="upcoming" value={activeTab} onValueChange={setActiveTab} className="hidden md:block">
-            <div className="flex items-center justify-between">
-              <TabsList>
-                <TabsTrigger value="upcoming">
-                  À venir ({routes.filter((r) => r.status !== "COMPLETED").length})
+          </div>          <Tabs defaultValue="available" value={activeTab} onValueChange={setActiveTab} className="hidden md:block">
+            <div className="flex items-center justify-between">              <TabsList>
+                <TabsTrigger value="available">
+                  Disponibles ({deliveries.filter(d => d.status === "READY_FOR_DELIVERY").length})
+                </TabsTrigger>
+                <TabsTrigger value="my-orders">
+                  Mes commandes ({deliveries.filter(d => d.status === "IN_TRANSIT" && d.deliveryUserId === currentUserId).length})
                 </TabsTrigger>
                 <TabsTrigger value="completed">
-                  Terminés ({routes.filter((r) => r.status === "COMPLETED").length})
+                  Terminées ({deliveries.filter(d => d.status === "DELIVERED").length})
                 </TabsTrigger>
               </TabsList>
               <div className="flex items-center gap-2">
                 <Search className="h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Rechercher un itinéraire ou produit..."
+                  placeholder="Rechercher une commande ou produit..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="max-w-sm"
@@ -678,9 +792,8 @@ export default function RoutesPage() {
           </Tabs>
 
           <div className="flex items-center gap-2 md:hidden">
-            <Search className="h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Rechercher un itinéraire ou produit..."
+            <Search className="h-4 w-4 text-muted-foreground" />            <Input
+              placeholder="Rechercher une commande ou produit..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="flex-1"
@@ -691,19 +804,26 @@ export default function RoutesPage() {
         {/* Routes Content */}
         <div className="space-y-4">
           {filteredRoutes.length === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-10">
-                <Truck className="h-12 w-12 text-muted-foreground mb-4" />
-                <p className="text-muted-foreground mb-2 text-center">
-                  {orders.length === 0
-                    ? "Aucune commande prête pour livraison"
-                    : activeTab === "upcoming"
-                      ? "Aucun itinéraire à venir trouvé"
-                      : "Aucun itinéraire terminé trouvé"}
+            <Card>              <CardContent className="flex flex-col items-center justify-center py-10">
+                <Truck className="h-12 w-12 text-muted-foreground mb-4" />                <p className="text-muted-foreground mb-2 text-center">
+                  {activeTab === "available" && deliveries.filter(d => d.status === "READY_FOR_DELIVERY").length === 0
+                    ? "Aucune commande disponible pour récupération"
+                    : activeTab === "my-orders" && deliveries.filter(d => d.status === "IN_TRANSIT" && d.deliveryUserId === currentUserId).length === 0
+                    ? "Aucune commande en cours de livraison"
+                    : activeTab === "completed" && deliveries.filter(d => d.status === "DELIVERED").length === 0
+                    ? "Aucune livraison terminée"
+                    : filteredRoutes.length === 0
+                    ? "Aucun résultat trouvé"
+                    : "Chargement..."}
                 </p>
-                {orders.length === 0 && (
+                {activeTab === "available" && deliveries.filter(d => d.status === "READY_FOR_DELIVERY").length === 0 && (
                   <p className="text-sm text-muted-foreground text-center">
-                    Les commandes prêtes pour livraison apparaîtront ici
+                    Les nouvelles commandes prêtes pour livraison apparaîtront ici automatiquement
+                  </p>
+                )}
+                {activeTab === "my-orders" && deliveries.filter(d => d.status === "IN_TRANSIT" && d.deliveryUserId === currentUserId).length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center">
+                    Récupérez des commandes depuis l'onglet "Disponibles" pour commencer vos livraisons
                   </p>
                 )}
               </CardContent>
@@ -833,10 +953,11 @@ export default function RoutesPage() {
               )}
             </DialogFooter>
           </DialogContent>
-        </Dialog>
-
-        {/* Product Details Dialog */}
+        </Dialog>        {/* Product Details Dialog */}
         <ProductDetailsDialog />
+
+        {/* Pickup Order Dialog */}
+        <PickupOrderDialog />
       </div>
     </DashboardLayout>
   )
