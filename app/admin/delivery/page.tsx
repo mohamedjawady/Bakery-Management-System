@@ -22,20 +22,11 @@ import { Eye, Filter, MapPin, Search, Truck, RefreshCw, AlertCircle } from "luci
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { deliveryApi, type Delivery, getStatusLabel, getStatusColor, formatDeliveryDate } from "@/lib/api/deliveries"
 
-// Define order type from API
-interface Order {
-  id: string
-  referenceId: string
-  bakeryName: string
-  deliveryUserId?: string
-  deliveryUserName?: string
-  scheduledDate?: string
-  actualDeliveryDate?: string | null
-  status: "READY_FOR_DELIVERY" | "DELIVERED" | string
-  notes?: string
-  address?: string
-  // Add other fields that might come from your API
+// Define order type from API - now using Delivery interface
+type Order = Delivery & {
+  referenceId?: string
   customerName?: string
   items?: any[]
   totalAmount?: number
@@ -54,33 +45,30 @@ export default function DeliveryPage() {
   const [newStatus, setNewStatus] = useState<string>("")
   const [activeTab, setActiveTab] = useState("all")
   const { toast } = useToast()
-
-  // Fetch orders from API
+  // Fetch orders from API using delivery service
   const fetchOrders = async () => {
     try {
       setLoading(true)
       setError(null)
 
-      const response = await fetch("http://localhost:5000/orders")
+      // Use the new delivery API
+      const deliveries = await deliveryApi.getAllDeliveries()
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
+      // Map delivery data to Order interface
+      const mappedOrders: Order[] = deliveries.map((delivery) => ({
+        ...delivery,
+        id: delivery._id,
+        referenceId: delivery.orderReferenceId,
+        customerName: delivery.deliveryUserName,
+      }))
 
-      const data = await response.json()
-
-      // Filter orders to show only READY_FOR_DELIVERY or DELIVERED
-      const filteredOrders = data.filter(
-        (order: Order) => order.status === "READY_FOR_DELIVERY" || order.status === "DELIVERED",
-      )
-
-      setOrders(filteredOrders)
+      setOrders(mappedOrders)
     } catch (err) {
-      console.error("Error fetching orders:", err)
-      setError(err instanceof Error ? err.message : "Failed to fetch orders")
+      console.error("Error fetching deliveries:", err)
+      setError(err instanceof Error ? err.message : "Failed to fetch deliveries")
       toast({
         title: "Erreur",
-        description: "Impossible de charger les commandes",
+        description: "Impossible de charger les livraisons",
         variant: "destructive",
       })
     } finally {
@@ -110,8 +98,7 @@ export default function DeliveryPage() {
 
     return matchesSearch && matchesStatus && matchesTab
   })
-
-  // Handle status update
+  // Handle status update using delivery API
   const handleUpdateStatus = async () => {
     if (!orderToUpdate || !newStatus) {
       toast({
@@ -123,32 +110,33 @@ export default function DeliveryPage() {
     }
 
     try {
-      // You can implement API call to update status here
-      // const response = await fetch(`http://localhost:5000/orders/${orderToUpdate.id}`, {
-      //   method: 'PATCH',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ status: newStatus })
-      // })
+      // Use the delivery API to update status
+      const updatedDelivery = await deliveryApi.updateDeliveryStatus(orderToUpdate._id, {
+        status: newStatus as Delivery['status'],
+      })
 
-      // For now, update locally
+      // Update local state
       const updatedOrders = orders.map((order) =>
-        order.id === orderToUpdate.id
+        order._id === orderToUpdate._id
           ? {
               ...order,
-              status: newStatus,
-              actualDeliveryDate: newStatus === "DELIVERED" ? new Date().toISOString() : order.actualDeliveryDate,
+              status: updatedDelivery.status,
+              actualDeliveryDate: updatedDelivery.actualDeliveryDate,
             }
           : order,
       )
+      
       setOrders(updatedOrders)
       setIsUpdateStatusDialogOpen(false)
       setOrderToUpdate(null)
       setNewStatus("")
+      
       toast({
         title: "Statut mis à jour",
-        description: `Le statut de la commande a été mis à jour avec succès`,
+        description: `Le statut de la livraison a été mis à jour avec succès`,
       })
     } catch (err) {
+      console.error("Error updating delivery status:", err)
       toast({
         title: "Erreur",
         description: "Impossible de mettre à jour le statut",

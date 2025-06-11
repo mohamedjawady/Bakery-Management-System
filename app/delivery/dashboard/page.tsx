@@ -1,10 +1,54 @@
+"use client";
+
 import { DashboardLayout } from "@/components/layout/dashboard-layout"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { ArrowRight, Calendar, CheckCircle2, Clock, MapPin, Navigation, Package, Truck } from "lucide-react"
+import { deliveryApi, type Delivery, getStatusLabel, getStatusColor, formatDeliveryDate } from "@/lib/api/deliveries"
+import { useState, useEffect } from "react"
+import { useToast } from "@/hooks/use-toast"
 
 export default function DeliveryDashboard() {
+  const [deliveries, setDeliveries] = useState<Delivery[]>([])
+  const [stats, setStats] = useState({
+    total: 0,
+    ready: 0,
+    inTransit: 0,
+    delivered: 0,
+  })
+  const [loading, setLoading] = useState(true)
+  const { toast } = useToast()
+
+  // Fetch deliveries and stats
+  useEffect(() => {
+    const fetchData = async () => {      try {
+        setLoading(true);
+        const [deliveriesData, statsData] = await Promise.all([
+          deliveryApi.getAllDeliveries(),
+          deliveryApi.getDeliveryStats(),
+        ]);
+        
+        console.log("Deliveries received:", deliveriesData)
+        console.log("Stats received:", statsData)
+        console.log("Ready for delivery count:", deliveriesData.filter(d => d.status === "READY_FOR_DELIVERY").length)
+        
+        setDeliveries(deliveriesData)
+        setStats(statsData)
+      } catch (error) {
+        console.error("Error fetching delivery data:", error)
+        toast({
+          title: "Erreur",
+          description: "Impossible de charger les données de livraison",
+          variant: "destructive",
+        })
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [])
   return (
     <DashboardLayout role="delivery">
       <div className="flex flex-col gap-4">
@@ -19,16 +63,14 @@ export default function DeliveryDashboard() {
           <Button>
             <Navigation className="mr-2 h-4 w-4" /> Démarrer l'itinéraire
           </Button>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-3">
+        </div>        <div className="grid gap-4 md:grid-cols-3">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-lg">À livrer aujourd'hui</CardTitle>
               <CardDescription>Total des livraisons du jour</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">8</div>
+              <div className="text-3xl font-bold">{loading ? "..." : stats.ready}</div>
             </CardContent>
           </Card>
           <Card>
@@ -37,7 +79,7 @@ export default function DeliveryDashboard() {
               <CardDescription>Livraisons en transit</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">2</div>
+              <div className="text-3xl font-bold">{loading ? "..." : stats.inTransit}</div>
             </CardContent>
           </Card>
           <Card>
@@ -46,192 +88,208 @@ export default function DeliveryDashboard() {
               <CardDescription>Livraisons effectuées aujourd'hui</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">3</div>
+              <div className="text-3xl font-bold">{loading ? "..." : stats.delivered}</div>
             </CardContent>
           </Card>
+        </div>        <h2 className="text-xl font-semibold mt-4">Commandes Disponibles</h2>
+        <p className="text-sm text-muted-foreground mb-4">Commandes prêtes à être récupérées pour livraison</p>
+
+        {/* Debug information */}
+        <div className="mb-4 p-4 bg-gray-100 rounded text-sm">
+          <p>Debug Info:</p>
+          <p>Total deliveries: {deliveries.length}</p>
+          <p>Ready for delivery: {deliveries.filter(d => d.status === "READY_FOR_DELIVERY").length}</p>
+          <p>All statuses: {deliveries.map(d => d.status).join(", ")}</p>
         </div>
 
-        <h2 className="text-xl font-semibold mt-4">Prochaines livraisons</h2>
-
-        <div className="grid gap-4 md:grid-cols-2">
-          {[1, 2, 3, 4].map((i) => (
-            <Card key={i} className="overflow-hidden">
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">
-                    Boulangerie {["Saint-Michel", "Montmartre", "Opéra", "Bastille"][i % 4]}
-                  </CardTitle>
-                  <Badge>À livrer</Badge>
-                </div>
-                <CardDescription className="flex items-center">
-                  <MapPin className="h-3 w-3 mr-1" />
-                  {
-                    [
-                      "12 Rue de la Paix, Paris",
-                      "45 Avenue des Champs-Élysées, Paris",
-                      "8 Boulevard Haussmann, Paris",
-                      "22 Rue de Rivoli, Paris",
-                    ][i % 4]
-                  }
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="pb-2">
-                <div className="flex justify-between items-center mb-2 text-sm">
-                  <div className="flex items-center">
-                    <Package className="h-4 w-4 mr-1 text-muted-foreground" />
-                    <span>Commande #{Math.floor(Math.random() * 10000)}</span>
+        {loading ? (
+          <div className="grid gap-4 md:grid-cols-2">
+            {[1, 2].map((i) => (
+              <Card key={i} className="overflow-hidden animate-pulse">
+                <CardHeader className="pb-2">
+                  <div className="h-6 bg-gray-300 rounded mb-2"></div>
+                  <div className="h-4 bg-gray-200 rounded"></div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    <div className="h-4 bg-gray-200 rounded"></div>
+                    <div className="h-4 bg-gray-200 rounded"></div>
                   </div>
-                  <div className="flex items-center">
-                    <Clock className="h-4 w-4 mr-1 text-muted-foreground" />
-                    <span>Livraison prévue à {["10:30", "11:15", "14:30", "16:00"][i % 4]}</span>
-                  </div>
-                </div>
-                <div className="space-y-1 text-sm">
-                  <div className="flex justify-between">
-                    <span>Baguette Tradition</span>
-                    <span className="font-medium">x{10 + i * 5}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Pain au Chocolat</span>
-                    <span className="font-medium">x{20 + i * 5}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Croissant</span>
-                    <span className="font-medium">x{15 + i * 5}</span>
-                  </div>
-                  {i % 2 === 0 && (
-                    <div className="flex justify-between">
-                      <span>Pain aux Céréales</span>
-                      <span className="font-medium">x{8 + i * 2}</span>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2">
+            {deliveries
+              .filter(delivery => delivery.status === "READY_FOR_DELIVERY")
+              .map((delivery) => (
+                <Card key={delivery._id} className="overflow-hidden">
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-lg">{delivery.bakeryName}</CardTitle>
+                      <Badge className={getStatusColor(delivery.status)}>
+                        {getStatusLabel(delivery.status)}
+                      </Badge>
                     </div>
-                  )}
-                </div>
-              </CardContent>
-              <CardFooter className="flex flex-col gap-2 pt-2">
-                <Button variant="outline" size="sm">
-                  <MapPin className="mr-2 h-4 w-4" /> Voir sur la carte
-                </Button>
-                <Button size="sm">
-                  Démarrer <Truck className="ml-2 h-4 w-4" />
-                </Button>
-              </CardFooter>
-
-            </Card>
-          ))}
-        </div>
-
-        <h2 className="text-xl font-semibold mt-4">Livraisons en cours</h2>
-
-        <div className="grid gap-4 md:grid-cols-2">
-          {[1, 2].map((i) => (
-            <Card key={i} className="overflow-hidden border-l-4 border-l-amber-500">
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">Boulangerie {["République", "Marais"][i % 2]}</CardTitle>
-                  <Badge variant="secondary">En transit</Badge>
-                </div>
-                <CardDescription className="flex items-center">
-                  <MapPin className="h-3 w-3 mr-1" />
-                  {["35 Place de la République, Paris", "18 Rue des Rosiers, Paris"][i % 2]}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="pb-2">
-                <div className="flex justify-between items-center mb-2 text-sm">
-                  <div className="flex items-center">
-                    <Package className="h-4 w-4 mr-1 text-muted-foreground" />
-                    <span>Commande #{Math.floor(Math.random() * 10000)}</span>
-                  </div>
-                  <div className="flex items-center">
-                    <Clock className="h-4 w-4 mr-1 text-muted-foreground" />
-                    <span>Départ il y a {10 + i * 5} minutes</span>
-                  </div>
-                </div>
-                <div className="space-y-1 text-sm">
-                  <div className="flex justify-between">
-                    <span>Baguette Tradition</span>
-                    <span className="font-medium">x{15 + i * 5}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Pain au Chocolat</span>
-                    <span className="font-medium">x{25 + i * 5}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Croissant</span>
-                    <span className="font-medium">x{20 + i * 5}</span>
-                  </div>
-                </div>
-              </CardContent>
-              <CardFooter className="flex flex-col gap-2 pt-2">
-                <Button variant="outline" size="sm">
-                  <Calendar className="mr-2 h-4 w-4" /> Planifier un retard
-                </Button>
-                <Button size="sm">
-                  Livré <CheckCircle2 className="ml-2 h-4 w-4" />
-                </Button>
-              </CardFooter>
-
-            </Card>
-          ))}
-        </div>
-
-        <h2 className="text-xl font-semibold mt-4">Livraisons terminées</h2>
+                    <CardDescription className="flex items-center">
+                      <MapPin className="h-3 w-3 mr-1" />
+                      {delivery.address}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="pb-2">
+                    <div className="flex justify-between items-center mb-2 text-sm">
+                      <div className="flex items-center">
+                        <Package className="h-4 w-4 mr-1 text-muted-foreground" />
+                        <span>Commande #{delivery.orderReferenceId}</span>
+                      </div>
+                      <div className="flex items-center">
+                        <Clock className="h-4 w-4 mr-1 text-muted-foreground" />
+                        <span>Prévue: {formatDeliveryDate(delivery.scheduledDate)}</span>
+                      </div>
+                    </div>
+                    <div className="space-y-1 text-sm">
+                      {delivery.products?.slice(0, 3).map((product, idx) => (
+                        <div key={idx} className="flex justify-between">
+                          <span>{product.productName}</span>
+                          <span className="font-medium">x{product.quantity}</span>
+                        </div>
+                      ))}
+                      {delivery.products && delivery.products.length > 3 && (
+                        <div className="text-xs text-muted-foreground">
+                          +{delivery.products.length - 3} autres produits
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                  <CardFooter className="flex flex-col gap-2 pt-2">
+                    <Button variant="outline" size="sm" className="w-full">
+                      <MapPin className="mr-2 h-4 w-4" /> Voir sur la carte
+                    </Button>
+                    <Button size="sm" className="w-full">
+                      Récupérer <Truck className="ml-2 h-4 w-4" />
+                    </Button>
+                  </CardFooter>
+                </Card>
+              ))}
+            {deliveries.filter(delivery => delivery.status === "READY_FOR_DELIVERY").length === 0 && (
+              <div className="col-span-2 text-center py-8">
+                <Package className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                <p className="text-muted-foreground">Aucune commande prête pour livraison</p>
+              </div>
+            )}
+          </div>
+        )}        <h2 className="text-xl font-semibold mt-4">Livraisons en cours</h2>
 
         <div className="grid gap-4 md:grid-cols-2">
-          {[1, 2, 3].map((i) => (
-            <Card key={i} className="overflow-hidden border-l-4 border-l-green-500">
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">Boulangerie {["Louvre", "Trocadéro", "Concorde"][i % 3]}</CardTitle>
-                  <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                    Livré
-                  </Badge>
-                </div>
-                <CardDescription className="flex items-center">
-                  <MapPin className="h-3 w-3 mr-1" />
-                  {
-                    ["2 Rue du Louvre, Paris", "15 Avenue du Président Wilson, Paris", "1 Place de la Concorde, Paris"][
-                    i % 3
-                    ]
-                  }
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="pb-2">
-                <div className="flex justify-between items-center mb-2 text-sm">
-                  <div className="flex items-center">
-                    <Package className="h-4 w-4 mr-1 text-muted-foreground" />
-                    <span>Commande #{Math.floor(Math.random() * 10000)}</span>
+          {deliveries
+            .filter(delivery => delivery.status === "IN_TRANSIT")
+            .map((delivery) => (
+              <Card key={delivery._id} className="overflow-hidden border-l-4 border-l-amber-500">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg">{delivery.bakeryName}</CardTitle>
+                    <Badge variant="secondary" className={getStatusColor(delivery.status)}>
+                      {getStatusLabel(delivery.status)}
+                    </Badge>
                   </div>
-                  <div className="flex items-center">
-                    <Clock className="h-4 w-4 mr-1 text-muted-foreground" />
-                    <span>Livré à {["08:30", "09:15", "10:45"][i % 3]}</span>
+                  <CardDescription className="flex items-center">
+                    <MapPin className="h-3 w-3 mr-1" />
+                    {delivery.address}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="pb-2">
+                  <div className="flex justify-between items-center mb-2 text-sm">
+                    <div className="flex items-center">
+                      <Package className="h-4 w-4 mr-1 text-muted-foreground" />
+                      <span>Commande #{delivery.orderReferenceId}</span>
+                    </div>
+                    <div className="flex items-center">
+                      <Clock className="h-4 w-4 mr-1 text-muted-foreground" />
+                      <span>Départ: {formatDeliveryDate(delivery.scheduledDate)}</span>
+                    </div>
                   </div>
-                </div>
-                <div className="space-y-1 text-sm">
-                  <div className="flex justify-between">
-                    <span>Baguette Tradition</span>
-                    <span className="font-medium">x{12 + i * 3}</span>
+                  <div className="space-y-1 text-sm">
+                    {delivery.products?.slice(0, 3).map((product, idx) => (
+                      <div key={idx} className="flex justify-between">
+                        <span>{product.productName}</span>
+                        <span className="font-medium">x{product.quantity}</span>
+                      </div>
+                    ))}
                   </div>
-                  <div className="flex justify-between">
-                    <span>Pain au Chocolat</span>
-                    <span className="font-medium">x{18 + i * 4}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Croissant</span>
-                    <span className="font-medium">x{15 + i * 3}</span>
-                  </div>
-                </div>
-              </CardContent>
-              <CardFooter className="flex flex-col gap-2 pt-2">
-                <Button variant="outline" size="sm">
-                  Détails
-                </Button>
-                <Button variant="outline" size="sm">
-                  Signature <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </CardFooter>
+                </CardContent>
+                <CardFooter className="flex flex-col gap-2 pt-2">
+                  <Button variant="outline" size="sm" className="w-full">
+                    <Calendar className="mr-2 h-4 w-4" /> Planifier un retard
+                  </Button>
+                  <Button size="sm" className="w-full">
+                    Livré <CheckCircle2 className="ml-2 h-4 w-4" />
+                  </Button>
+                </CardFooter>
+              </Card>
+            ))}
+          {deliveries.filter(delivery => delivery.status === "IN_TRANSIT").length === 0 && (
+            <div className="col-span-2 text-center py-8">
+              <Truck className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+              <p className="text-muted-foreground">Aucune livraison en cours</p>
+            </div>
+          )}
+        </div>        <h2 className="text-xl font-semibold mt-4">Livraisons terminées</h2>
 
-            </Card>
-          ))}
+        <div className="grid gap-4 md:grid-cols-2">
+          {deliveries
+            .filter(delivery => delivery.status === "DELIVERED")
+            .slice(0, 6) // Show only recent 6 deliveries
+            .map((delivery) => (
+              <Card key={delivery._id} className="overflow-hidden border-l-4 border-l-green-500">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg">{delivery.bakeryName}</CardTitle>
+                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                      {getStatusLabel(delivery.status)}
+                    </Badge>
+                  </div>
+                  <CardDescription className="flex items-center">
+                    <MapPin className="h-3 w-3 mr-1" />
+                    {delivery.address}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="pb-2">
+                  <div className="flex justify-between items-center mb-2 text-sm">
+                    <div className="flex items-center">
+                      <Package className="h-4 w-4 mr-1 text-muted-foreground" />
+                      <span>Commande #{delivery.orderReferenceId}</span>
+                    </div>
+                    <div className="flex items-center">
+                      <Clock className="h-4 w-4 mr-1 text-muted-foreground" />
+                      <span>Livré: {delivery.actualDeliveryDate ? formatDeliveryDate(delivery.actualDeliveryDate) : 'N/A'}</span>
+                    </div>
+                  </div>
+                  <div className="space-y-1 text-sm">
+                    {delivery.products?.slice(0, 3).map((product, idx) => (
+                      <div key={idx} className="flex justify-between">
+                        <span>{product.productName}</span>
+                        <span className="font-medium">x{product.quantity}</span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+                <CardFooter className="flex flex-col gap-2 pt-2">
+                  <Button variant="outline" size="sm" className="w-full">
+                    Détails
+                  </Button>
+                  <Button variant="outline" size="sm" className="w-full">
+                    Signature <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </CardFooter>
+              </Card>
+            ))}
+          {deliveries.filter(delivery => delivery.status === "DELIVERED").length === 0 && (
+            <div className="col-span-2 text-center py-8">
+              <CheckCircle2 className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+              <p className="text-muted-foreground">Aucune livraison terminée aujourd'hui</p>
+            </div>
+          )}
         </div>
       </div>
     </DashboardLayout>

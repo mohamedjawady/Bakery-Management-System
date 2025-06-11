@@ -15,8 +15,7 @@ interface StatusActionsProps {
 export function StatusActions({ status, orderId, onStatusChange, disabled = false }: StatusActionsProps) {
   const getNextActions = () => {
     switch (status) {
-      case "PENDING":
-        return [
+      case "PENDING":        return [
           { label: "Marquer en préparation", value: "IN_PROGRESS", icon: <Clock className="mr-2 h-4 w-4" /> },
           { label: "Annuler", value: "CANCELLED", icon: <X className="mr-2 h-4 w-4" /> },
         ]
@@ -26,6 +25,11 @@ export function StatusActions({ status, orderId, onStatusChange, disabled = fals
           { label: "Annuler", value: "CANCELLED", icon: <X className="mr-2 h-4 w-4" /> },
         ]
       case "READY_FOR_DELIVERY":
+        return [
+          { label: "Dispatcher", value: "DISPATCHED", icon: <Truck className="mr-2 h-4 w-4" /> },
+          { label: "Annuler", value: "CANCELLED", icon: <X className="mr-2 h-4 w-4" /> },
+        ]
+      case "DISPATCHED":
         return [
           { label: "Marquer en livraison", value: "DELIVERING", icon: <Truck className="mr-2 h-4 w-4" /> },
           { label: "Annuler", value: "CANCELLED", icon: <X className="mr-2 h-4 w-4" /> },
