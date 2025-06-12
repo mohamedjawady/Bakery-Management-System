@@ -255,11 +255,59 @@ export default function AnnouncementsPage() {
   const [commentLoading, setCommentLoading] = useState<string | null>(null)
 
   // Mock current user - replace with actual user context
-  const [currentUser] = useState<CurrentUser>({
-    id: "user-1",
-    name: "Jean Dupont",
-    role: "admin",
+  // const [currentUser] = useState<CurrentUser>({
+  //   id: "user-1",
+  //   name: "Jean Dupont",
+  //   role: "admin",
+  // })
+
+  // Get user from localStorage
+  const [currentUser, setCurrentUser] = useState<CurrentUser>(() => {
+    // Default user in case localStorage is not available (for SSR)
+    const defaultUser: CurrentUser = {
+      id: "",
+      name: "",
+      role: "admin",
+    }
+
+    // Only access localStorage on client side
+    if (typeof window !== "undefined") {
+      try {
+        const userInfoString = localStorage.getItem("userInfo")
+        if (userInfoString) {
+          const userInfo = JSON.parse(userInfoString)
+          return {
+            id: userInfo._id || "",
+            name: `${userInfo.firstName} ${userInfo.lastName}` || "",
+            role: userInfo.role || "admin",
+          }
+        }
+      } catch (error) {
+        console.error("Error parsing user info from localStorage:", error)
+      }
+    }
+
+    return defaultUser
   })
+
+  // Load user data from localStorage on component mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const userInfoString = localStorage.getItem("userInfo")
+        if (userInfoString) {
+          const userInfo = JSON.parse(userInfoString)
+          setCurrentUser({
+            id: userInfo._id || "",
+            name: `${userInfo.firstName} ${userInfo.lastName}` || "",
+            role: userInfo.role || "admin",
+          })
+        }
+      } catch (error) {
+        console.error("Error parsing user info from localStorage:", error)
+      }
+    }
+  }, [])
 
   // Form state for creating announcements
   const [announcementForm, setAnnouncementForm] = useState({
