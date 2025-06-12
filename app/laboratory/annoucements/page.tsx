@@ -43,9 +43,13 @@ import { useAnnouncements } from "@/hooks/useAnnouncements"
 import type { Announcement } from "@/lib/api/announcements"
 
 interface CurrentUser {
-  id: string
-  name: string
+  _id: string
+  firstName: string
+  lastName: string
+  email: string
   role: "admin" | "delivery" | "bakery" | "laboratory"
+  isActive: boolean
+  token: string
 }
 
 // Comment form component
@@ -110,25 +114,45 @@ export default function AnnouncementsPage() {
   const [commentLoading, setCommentLoading] = useState<string | null>(null)
 
   // Mock current user - replace with actual user context
-  const [currentUser] = useState<CurrentUser>({
-    id: "user-1",
-    name: "Jean Dupont",
-    role: "laboratory", //
-  })
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null)
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem("userInfo")
+    if (storedUser) {
+      try {
+        const parsedUser = JSON.parse(storedUser)
+        // Map the stored data to match our interface
+        const mappedUser: CurrentUser = {
+          _id: parsedUser._id,
+          firstName: parsedUser.firstName,
+          lastName: parsedUser.lastName,
+          email: parsedUser.email,
+          role: parsedUser.role,
+          isActive: parsedUser.isActive,
+          token: parsedUser.token,
+        }
+        setCurrentUser(mappedUser)
+      } catch (error) {
+        console.error("Error parsing userinfo from localStorage:", error)
+      }
+    }
+  }, [])
 
   const { toast } = useToast()
 
   // Use the custom hook
   const { announcements, loading, error, pagination, updateFilters, addComment, markAsRead, refetch } =
     useAnnouncements({
-      userId: currentUser.id,
+      userId: currentUser?._id || "",
       limit: 10,
     })
 
   // Update filters when search term or active tab changes
   useEffect(() => {
+    if (!currentUser) return // Don't update filters if user isn't loaded yet
+
     const newFilters: any = {
-      userId: currentUser.id,
+      userId: currentUser._id,
       page: 1,
     }
 
@@ -149,7 +173,7 @@ export default function AnnouncementsPage() {
     }, 300)
 
     return () => clearTimeout(timeoutId)
-  }, [searchTerm, activeTab, currentUser.id, updateFilters])
+  }, [searchTerm, activeTab, currentUser, updateFilters])
 
   useEffect(() => {
     refetch()
@@ -177,7 +201,9 @@ export default function AnnouncementsPage() {
       newExpanded.delete(announcementId)
     } else {
       newExpanded.add(announcementId)
-      markAsRead(announcementId, currentUser.id)
+      if (currentUser) {
+        markAsRead(announcementId, currentUser._id)
+      }
     }
     setExpandedAnnouncements(newExpanded)
   }
@@ -188,7 +214,13 @@ export default function AnnouncementsPage() {
 
     try {
       setCommentLoading(announcementId)
-      await addComment(announcementId, commentText, currentUser.id, currentUser.name, currentUser.role)
+      await addComment(
+        announcementId,
+        commentText,
+        currentUser._id,
+        `${currentUser.firstName} ${currentUser.lastName}`,
+        currentUser.role,
+      )
       setNewComment("")
     } catch (err) {
       // Error is handled in the hook
@@ -384,7 +416,9 @@ export default function AnnouncementsPage() {
                   onClick={() => {
                     setSelectedAnnouncement(announcement)
                     setIsAnnouncementDetailsOpen(true)
-                    markAsRead(announcement._id, currentUser.id)
+                    if (currentUser) {
+                      markAsRead(announcement._id, currentUser._id)
+                    }
                   }}
                   className="whitespace-nowrap"
                 >
@@ -453,9 +487,20 @@ export default function AnnouncementsPage() {
     )
   }
 
+  if (!currentUser) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="flex items-center gap-2">
+          <Loader2 className="h-6 w-6 animate-spin" />
+          <span>Chargement des informations utilisateur...</span>
+        </div>
+      </div>
+    )
+  }
+
   if (loading) {
     return (
-      <DashboardLayout role={currentUser.role}>
+      <DashboardLayout role={currentUser?.role || "user"}>
         <div className="flex items-center justify-center h-64">
           <div className="flex items-center gap-2">
             <RefreshCw className="h-4 w-4 animate-spin" />
@@ -467,7 +512,7 @@ export default function AnnouncementsPage() {
   }
 
   return (
-    <DashboardLayout role={currentUser.role}>
+    <DashboardLayout role={currentUser?.role || "user"}>
       <div className="flex flex-col gap-6 p-4 sm:p-6 max-w-7xl mx-auto w-full">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
