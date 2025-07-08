@@ -36,13 +36,30 @@ interface User {
   address?: string
   vehicleType?: string
   vehicleRegistration?: string
+  bakeryName?: string
+  labName?: string
+}
+
+// Define bakery and laboratory types
+interface Bakery {
+  _id: string
+  bakeryName: string
+}
+
+interface Laboratory {
+  _id: string
+  labName: string
 }
 
 const API_BASE_URL = "/api/users"
 
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([])
+  const [bakeries, setBakeries] = useState<Bakery[]>([])
+  const [laboratories, setLaboratories] = useState<Laboratory[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isLoadingBakeries, setIsLoadingBakeries] = useState(false)
+  const [isLoadingLaboratories, setIsLoadingLaboratories] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [userToDelete, setUserToDelete] = useState<User | null>(null)
@@ -55,6 +72,8 @@ export default function UsersPage() {
     email: "",
     role: "bakery",
     password: "",
+    bakeryName: "",
+    labName: "",
   })
   const { toast } = useToast()
   const router = useRouter()
@@ -65,6 +84,86 @@ export default function UsersPage() {
       return userInfo ? JSON.parse(userInfo).token : null
     }
     return null
+  }
+
+  // Fetch bakeries from API
+  const fetchBakeries = async () => {
+    setIsLoadingBakeries(true)
+    try {
+      const response = await fetch("http://localhost:5000/bakery")
+      if (!response.ok) {
+        throw new Error("Failed to fetch bakeries")
+      }
+      const data = await response.json()
+      setBakeries(data)
+    } catch (error) {
+      console.error("Fetch bakeries error:", error)
+      toast({
+        title: "Erreur de chargement",
+        description: "Impossible de récupérer la liste des boulangeries.",
+        variant: "destructive",
+      })
+      setBakeries([])
+    } finally {
+      setIsLoadingBakeries(false)
+    }
+  }
+
+  // Fetch laboratories from API
+  const fetchLaboratories = async () => {
+    setIsLoadingLaboratories(true)
+    try {
+      const response = await fetch("http://localhost:5000/api/laboratory-info")
+      if (!response.ok) {
+        throw new Error("Failed to fetch laboratories")
+      }
+      const data = await response.json()
+      setLaboratories(data)
+    } catch (error) {
+      console.error("Fetch laboratories error:", error)
+      toast({
+        title: "Erreur de chargement",
+        description: "Impossible de récupérer la liste des laboratoires.",
+        variant: "destructive",
+      })
+      setLaboratories([])
+    } finally {
+      setIsLoadingLaboratories(false)
+    }
+  }
+
+  // Handle role change for new user
+  const handleNewUserRoleChange = (role: "admin" | "bakery" | "laboratory" | "delivery") => {
+    setNewUser({
+      ...newUser,
+      role,
+      bakeryName: "",
+      labName: "",
+    })
+
+    if (role === "bakery" && bakeries.length === 0) {
+      fetchBakeries()
+    } else if (role === "laboratory" && laboratories.length === 0) {
+      fetchLaboratories()
+    }
+  }
+
+  // Handle role change for editing user
+  const handleEditUserRoleChange = (role: "admin" | "bakery" | "laboratory" | "delivery") => {
+    if (editingUser) {
+      setEditingUser({
+        ...editingUser,
+        role,
+        bakeryName: "",
+        labName: "",
+      })
+
+      if (role === "bakery" && bakeries.length === 0) {
+        fetchBakeries()
+      } else if (role === "laboratory" && laboratories.length === 0) {
+        fetchLaboratories()
+      }
+    }
   }
 
   // Fetch users from API
@@ -104,6 +203,7 @@ export default function UsersPage() {
 
     fetchUsers()
   }, [toast, router])
+
   // Filter users based on search term
   const filteredUsers = users.filter(
     (user) =>
@@ -111,12 +211,32 @@ export default function UsersPage() {
       user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.role.toLowerCase().includes(searchTerm.toLowerCase()),
   )
+
   // Handle user creation
   const handleCreateUser = async () => {
     if (!newUser.firstName || !newUser.lastName || !newUser.email || !newUser.role || !newUser.password) {
       toast({
         title: "Erreur",
         description: "Veuillez remplir tous les champs obligatoires (Prénom, Nom, Email, Rôle, Mot de passe)",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Validate role-specific fields
+    if (newUser.role === "bakery" && !newUser.bakeryName) {
+      toast({
+        title: "Erreur",
+        description: "Veuillez sélectionner une boulangerie",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (newUser.role === "laboratory" && !newUser.labName) {
+      toast({
+        title: "Erreur",
+        description: "Veuillez sélectionner un laboratoire",
         variant: "destructive",
       })
       return
@@ -130,19 +250,31 @@ export default function UsersPage() {
       setIsLoading(false)
       return
     }
+
     try {
+      const payload: any = {
+        firstName: newUser.firstName,
+        lastName: newUser.lastName,
+        email: newUser.email,
+        password: newUser.password,
+        role: newUser.role,
+      }
+
+      // Add role-specific fields
+      if (newUser.role === "bakery" && newUser.bakeryName) {
+        payload.bakeryName = newUser.bakeryName
+      }
+      if (newUser.role === "laboratory" && newUser.labName) {
+        payload.labName = newUser.labName
+      }
+
       const response = await fetch(API_BASE_URL, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
-        },        body: JSON.stringify({
-          firstName: newUser.firstName,
-          lastName: newUser.lastName,
-          email: newUser.email,
-          password: newUser.password,
-          role: newUser.role,
-        }),
+        },
+        body: JSON.stringify(payload),
       })
 
       if (!response.ok) {
@@ -159,7 +291,15 @@ export default function UsersPage() {
       })
       const updatedUsers = await fetchResponse.json()
       setUsers(updatedUsers)
-      setNewUser({ firstName: "", lastName: "", email: "", role: "bakery", password: "" })
+      setNewUser({
+        firstName: "",
+        lastName: "",
+        email: "",
+        role: "bakery",
+        password: "",
+        bakeryName: "",
+        labName: "",
+      })
       setIsCreateDialogOpen(false)
       toast({
         title: "Utilisateur créé",
@@ -180,6 +320,25 @@ export default function UsersPage() {
   const handleUpdateUser = async () => {
     if (!editingUser || !editingUser._id) return
 
+    // Validate role-specific fields
+    if (editingUser.role === "bakery" && !editingUser.bakeryName) {
+      toast({
+        title: "Erreur",
+        description: "Veuillez sélectionner une boulangerie",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (editingUser.role === "laboratory" && !editingUser.labName) {
+      toast({
+        title: "Erreur",
+        description: "Veuillez sélectionner un laboratoire",
+        variant: "destructive",
+      })
+      return
+    }
+
     setIsLoading(true)
     const token = getToken()
     if (!token) {
@@ -188,13 +347,24 @@ export default function UsersPage() {
       setIsLoading(false)
       return
     }
-    try {      const payload: Partial<User> & { password?: string } = {
+
+    try {
+      const payload: Partial<User> & { password?: string } = {
         firstName: editingUser.firstName,
         lastName: editingUser.lastName,
         email: editingUser.email,
         role: editingUser.role,
         isActive: editingUser.isActive,
       }
+
+      // Add role-specific fields
+      if (editingUser.role === "bakery" && editingUser.bakeryName) {
+        payload.bakeryName = editingUser.bakeryName
+      }
+      if (editingUser.role === "laboratory" && editingUser.labName) {
+        payload.labName = editingUser.labName
+      }
+
       const passwordInput = document.getElementById("reset-password") as HTMLInputElement
       if (passwordInput && passwordInput.value) {
         payload.password = passwordInput.value
@@ -325,11 +495,12 @@ export default function UsersPage() {
                 <Plus className="mr-2 h-4 w-4" /> Nouvel utilisateur
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-w-md">
               <DialogHeader>
                 <DialogTitle>Créer un nouvel utilisateur</DialogTitle>
                 <DialogDescription>Remplissez les informations pour créer un nouvel utilisateur</DialogDescription>
-              </DialogHeader>              <div className="grid gap-4 py-4">
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
                 <div className="grid gap-2">
                   <Label htmlFor="firstName">Prénom</Label>
                   <Input
@@ -360,15 +531,7 @@ export default function UsersPage() {
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="role">Rôle</Label>
-                  <Select
-                    value={newUser.role}
-                    onValueChange={(value) =>
-                      setNewUser({
-                        ...newUser,
-                        role: value as "admin" | "bakery" | "laboratory" | "delivery",
-                      })
-                    }
-                  >
+                  <Select value={newUser.role} onValueChange={handleNewUserRoleChange}>
                     <SelectTrigger>
                       <SelectValue placeholder="Sélectionnez un rôle" />
                     </SelectTrigger>
@@ -380,6 +543,57 @@ export default function UsersPage() {
                     </SelectContent>
                   </Select>
                 </div>
+
+                {/* Conditional Bakery Select */}
+                {newUser.role === "bakery" && (
+                  <div className="grid gap-2">
+                    <Label htmlFor="bakeryName">Boulangerie</Label>
+                    <Select
+                      value={newUser.bakeryName}
+                      onValueChange={(value) => setNewUser({ ...newUser, bakeryName: value })}
+                      disabled={isLoadingBakeries}
+                    >
+                      <SelectTrigger>
+                        <SelectValue
+                          placeholder={isLoadingBakeries ? "Chargement..." : "Sélectionnez une boulangerie"}
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {bakeries.map((bakery) => (
+                          <SelectItem key={bakery._id} value={bakery.bakeryName}>
+                            {bakery.bakeryName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {/* Conditional Laboratory Select */}
+                {newUser.role === "laboratory" && (
+                  <div className="grid gap-2">
+                    <Label htmlFor="labName">Laboratoire</Label>
+                    <Select
+                      value={newUser.labName}
+                      onValueChange={(value) => setNewUser({ ...newUser, labName: value })}
+                      disabled={isLoadingLaboratories}
+                    >
+                      <SelectTrigger>
+                        <SelectValue
+                          placeholder={isLoadingLaboratories ? "Chargement..." : "Sélectionnez un laboratoire"}
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {laboratories.map((lab) => (
+                          <SelectItem key={lab._id} value={lab.labName}>
+                            {lab.labName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
                 <div className="grid gap-2">
                   <Label htmlFor="password">Mot de passe initial</Label>
                   <Input
@@ -425,6 +639,7 @@ export default function UsersPage() {
                     <TableHead>Nom</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Rôle</TableHead>
+                    <TableHead>Organisation</TableHead>
                     <TableHead>Statut</TableHead>
                     <TableHead>Date de création</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
@@ -433,7 +648,7 @@ export default function UsersPage() {
                 <TableBody>
                   {isLoading ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8">
+                      <TableCell colSpan={7} className="text-center py-8">
                         <div className="flex justify-center items-center">
                           <Loader2 className="mr-2 h-8 w-8 animate-spin" />
                           Chargement des utilisateurs...
@@ -442,15 +657,25 @@ export default function UsersPage() {
                     </TableRow>
                   ) : filteredUsers.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8">
+                      <TableCell colSpan={7} className="text-center py-8">
                         Aucun utilisateur trouvé
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredUsers.map((user) => (                      <TableRow key={user._id} className={!user.isActive ? "opacity-50" : ""}>
-                        <TableCell className="font-medium">{user.firstName} {user.lastName}</TableCell>
+                    filteredUsers.map((user) => (
+                      <TableRow key={user._id} className={!user.isActive ? "opacity-50" : ""}>
+                        <TableCell className="font-medium">
+                          {user.firstName} {user.lastName}
+                        </TableCell>
                         <TableCell>{user.email}</TableCell>
                         <TableCell>{translateRole(user.role)}</TableCell>
+                        <TableCell>
+                          {user.role === "bakery" && user.bakeryName
+                            ? user.bakeryName
+                            : user.role === "laboratory" && user.labName
+                              ? user.labName
+                              : "-"}
+                        </TableCell>
                         <TableCell>
                           {user.isActive === false ? (
                             <Badge variant="outline">Inactif</Badge>
@@ -465,8 +690,17 @@ export default function UsersPage() {
                               open={isEditDialogOpen && editingUser?._id === user._id}
                               onOpenChange={(open) => {
                                 setIsEditDialogOpen(open)
-                                if (open) setEditingUser(user)
-                                else setEditingUser(null)
+                                if (open) {
+                                  setEditingUser(user)
+                                  // Load data if needed
+                                  if (user.role === "bakery" && bakeries.length === 0) {
+                                    fetchBakeries()
+                                  } else if (user.role === "laboratory" && laboratories.length === 0) {
+                                    fetchLaboratories()
+                                  }
+                                } else {
+                                  setEditingUser(null)
+                                }
                               }}
                             >
                               <DialogTrigger asChild>
@@ -475,11 +709,12 @@ export default function UsersPage() {
                                   <span className="sr-only">Modifier</span>
                                 </Button>
                               </DialogTrigger>
-                              <DialogContent>
+                              <DialogContent className="max-w-md">
                                 <DialogHeader>
                                   <DialogTitle>Modifier l'utilisateur</DialogTitle>
                                   <DialogDescription>Modifiez les informations de l'utilisateur</DialogDescription>
-                                </DialogHeader>                                {editingUser && (
+                                </DialogHeader>
+                                {editingUser && (
                                   <div className="grid gap-4 py-4">
                                     <div className="grid gap-2">
                                       <Label htmlFor="edit-firstName">Prénom</Label>
@@ -523,15 +758,7 @@ export default function UsersPage() {
                                     </div>
                                     <div className="grid gap-2">
                                       <Label htmlFor="edit-role">Rôle</Label>
-                                      <Select
-                                        value={editingUser.role}
-                                        onValueChange={(value) =>
-                                          setEditingUser({
-                                            ...editingUser,
-                                            role: value as "admin" | "bakery" | "laboratory" | "delivery",
-                                          })
-                                        }
-                                      >
+                                      <Select value={editingUser.role} onValueChange={handleEditUserRoleChange}>
                                         <SelectTrigger>
                                           <SelectValue placeholder="Sélectionnez un rôle" />
                                         </SelectTrigger>
@@ -543,6 +770,63 @@ export default function UsersPage() {
                                         </SelectContent>
                                       </Select>
                                     </div>
+
+                                    {/* Conditional Bakery Select for Edit */}
+                                    {editingUser.role === "bakery" && (
+                                      <div className="grid gap-2">
+                                        <Label htmlFor="edit-bakeryName">Boulangerie</Label>
+                                        <Select
+                                          value={editingUser.bakeryName || ""}
+                                          onValueChange={(value) =>
+                                            setEditingUser({ ...editingUser, bakeryName: value })
+                                          }
+                                          disabled={isLoadingBakeries}
+                                        >
+                                          <SelectTrigger>
+                                            <SelectValue
+                                              placeholder={
+                                                isLoadingBakeries ? "Chargement..." : "Sélectionnez une boulangerie"
+                                              }
+                                            />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            {bakeries.map((bakery) => (
+                                              <SelectItem key={bakery._id} value={bakery.bakeryName}>
+                                                {bakery.bakeryName}
+                                              </SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                    )}
+
+                                    {/* Conditional Laboratory Select for Edit */}
+                                    {editingUser.role === "laboratory" && (
+                                      <div className="grid gap-2">
+                                        <Label htmlFor="edit-labName">Laboratoire</Label>
+                                        <Select
+                                          value={editingUser.labName || ""}
+                                          onValueChange={(value) => setEditingUser({ ...editingUser, labName: value })}
+                                          disabled={isLoadingLaboratories}
+                                        >
+                                          <SelectTrigger>
+                                            <SelectValue
+                                              placeholder={
+                                                isLoadingLaboratories ? "Chargement..." : "Sélectionnez un laboratoire"
+                                              }
+                                            />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            {laboratories.map((lab) => (
+                                              <SelectItem key={lab._id} value={lab.labName}>
+                                                {lab.labName}
+                                              </SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                    )}
+
                                     <div className="grid gap-2">
                                       <Label htmlFor="edit-isActive">Statut</Label>
                                       <Select
@@ -611,8 +895,13 @@ export default function UsersPage() {
                               </DialogTrigger>
                               <DialogContent>
                                 <DialogHeader>
-                                  <DialogTitle>Confirmer la désactivation</DialogTitle>                                  <DialogDescription>
-                                    Êtes-vous sûr de vouloir désactiver l'utilisateur <strong>{userToDelete?.firstName} {userToDelete?.lastName}</strong> ?
+                                  <DialogTitle>Confirmer la désactivation</DialogTitle>
+                                  <DialogDescription>
+                                    Êtes-vous sûr de vouloir désactiver l'utilisateur{" "}
+                                    <strong>
+                                      {userToDelete?.firstName} {userToDelete?.lastName}
+                                    </strong>{" "}
+                                    ?
                                   </DialogDescription>
                                 </DialogHeader>
                                 <DialogFooter>

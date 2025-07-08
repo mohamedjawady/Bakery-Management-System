@@ -14,6 +14,7 @@ interface OrderProduct {
   pricePerUnit: number
   quantity: number
   totalPrice: number
+  laboratory?: string
 }
 
 interface ProductionOrder {
@@ -31,6 +32,18 @@ interface ProductionOrder {
   products: OrderProduct[]
   createdAt: string
   updatedAt: string
+}
+
+interface UserData {
+  _id: string
+  firstName: string
+  lastName: string
+  email: string
+  isActive: boolean
+  labName: string
+  lastName: string
+  role: string
+  token: string
 }
 
 const KanbanColumn = ({
@@ -120,7 +133,7 @@ const KanbanColumn = ({
                 <Button
                   size="sm"
                   variant="outline"
-                  className="w-full"
+                  className="w-full bg-transparent"
                   onClick={() => onUpdateStatus(order._id, "READY_FOR_DELIVERY")}
                   disabled={isUpdating}
                 >
@@ -151,6 +164,22 @@ export default function LaboratoryProductionPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isUpdating, setIsUpdating] = useState(false)
+  const [userData, setUserData] = useState<UserData | null>(null)
+
+  const getUserFromStorage = (): UserData | null => {
+    try {
+      const userStr = localStorage.getItem("userInfo")
+      if (!userStr) return null
+      return JSON.parse(userStr) as UserData
+    } catch (err) {
+      console.error("Error parsing user data from localStorage:", err)
+      return null
+    }
+  }
+
+  const filterOrdersByLab = (orders: ProductionOrder[], labName: string): ProductionOrder[] => {
+    return orders.filter((order) => order.products.some((product) => product.laboratory === labName))
+  }
 
   const fetchOrders = async () => {
     try {
@@ -170,7 +199,16 @@ export default function LaboratoryProductionPage() {
       }
 
       const data = await response.json()
-      setOrders(data)
+
+      // Filter orders based on user's lab name
+      const user = getUserFromStorage()
+      if (user && user.labName) {
+        const filteredOrders = filterOrdersByLab(data, user.labName)
+        setOrders(filteredOrders)
+      } else {
+        setOrders(data)
+        setError("Impossible de récupérer les informations de l'utilisateur")
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Une erreur est survenue")
       console.error("Error fetching orders:", err)
@@ -259,6 +297,16 @@ export default function LaboratoryProductionPage() {
   }
 
   useEffect(() => {
+    // Get user data from localStorage
+    const user = getUserFromStorage()
+    setUserData(user)
+
+    if (!user || !user.labName) {
+      setError("Utilisateur non connecté ou données manquantes")
+      setLoading(false)
+      return
+    }
+
     // Test API connection first
     testApiConnection().then((success) => {
       if (success) {
@@ -302,7 +350,10 @@ export default function LaboratoryProductionPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Suivi de Production</h1>
-            <p className="text-muted-foreground">Gérez l'état d'avancement des commandes en laboratoire.</p>
+            <p className="text-muted-foreground">
+              Gérez l'état d'avancement des commandes en laboratoire.
+              {userData && <span className="font-medium"> - Laboratoire: {userData.labName}</span>}
+            </p>
           </div>
           <Button onClick={fetchOrders} variant="outline" size="sm">
             Actualiser

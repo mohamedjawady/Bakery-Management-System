@@ -72,6 +72,8 @@ export function LoginForm() {
       }
 
       const result = await response.json();
+      console.log('result',result);
+      
       localStorage.setItem('userInfo', JSON.stringify(result));
       // toast({ // Success toast can remain or be removed based on preference, focusing on error handling now
       //   title: 'Connexion réussie',

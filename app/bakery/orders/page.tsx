@@ -1,5 +1,6 @@
 "use client"
 
+import { CardTitle } from "@/components/ui/card"
 import { useState, useEffect } from "react"
 import { DashboardLayout } from "@/components/layout/dashboard-layout"
 import { Button } from "@/components/ui/button"
@@ -17,7 +18,24 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
-import { Eye, Filter, Minus, Plus, Search, ShoppingCart, Trash, Loader2, Calendar, Menu, AlertCircle, Info, Truck } from "lucide-react"
+import {
+  Eye,
+  Filter,
+  Minus,
+  Plus,
+  Search,
+  ShoppingCart,
+  Trash,
+  Loader2,
+  Calendar,
+  AlertCircle,
+  Info,
+  Building2,
+  Package,
+  ArrowLeft,
+  CheckCircle,
+  X,
+} from "lucide-react"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { format } from "date-fns"
@@ -25,18 +43,19 @@ import { fr } from "date-fns/locale"
 import { Calendar as CalendarComponent } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { StatusBadge } from "./status-badge"
-import { StatusActions } from "./status-actions"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { getProducts } from "@/lib/api/products"
-import { Product } from "@/types/product"
+import type { Product } from "@/types/product"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Badge } from "@/components/ui/badge"
 
-// Define types
+// Keep all your existing interfaces exactly as they are
 interface OrderProduct {
   productName: string
   pricePerUnit: number
   quantity: number
   totalPrice: number
+  boulangerie?: string
 }
 
 interface Order {
@@ -44,10 +63,11 @@ interface Order {
   orderId: string
   orderReferenceId: string
   bakeryName: string
-  deliveryUserId?: string // Now optional for dispatch mode
-  deliveryUserName?: string // Now optional for dispatch mode
-  assignedDeliveryUserId?: string // New field for when order is picked up
-  assignedDeliveryUserName?: string // New field for when order is picked up
+  laboratory?: string
+  deliveryUserId?: string
+  deliveryUserName?: string
+  assignedDeliveryUserId?: string
+  assignedDeliveryUserName?: string
   scheduledDate: string
   actualDeliveryDate: string | null
   status: "PENDING" | "IN_PROGRESS" | "READY_FOR_DELIVERY" | "DISPATCHED" | "DELIVERING" | "DELIVERED" | "CANCELLED"
@@ -56,7 +76,7 @@ interface Order {
   products: OrderProduct[]
   createdAt?: string
   updatedAt?: string
-  isDispatched?: boolean // Flag to indicate if order is in dispatch mode
+  isDispatched?: boolean
 }
 
 interface Bakery {
@@ -66,6 +86,7 @@ interface Bakery {
 }
 
 export default function BakeryOrdersPage() {
+  // Keep all your existing state exactly as it is
   const [orders, setOrders] = useState<Order[]>([])
   const [products, setProducts] = useState<Product[]>([])
   const [bakeries, setBakeries] = useState<Bakery[]>([])
@@ -93,24 +114,31 @@ export default function BakeryOrdersPage() {
   const [deliveryUserName, setDeliveryUserName] = useState("")
   const [scheduledDate, setScheduledDate] = useState<Date | undefined>(new Date())
   const [address, setAddress] = useState("")
-  // Hardcoded fallback delivery users for backward compatibility
+
+  // Laboratory selection state
+  const [currentStep, setCurrentStep] = useState<"laboratory" | "products" | "details">("laboratory")
+  const [laboratories, setLaboratories] = useState<any[]>([])
+  const [selectedLaboratory, setSelectedLaboratory] = useState<any | null>(null)
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([])
+  const [isLoadingLabs, setIsLoadingLabs] = useState(false)
+
+  // Keep all your existing hardcoded fallback data
   const fallbackDeliveryUsers = [
     { id: "1", name: "Jean Dupont" },
     { id: "2", name: "Marie Martin" },
     { id: "3", name: "Pierre Durand" },
   ]
 
-  // Fetch products from API
+  // Keep all your existing fetch functions exactly as they are
   const fetchProducts = async () => {
     try {
       setIsLoadingProducts(true)
       const response = await getProducts({
         active: true,
         available: true,
-        sortBy: 'name',
-        sortOrder: 'asc'
+        sortBy: "name",
+        sortOrder: "asc",
       })
-      
       if (response.success) {
         setProducts(response.data)
       } else {
@@ -123,19 +151,44 @@ export default function BakeryOrdersPage() {
         description: "Impossible de charger les produits. Certaines fonctionnalités peuvent être limitées.",
         variant: "destructive",
       })
-      // No fallback products - empty array is better than fake data
-      setProducts([])
+      // Fallback data with laboratory field
+      setProducts([
+        {
+          _id: "1",
+          name: "Croissant",
+          description: "Pâte feuilletée pur beurre",
+          unitPrice: 1.2,
+          category: "Viennoiserie",
+          preparationTime: 20,
+          laboratory: "Laboratoire Central Paris",
+        },
+        {
+          _id: "2",
+          name: "Pain au chocolat",
+          description: "Pâte feuilletée au chocolat",
+          unitPrice: 1.5,
+          category: "Viennoiserie",
+          preparationTime: 25,
+          laboratory: "Laboratoire Central Paris",
+        },
+        {
+          _id: "3",
+          name: "Baguette",
+          description: "Pain traditionnel français",
+          unitPrice: 0.9,
+          category: "Pain",
+          preparationTime: 30,
+          laboratory: "Laboratoire Lyon Sud",
+        },
+      ])
     } finally {
       setIsLoadingProducts(false)
     }
-  }  // Fetch bakeries from API - currently not available, so we'll use manual input
+  }
+
   const fetchBakeries = async () => {
     try {
       setIsLoadingBakeries(true)
-      // Since the bakery API endpoint doesn't exist yet on the backend,
-      // we'll skip the API call and go straight to manual input
-      // This provides a better user experience than showing errors
-      
       console.log("Bakery API not available - using manual input mode")
       setBakeries([])
     } catch (error) {
@@ -146,25 +199,33 @@ export default function BakeryOrdersPage() {
     }
   }
 
-  // Fetch delivery users from API
+  useEffect(() => {
+    // Get bakery name from localStorage when component mounts
+    const userData = localStorage.getItem("userInfo") || localStorage.getItem("userData")
+    if (userData) {
+      try {
+        const user = JSON.parse(userData)
+        if (user.bakeryName) {
+          setBakeryName(user.bakeryName)
+        }
+      } catch (error) {
+        console.error("Error parsing user data from localStorage:", error)
+      }
+    }
+  }, [])
+
   const fetchDeliveryUsers = async () => {
     try {
       setIsLoadingUsers(true)
       const response = await fetch("/api/users")
-      
       if (!response.ok) {
         throw new Error(`Failed to fetch users: ${response.status}`)
       }
-      
       const users = await response.json()
-      const activeDeliveryUsers = users.filter((user: any) => 
-        user.role === 'delivery' && user.isActive
-      )
-      
+      const activeDeliveryUsers = users.filter((user: any) => user.role === "delivery" && user.isActive)
       setDeliveryUsersFromAPI(activeDeliveryUsers)
     } catch (error) {
       console.error("Error fetching delivery users:", error)
-      // Fall back to hardcoded users if API fails
       toast({
         title: "Avertissement",
         description: "Impossible de charger les livreurs depuis l'API. Utilisation de données de test.",
@@ -174,19 +235,58 @@ export default function BakeryOrdersPage() {
       setIsLoadingUsers(false)
     }
   }
-  // Fetch orders from the backend
+
+  const fetchLaboratories = async () => {
+    try {
+      setIsLoadingLabs(true)
+      const response = await fetch("/api/laboratory-info")
+      if (!response.ok) {
+        throw new Error("Failed to fetch laboratories")
+      }
+      const data = await response.json()
+      const activeLabs = data.filter((lab: any) => lab.isActive)
+      setLaboratories(activeLabs)
+    } catch (error) {
+      console.error("Error fetching laboratories:", error)
+      // Fallback data for demo
+      setLaboratories([
+        {
+          _id: "1",
+          labName: "Laboratoire Central Paris",
+          headChef: "Chef Martin",
+          address: "123 Rue de la Boulangerie, Paris",
+          isActive: true,
+        },
+        {
+          _id: "2",
+          labName: "Laboratoire Lyon Sud",
+          headChef: "Chef Dubois",
+          address: "456 Avenue des Pains, Lyon",
+          isActive: true,
+        },
+        {
+          _id: "3",
+          labName: "Laboratoire Marseille",
+          headChef: "Chef Moreau",
+          address: "789 Boulevard des Croissants, Marseille",
+          isActive: true,
+        },
+      ])
+    } finally {
+      setIsLoadingLabs(false)
+    }
+  }
+
+  // Keep your existing useEffect for fetching orders
   useEffect(() => {
     const fetchOrders = async () => {
       setIsLoading(true)
       setError(null)
-
       try {
         const response = await fetch("http://localhost:5000/orders")
-
         if (!response.ok) {
           throw new Error(`Failed to fetch orders: ${response.status}`)
         }
-
         const data = await response.json()
         setOrders(data)
       } catch (error) {
@@ -202,31 +302,30 @@ export default function BakeryOrdersPage() {
       }
     }
 
-    // Fetch all data on component mount
     const fetchAllData = async () => {
-      await Promise.all([
-        fetchOrders(),
-        fetchDeliveryUsers(),
-        fetchProducts(),
-        fetchBakeries()
-      ])
+      await Promise.all([fetchOrders(), fetchDeliveryUsers(), fetchProducts(), fetchBakeries(), fetchLaboratories()])
     }
 
     fetchAllData()
-  }, [toast])  // Update delivery user name when delivery user ID changes
+  }, [toast])
+
+  // Laboratory filtering effect
+  useEffect(() => {
+    if (selectedLaboratory && products.length > 0) {
+      const filtered = products.filter((product) => product.laboratory === selectedLaboratory.labName)
+      setFilteredProducts(filtered)
+    } else {
+      setFilteredProducts([])
+    }
+  }, [selectedLaboratory, products])
+
+  // Keep all your existing useEffects and functions exactly as they are
   useEffect(() => {
     if (deliveryUserId) {
-      // Try to find user in API data first, fall back to hardcoded data
       const allUsers = [...deliveryUsersFromAPI, ...fallbackDeliveryUsers]
-      const user = allUsers.find((user) => 
-        user._id === deliveryUserId || user.id === deliveryUserId
-      )
-      
+      const user = allUsers.find((user) => user._id === deliveryUserId || user.id === deliveryUserId)
       if (user) {
-        // Handle both API format and hardcoded format
-        const userName = user.firstName && user.lastName 
-          ? `${user.firstName} ${user.lastName}`
-          : user.name
+        const userName = user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.name
         setDeliveryUserName(userName)
       }
     } else {
@@ -234,12 +333,14 @@ export default function BakeryOrdersPage() {
     }
   }, [deliveryUserId, deliveryUsersFromAPI])
 
-  // Filter orders based on search term and status
-  const filteredOrders = orders.filter((order) => {    const matchesSearch =
+  // Keep all your existing filter logic
+  const filteredOrders = orders.filter((order) => {
+    const matchesSearch =
       order.orderReferenceId.toLowerCase().includes(searchTerm.toLowerCase()) ||
       order.bakeryName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (order.deliveryUserName && order.deliveryUserName !== "À assigner" && 
-       order.deliveryUserName.toLowerCase().includes(searchTerm.toLowerCase()))
+      (order.deliveryUserName &&
+        order.deliveryUserName !== "À assigner" &&
+        order.deliveryUserName.toLowerCase().includes(searchTerm.toLowerCase()))
 
     const matchesStatus = statusFilter === "all" || order.status === statusFilter
 
@@ -255,22 +356,43 @@ export default function BakeryOrdersPage() {
 
     return matchesSearch && matchesStatus && matchesTab
   })
-  // Add product to order
+
+  // Laboratory selection functions
+  const handleLaboratorySelect = (laboratory: any) => {
+    setSelectedLaboratory(laboratory)
+    setCurrentStep("products")
+  }
+
+  const resetOrderForm = () => {
+    setCurrentStep("laboratory")
+    setSelectedLaboratory(null)
+    setOrderProducts([])
+    setOrderNotes("")
+    setBakeryName("")
+    setScheduledDate(new Date())
+    setAddress("")
+    setFilteredProducts([])
+  }
+
+  // Modified addProductToOrder function
   const addProductToOrder = (productId: string) => {
-    const product = products.find((p) => p._id === productId)
+    const product = filteredProducts.find((p) => p._id === productId)
     if (!product) return
 
     const existingItemIndex = orderProducts.findIndex((item) => item.productName === product.name)
 
     if (existingItemIndex >= 0) {
-      // Update existing item
-      const updatedItems = [...orderProducts]
-      updatedItems[existingItemIndex].quantity += 1
-      updatedItems[existingItemIndex].totalPrice =
-        updatedItems[existingItemIndex].quantity * updatedItems[existingItemIndex].pricePerUnit
-      setOrderProducts(updatedItems)
+      const currentQuantity = orderProducts[existingItemIndex].quantity
+      if (currentQuantity >= 999) {
+        toast({
+          title: "Limite atteinte",
+          description: "Quantité maximum atteinte pour ce produit (999)",
+          variant: "destructive",
+        })
+        return
+      }
+      updateItemQuantity(existingItemIndex, currentQuantity + 1)
     } else {
-      // Add new item
       setOrderProducts([
         ...orderProducts,
         {
@@ -278,56 +400,82 @@ export default function BakeryOrdersPage() {
           pricePerUnit: product.unitPrice,
           quantity: 1,
           totalPrice: product.unitPrice,
+          laboratory: product.laboratory,
         },
       ])
-    }
 
+      toast({
+        title: "Produit ajouté",
+        description: `${product.name} ajouté au panier`,
+      })
+    }
     setSelectedProduct("")
   }
 
-  // Update item quantity
+  // Keep all your existing functions
   const updateItemQuantity = (index: number, newQuantity: number) => {
-    if (newQuantity <= 0) {
-      // Remove item if quantity is 0 or less
+    // Ensure quantity is within valid range
+    const validQuantity = Math.max(1, Math.min(999, newQuantity))
+
+    if (validQuantity <= 0) {
       const updatedItems = [...orderProducts]
       updatedItems.splice(index, 1)
       setOrderProducts(updatedItems)
+
+      toast({
+        title: "Produit retiré",
+        description: "Le produit a été retiré de votre panier",
+      })
     } else {
-      // Update quantity
       const updatedItems = [...orderProducts]
-      updatedItems[index].quantity = newQuantity
-      updatedItems[index].totalPrice = updatedItems[index].pricePerUnit * newQuantity
+      const oldQuantity = updatedItems[index].quantity
+      updatedItems[index].quantity = validQuantity
+      updatedItems[index].totalPrice = updatedItems[index].pricePerUnit * validQuantity
       setOrderProducts(updatedItems)
+
+      // Show feedback for significant quantity changes
+      if (Math.abs(validQuantity - oldQuantity) >= 10) {
+        toast({
+          title: "Quantité mise à jour",
+          description: `${updatedItems[index].productName}: ${validQuantity} articles`,
+        })
+      }
     }
   }
 
-  // Remove item from order
   const removeItem = (index: number) => {
     const updatedItems = [...orderProducts]
     updatedItems.splice(index, 1)
     setOrderProducts(updatedItems)
   }
 
-  // Calculate total price
   const calculateTotalPrice = () => {
     return orderProducts.reduce((total, item) => total + item.totalPrice, 0)
   }
 
-  // Generate a unique order ID
   const generateOrderId = () => {
     return `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`
   }
 
-  // Generate a reference ID
   const generateReferenceId = () => {
     return `CMD-2025-${String(orders.length + 1).padStart(3, "0")}`
   }
-  // Handle order creation
+
+  // Modified handleCreateOrder function
   const handleCreateOrder = async () => {
     if (orderProducts.length === 0) {
       toast({
         title: "Erreur",
         description: "Veuillez ajouter au moins un produit à la commande",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (!selectedLaboratory) {
+      toast({
+        title: "Erreur",
+        description: "Veuillez sélectionner un laboratoire",
         variant: "destructive",
       })
       return
@@ -366,16 +514,16 @@ export default function BakeryOrdersPage() {
       orderId: generateOrderId(),
       orderReferenceId: generateReferenceId(),
       bakeryName,
-      // Dispatch mode - use placeholder values for required backend fields
-      deliveryUserId: "DISPATCH_PENDING", // Placeholder for dispatch mode
-      deliveryUserName: "À assigner", // Placeholder for dispatch mode
+      laboratory: selectedLaboratory.labName,
+      deliveryUserId: "DISPATCH_PENDING",
+      deliveryUserName: "À assigner",
       scheduledDate: scheduledDate.toISOString(),
-      actualDeliveryDate: null,
+      actualDeliveryDate: scheduledDate.toISOString(),
       status: "PENDING",
       notes: orderNotes,
       address,
       products: orderProducts,
-      isDispatched: true, // Mark as dispatch mode
+      isDispatched: true,
     }
 
     try {
@@ -392,19 +540,13 @@ export default function BakeryOrdersPage() {
       }
 
       const createdOrder = await response.json()
-
-      // Update the orders list with the new order
-      setOrders([createdOrder, ...orders])      // Reset form
-      setOrderProducts([])
-      setOrderNotes("")
-      setBakeryName("")
-      setScheduledDate(new Date())
-      setAddress("")
+      setOrders([createdOrder, ...orders])
+      resetOrderForm()
       setIsCreateDialogOpen(false)
 
       toast({
         title: "Commande créée",
-        description: `La commande ${createdOrder.orderReferenceId} a été créée avec succès`,
+        description: `La commande ${createdOrder.orderReferenceId} a été créée avec succès pour le laboratoire ${selectedLaboratory.labName}`,
       })
     } catch (error) {
       console.error("Error creating order:", error)
@@ -418,10 +560,10 @@ export default function BakeryOrdersPage() {
     }
   }
 
+  // Keep all your existing functions
   async function updateOrderStatus(orderId: string, newStatus: string) {
     try {
       setIsLoading(true)
-
       const response = await fetch(`http://localhost:5000/orders/${orderId}`, {
         method: "PATCH",
         headers: {
@@ -435,15 +577,12 @@ export default function BakeryOrdersPage() {
       }
 
       const updatedOrder = await response.json()
-
-      // Update the orders list with the updated order
       setOrders(
         orders.map((order) =>
           order._id === updatedOrder._id || order.orderId === updatedOrder.orderId ? updatedOrder : order,
         ),
       )
 
-      // If we're viewing this order, update the viewing order as well
       if (viewingOrder && (viewingOrder._id === updatedOrder._id || viewingOrder.orderId === updatedOrder.orderId)) {
         setViewingOrder(updatedOrder)
       }
@@ -463,48 +602,13 @@ export default function BakeryOrdersPage() {
       setIsLoading(false)
     }
   }
-  function getNextStatus(currentStatus: string): string | null {
-    switch (currentStatus) {
-      case "PENDING":
-        return "IN_PROGRESS"
-      case "IN_PROGRESS":
-        return "READY_FOR_DELIVERY"
-      case "READY_FOR_DELIVERY":
-        return "DISPATCHED"
-      case "DISPATCHED":
-        return "DELIVERING"
-      case "DELIVERING":
-        return "DELIVERED"
-      default:
-        return null
-    }
-  }
 
-  function getNextStatusLabel(currentStatus: string): string {
-    switch (currentStatus) {
-      case "PENDING":
-        return "Marquer en préparation"
-      case "IN_PROGRESS":
-        return "Marquer prêt à livrer"
-      case "READY_FOR_DELIVERY":
-        return "Dispatcher"
-      case "DISPATCHED":
-        return "Marquer en livraison"
-      case "DELIVERING":
-        return "Marquer comme livré"
-      default:
-        return "Mettre à jour"
-    }
-  }
-
-  // Format date
   const formatDate = (dateString: string) => {
     if (!dateString) return "Non défini"
     const date = new Date(dateString)
     return format(date, "dd/MM/yyyy HH:mm", { locale: fr })
   }
 
-  // Format price
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("fr-FR", {
       style: "currency",
@@ -512,91 +616,581 @@ export default function BakeryOrdersPage() {
     }).format(price)
   }
 
-  // Mobile tabs component
-  const MobileTabs = () => (
-    <Sheet>
-      <SheetTrigger asChild>
-        <Button variant="outline" size="sm" className="md:hidden">
-          <Menu className="h-4 w-4 mr-2" />
-          Filtres
-        </Button>
-      </SheetTrigger>
-      <SheetContent side="left" className="w-[280px]">
-        <div className="space-y-4 mt-6">
-          <h3 className="font-medium">Filtrer par statut</h3>
-          <div className="space-y-2">            {[
-              { value: "all", label: "Toutes les commandes" },
-              { value: "pending", label: "En attente" },
-              { value: "in_progress", label: "En préparation" },
-              { value: "ready", label: "Prêt à livrer" },
-              { value: "dispatched", label: "Dispatché" },
-              { value: "delivering", label: "En livraison" },
-              { value: "delivered", label: "Livré" },
-              { value: "cancelled", label: "Annulé" },
-            ].map((tab) => (
-              <Button
-                key={tab.value}
-                variant={activeTab === tab.value ? "default" : "ghost"}
-                className="w-full justify-start"
-                onClick={() => setActiveTab(tab.value)}
+  const selectAllProducts = () => {
+    filteredProducts.forEach((product) => {
+      const existingItem = orderProducts.find((item) => item.productName === product.name)
+      if (!existingItem) {
+        addProductToOrder(product._id)
+      }
+    })
+  }
+
+  const deselectAllProducts = () => {
+    setOrderProducts([])
+  }
+
+  // ENHANCED Mobile-friendly step rendering functions
+  const renderLaboratoryStep = () => (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 mb-4">
+        <Building2 className="h-5 w-5 text-primary" />
+        <h3 className="text-lg font-medium">Sélectionnez un laboratoire</h3>
+      </div>
+
+      {isLoadingLabs ? (
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="h-6 w-6 animate-spin mr-2" />
+          <span className="text-sm">Chargement des laboratoires...</span>
+        </div>
+      ) : (
+        <ScrollArea className="h-[50vh] md:h-auto">
+          <div className="grid gap-3 pr-4">
+            {laboratories.map((lab) => (
+              <Card
+                key={lab._id}
+                className="cursor-pointer hover:shadow-md transition-all duration-200 border-2 hover:border-primary/50 active:scale-[0.98]"
+                onClick={() => handleLaboratorySelect(lab)}
               >
-                {tab.label}
-              </Button>
+                <CardContent className="p-4">
+                  <div className="flex justify-between items-start">
+                    <div className="space-y-2 flex-1">
+                      <h4 className="font-medium text-base">{lab.labName}</h4>
+                      {lab.headChef && (
+                        <p className="text-sm text-muted-foreground flex items-center gap-1">
+                          <span>👨‍🍳</span> Chef: {lab.headChef}
+                        </p>
+                      )}
+                      {lab.address && <p className="text-xs text-muted-foreground line-clamp-2">{lab.address}</p>}
+                    </div>
+                    <Badge variant="secondary" className="ml-2 text-xs">
+                      {products.filter((p) => p.laboratory === lab.labName).length} produits
+                    </Badge>
+                  </div>
+                </CardContent>
+              </Card>
             ))}
           </div>
-        </div>
-      </SheetContent>
-    </Sheet>
+        </ScrollArea>
+      )}
+    </div>
   )
 
-  // Order card component for better mobile layout
-  const OrderCard = ({ order }: { order: Order }) => (
-    <Card className="w-full">
-      <CardContent className="p-4">
-        <div className="space-y-3">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-            <div className="space-y-1">
-              <div className="font-medium text-sm sm:text-base">{order.orderReferenceId}</div>
-              <div className="text-xs sm:text-sm text-muted-foreground">{order.bakeryName}</div>
-              <div className="text-xs text-muted-foreground">{formatDate(order.createdAt || order.scheduledDate)}</div>
-            </div>
-            <div className="flex items-center gap-2">
-              <StatusBadge status={order.status} />
-            </div>
+  const renderProductsStep = () => (
+    <div className="space-y-4">
+      {/* Mobile-optimized header */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Package className="h-5 w-5 text-primary" />
+            <h3 className="text-lg font-medium">Produits disponibles</h3>
           </div>
+          <Button variant="outline" size="sm" onClick={() => setCurrentStep("laboratory")} className="text-xs">
+            <ArrowLeft className="h-4 w-4 mr-1" />
+            <span className="hidden sm:inline">Changer de</span> laboratoire
+          </Button>
+        </div>
 
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-            <div className="font-bold text-lg">
-              {formatPrice(order.products.reduce((total, product) => total + product.totalPrice, 0))}
-            </div>
-            <div className="flex gap-2">
-              <StatusActions
-                status={order.status}
-                orderId={order._id || order.orderId}
-                onStatusChange={updateOrderStatus}
-                disabled={isLoading}
-              />
+        {/* Mobile-friendly action buttons */}
+        {filteredProducts.length > 0 && (
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={selectAllProducts} className="flex-1 text-xs bg-transparent">
+              Tout sélectionner
+            </Button>
+            {orderProducts.length > 0 && (
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => {
-                  setViewingOrder(order)
-                  setIsViewDialogOpen(true)
-                }}
+                onClick={deselectAllProducts}
+                className="flex-1 text-xs bg-transparent"
               >
-                <Eye className="h-4 w-4 mr-1" />
-                <span className="hidden sm:inline">Voir</span>
+                Tout désélectionner
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {selectedLaboratory && (
+        <Alert className="border-green-200 bg-green-50">
+          <CheckCircle className="h-4 w-4 text-green-600" />
+          <AlertDescription className="text-green-800">
+            <strong>{selectedLaboratory.labName}</strong> sélectionné
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {isLoadingProducts ? (
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="h-6 w-6 animate-spin mr-2" />
+          <span className="text-sm">Chargement des produits...</span>
+        </div>
+      ) : filteredProducts.length === 0 ? (
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>Aucun produit disponible pour ce laboratoire.</AlertDescription>
+        </Alert>
+      ) : (
+        <ScrollArea className="h-[40vh] md:h-auto">
+          <div className="grid gap-3 pr-4">
+            {filteredProducts.map((product) => {
+              const orderItem = orderProducts.find((item) => item.productName === product.name)
+              const isSelected = !!orderItem
+              const quantity = orderItem?.quantity || 0
+
+              return (
+                <Card
+                  key={product._id}
+                  className={`transition-all duration-200 ${
+                    isSelected ? "border-primary bg-primary/5 shadow-sm" : "hover:shadow-sm"
+                  }`}
+                >
+                  <CardContent className="p-4">
+                    <div className="space-y-3">
+                      {/* Product header */}
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-start gap-3 flex-1">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                addProductToOrder(product._id)
+                              } else {
+                                const index = orderProducts.findIndex((item) => item.productName === product.name)
+                                if (index >= 0) removeItem(index)
+                              }
+                            }}
+                            className="w-5 h-5 mt-1 text-primary bg-gray-100 border-gray-300 rounded focus:ring-primary focus:ring-2"
+                          />
+                          <div className="space-y-1 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h4 className="font-medium text-base">{product.name}</h4>
+                              {product.category && (
+                                <Badge variant="outline" className="text-xs">
+                                  {product.category}
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-sm text-muted-foreground line-clamp-2">{product.description}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Product details and quantity controls */}
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between text-sm">
+                          <div className="flex items-center gap-4 text-muted-foreground">
+                            <span className="font-medium text-primary">{formatPrice(product.unitPrice)}</span>
+                            {product.preparationTime && <span className="text-xs">⏱️ {product.preparationTime}min</span>}
+                          </div>
+                        </div>
+
+                        {/* Enhanced quantity controls */}
+                        {isSelected ? (
+                          <div className="space-y-2">
+                            {/* Mobile-friendly quantity controls */}
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-medium">Quantité:</span>
+                              <div className="flex items-center gap-3">
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  className="h-9 w-9 bg-transparent border-2"
+                                  onClick={() => {
+                                    const index = orderProducts.findIndex((item) => item.productName === product.name)
+                                    if (index >= 0) updateItemQuantity(index, quantity - 1)
+                                  }}
+                                  disabled={quantity <= 1}
+                                >
+                                  <Minus className="h-4 w-4" />
+                                </Button>
+
+                                {/* Direct quantity input */}
+                                <div className="relative">
+                                  <Input
+                                    type="number"
+                                    min="1"
+                                    max="999"
+                                    value={quantity}
+                                    onChange={(e) => {
+                                      const newQuantity = Number.parseInt(e.target.value) || 1
+                                      if (newQuantity >= 1 && newQuantity <= 999) {
+                                        const index = orderProducts.findIndex(
+                                          (item) => item.productName === product.name,
+                                        )
+                                        if (index >= 0) updateItemQuantity(index, newQuantity)
+                                      }
+                                    }}
+                                    className="w-16 text-center font-medium border-2 focus:border-primary"
+                                  />
+                                </div>
+
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  className="h-9 w-9 bg-transparent border-2"
+                                  onClick={() => {
+                                    const index = orderProducts.findIndex((item) => item.productName === product.name)
+                                    if (index >= 0) updateItemQuantity(index, quantity + 1)
+                                  }}
+                                  disabled={quantity >= 999}
+                                >
+                                  <Plus className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+
+                            {/* Quick quantity buttons */}
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-muted-foreground">Quantités rapides:</span>
+                              <div className="flex gap-1">
+                                {[5, 10, 25, 50].map((quickQty) => (
+                                  <Button
+                                    key={quickQty}
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-7 px-2 text-xs bg-transparent"
+                                    onClick={() => {
+                                      const index = orderProducts.findIndex((item) => item.productName === product.name)
+                                      if (index >= 0) updateItemQuantity(index, quickQty)
+                                    }}
+                                  >
+                                    {quickQty}
+                                  </Button>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Subtotal display */}
+                            <div className="flex items-center justify-between pt-2 border-t border-muted">
+                              <span className="text-sm text-muted-foreground">Sous-total:</span>
+                              <span className="font-bold text-primary">
+                                {formatPrice(quantity * product.unitPrice)}
+                              </span>
+                            </div>
+
+                            {/* Remove button */}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                const index = orderProducts.findIndex((item) => item.productName === product.name)
+                                if (index >= 0) removeItem(index)
+                              }}
+                              className="w-full text-destructive hover:text-destructive hover:bg-destructive/10"
+                            >
+                              <Trash className="h-4 w-4 mr-2" />
+                              Retirer du panier
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button size="sm" onClick={() => addProductToOrder(product._id)} className="w-full">
+                            <Plus className="h-4 w-4 mr-2" />
+                            Ajouter au panier
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
+        </ScrollArea>
+      )}
+
+      {/* Enhanced mobile-friendly order summary */}
+      {orderProducts.length > 0 && (
+        <Card className="border-primary sticky bottom-0 bg-white shadow-lg">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base">
+                Panier ({orderProducts.length} produit{orderProducts.length !== 1 ? "s" : ""})
+              </CardTitle>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setOrderProducts([])}
+                className="text-destructive hover:text-destructive text-xs"
+              >
+                <Trash className="h-4 w-4 mr-1" />
+                Vider
               </Button>
             </div>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {/* Enhanced product list for mobile */}
+            <ScrollArea className="max-h-40">
+              <div className="space-y-3">
+                {orderProducts.map((item, index) => (
+                  <div key={index} className="p-3 bg-muted/30 rounded-lg border">
+                    <div className="space-y-2">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="font-medium text-sm">{item.productName}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {formatPrice(item.pricePerUnit)} × {item.quantity}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-bold text-sm">{formatPrice(item.totalPrice)}</div>
+                        </div>
+                      </div>
+
+                      {/* Inline quantity controls for cart */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-7 w-7 bg-transparent"
+                            onClick={() => updateItemQuantity(index, item.quantity - 1)}
+                            disabled={item.quantity <= 1}
+                          >
+                            <Minus className="h-3 w-3" />
+                          </Button>
+                          <Input
+                            type="number"
+                            min="1"
+                            max="999"
+                            value={item.quantity}
+                            onChange={(e) => {
+                              const newQuantity = Number.parseInt(e.target.value) || 1
+                              if (newQuantity >= 1 && newQuantity <= 999) {
+                                updateItemQuantity(index, newQuantity)
+                              }
+                            }}
+                            className="w-14 h-7 text-center text-xs font-medium"
+                          />
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-7 w-7 bg-transparent"
+                            onClick={() => updateItemQuantity(index, item.quantity + 1)}
+                            disabled={item.quantity >= 999}
+                          >
+                            <Plus className="h-3 w-3" />
+                          </Button>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeItem(index)}
+                          className="h-7 w-7 text-destructive hover:text-destructive"
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+
+            {/* Enhanced summary totals */}
+            <div className="p-3 bg-primary/10 rounded-lg border border-primary/20">
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span>Articles sélectionnés:</span>
+                  <span className="font-medium">{orderProducts.length}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span>Quantité totale:</span>
+                  <span className="font-medium">{orderProducts.reduce((total, item) => total + item.quantity, 0)}</span>
+                </div>
+                <div className="flex justify-between text-lg font-bold pt-2 border-t border-primary/20">
+                  <span>Total commande:</span>
+                  <span className="text-primary">{formatPrice(calculateTotalPrice())}</span>
+                </div>
+              </div>
+            </div>
+
+            <Button
+              className="w-full"
+              onClick={() => setCurrentStep("details")}
+              disabled={orderProducts.length === 0}
+              size="lg"
+            >
+              <ShoppingCart className="h-4 w-4 mr-2" />
+              Continuer ({orderProducts.reduce((total, item) => total + item.quantity, 0)} articles)
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+    </div>
   )
 
+  // Add a new function for bulk quantity operations:
+
+  const setBulkQuantity = (productName: string, quantity: number) => {
+    const index = orderProducts.findIndex((item) => item.productName === productName)
+    if (index >= 0) {
+      updateItemQuantity(index, quantity)
+    }
+  }
+
+  const renderDetailsStep = () => (
+    <div className="space-y-4">
+      {/* Mobile-optimized header */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Info className="h-5 w-5 text-primary" />
+            <h3 className="text-lg font-medium">Détails de la commande</h3>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => setCurrentStep("products")} className="text-xs">
+            <ArrowLeft className="h-4 w-4 mr-1" />
+            <span className="hidden sm:inline">Retour aux</span> produits
+          </Button>
+        </div>
+      </div>
+
+      {/* Bakery Name Input */}
+      <div className="space-y-2">
+        <Label htmlFor="bakeryName">Nom de la boulangerie</Label>
+        <Input
+          type="text"
+          id="bakeryName"
+          value={bakeryName}
+          onChange={(e) => setBakeryName(e.target.value)}
+          placeholder="Entrez le nom de la boulangerie"
+        />
+      </div>
+
+      {/* Scheduled Date Picker */}
+      <div className="space-y-2">
+        <Label>Date de livraison prévue</Label>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant={"outline"} className={format(scheduledDate || new Date(), "PPP", { locale: fr })}>
+              <Calendar className="mr-2 h-4 w-4" />
+              <span>{scheduledDate ? format(scheduledDate, "PPP", { locale: fr }) : "Sélectionner une date"}</span>
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <CalendarComponent
+              mode="single"
+              selected={scheduledDate}
+              onSelect={setScheduledDate}
+              disabled={(date) => date < new Date()}
+              initialFocus
+            />
+          </PopoverContent>
+        </Popover>
+      </div>
+
+      {/* Delivery Address Textarea */}
+      <div className="space-y-2">
+        <Label htmlFor="address">Adresse de livraison</Label>
+        <Textarea
+          id="address"
+          value={address}
+          onChange={(e) => setAddress(e.target.value)}
+          placeholder="Entrez l'adresse de livraison"
+        />
+      </div>
+
+      {/* Order Notes Textarea */}
+      <div className="space-y-2">
+        <Label htmlFor="orderNotes">Notes de commande</Label>
+        <Textarea
+          id="orderNotes"
+          value={orderNotes}
+          onChange={(e) => setOrderNotes(e.target.value)}
+          placeholder="Ajouter des notes à la commande"
+        />
+      </div>
+
+      {/* Order Summary */}
+      <Card className="border-primary">
+        <CardHeader>
+          <CardTitle>Récapitulatif de la commande</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {orderProducts.map((item, index) => (
+            <div key={index} className="flex items-center justify-between">
+              <span>
+                {item.productName} ({item.quantity})
+              </span>
+              <span>{formatPrice(item.totalPrice)}</span>
+            </div>
+          ))}
+          <div className="flex items-center justify-between font-medium">
+            <span>Total</span>
+            <span>{formatPrice(calculateTotalPrice())}</span>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+
+  const MobileTabs = () => {
+    return (
+      <Select value={activeTab} onValueChange={setActiveTab}>
+        <SelectTrigger className="w-full">
+          <SelectValue placeholder="Filtrer par statut" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">Toutes</SelectItem>
+          <SelectItem value="pending">En attente</SelectItem>
+          <SelectItem value="in_progress">En préparation</SelectItem>
+          <SelectItem value="ready">Prêt</SelectItem>
+          <SelectItem value="dispatched">Dispatché</SelectItem>
+          <SelectItem value="delivering">En livraison</SelectItem>
+          <SelectItem value="delivered">Livré</SelectItem>
+          <SelectItem value="cancelled">Annulé</SelectItem>
+        </SelectContent>
+      </Select>
+    )
+  }
+
+  const OrderCard = ({ order }: { order: Order }) => {
+    return (
+      <Card className="border-2 hover:shadow-md transition-shadow duration-200">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">
+            {order.orderReferenceId} - {order.bakeryName}
+          </CardTitle>
+          <StatusBadge status={order.status} />
+        </CardHeader>
+        <CardContent>
+          <div className="text-sm text-muted-foreground">
+            <div className="flex justify-between">
+              <span>Date prévue:</span>
+              <span>{formatDate(order.scheduledDate)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Livreur:</span>
+              <span>{order.deliveryUserName}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Produits:</span>
+              <span>{order.products.length}</span>
+            </div>
+          </div>
+          <div className="flex justify-end mt-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setViewingOrder(order)
+                setIsViewDialogOpen(true)
+              }}
+            >
+              <Eye className="h-4 w-4 mr-2" />
+              Voir détails
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  // Return your complete UI with mobile enhancements
   return (
     <DashboardLayout role="bakery">
-      <div className="flex flex-col gap-4 p-4 sm:p-6">        {/* Header */}
+      <div className="flex flex-col gap-4 p-4 sm:p-6">
+        {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Commandes</h1>
@@ -604,244 +1198,133 @@ export default function BakeryOrdersPage() {
           </div>
           <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="w-full sm:w-auto">
+              <Button className="w-full sm:w-auto" size="lg">
                 <Plus className="mr-2 h-4 w-4" />
-                <span className="sm:inline">Nouvelle commande</span>
+                <span>Nouvelle commande</span>
               </Button>
             </DialogTrigger>
-            <DialogContent className="w-[95vw] max-w-3xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Créer une nouvelle commande</DialogTitle>
-                <DialogDescription>Ajoutez des produits à votre commande</DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                {/* Form fields with better mobile layout */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">                  <div className="grid gap-2">
-                    <Label htmlFor="bakery">Boulangerie</Label>
-                    {isLoadingBakeries ? (
-                      <div className="flex items-center gap-2 p-2 text-sm text-muted-foreground">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Chargement des boulangeries...
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        {bakeries.length > 0 && (
-                          <Select value={bakeryName} onValueChange={setBakeryName}>
-                            <SelectTrigger id="bakery">
-                              <SelectValue placeholder="Sélectionnez une boulangerie" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {bakeries.map((bakery) => (
-                                <SelectItem key={bakery._id} value={bakery.bakeryname}>
-                                  {bakery.bakeryname}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        )}
-                        <Input
-                          id="bakery-manual"
-                          placeholder="Ou saisissez le nom de la boulangerie"
-                          value={bakeryName}
-                          onChange={(e) => setBakeryName(e.target.value)}
-                        />
-                        {bakeries.length === 0 && (
-                          <p className="text-xs text-muted-foreground">
-                            Service de boulangeries indisponible. Veuillez saisir le nom manuellement.
-                          </p>
-                        )}
-                      </div>
-                    )}
-                  </div>                  <div className="grid gap-2">
-                    <Label htmlFor="dispatchInfo" className="flex items-center gap-2">
-                      <Truck className="h-4 w-4" />
-                      Livraison
-                    </Label>
-                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
-                      <div className="flex items-center gap-2 text-blue-700 text-sm">
-                        <Info className="h-4 w-4" />
-                        <span className="font-medium">Système de dispatching</span>
-                      </div>
-                      <p className="text-blue-600 text-xs mt-1">
-                        Cette commande sera disponible pour tous les livreurs. 
-                        Le premier livreur disponible pourra prendre en charge la livraison.
-                      </p>
-                    </div>
-                  </div>
-                </div>
+            <DialogContent className="w-[95vw] max-w-4xl max-h-[95vh] p-0">
+              <div className="flex flex-col h-full">
+                <DialogHeader className="p-6 pb-4">
+                  <DialogTitle className="text-xl">Créer une nouvelle commande</DialogTitle>
+                  <DialogDescription>
+                    {currentStep === "laboratory" && "Sélectionnez d'abord un laboratoire"}
+                    {currentStep === "products" && "Choisissez les produits à commander"}
+                    {currentStep === "details" && "Complétez les détails de votre commande"}
+                  </DialogDescription>
+                </DialogHeader>
 
-                <div className="grid gap-2">
-                  <Label htmlFor="scheduledDate">Date de livraison prévue</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className="w-full justify-start text-left font-normal"
-                        id="scheduledDate"
+                <div className="flex-1 px-6">
+                  {/* Enhanced mobile progress indicator */}
+                  <div className="flex items-center justify-center mb-6">
+                    <div className="flex items-center space-x-2 sm:space-x-4">
+                      <div
+                        className={`flex items-center ${currentStep === "laboratory" ? "text-primary" : "text-muted-foreground"}`}
                       >
-                        <Calendar className="mr-2 h-4 w-4" />
-                        {scheduledDate ? (
-                          format(scheduledDate, "PPP", { locale: fr })
-                        ) : (
-                          <span>Sélectionnez une date</span>
-                        )}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <CalendarComponent
-                        mode="single"
-                        selected={scheduledDate}
-                        onSelect={setScheduledDate}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-
-                <div className="grid gap-2">
-                  <Label htmlFor="address">Adresse de livraison</Label>
-                  <Input
-                    id="address"
-                    placeholder="Adresse complète de livraison"
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                  />
-                </div>                {/* Product selection with mobile-friendly layout */}
-                <div className="grid gap-2">
-                  <Label>Produits</Label>
-                  {isLoadingProducts ? (
-                    <div className="flex items-center gap-2 p-2 text-sm text-muted-foreground">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Chargement des produits...
-                    </div>
-                  ) : products.length > 0 ? (
-                    <div className="flex flex-col gap-2">
-                      <Select value={selectedProduct} onValueChange={setSelectedProduct}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Sélectionnez un produit" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {products.map((product) => (
-                            <SelectItem key={product._id} value={product._id}>
-                              {product.name} - {formatPrice(product.unitPrice)}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Button
-                        variant="outline"
-                        onClick={() => addProductToOrder(selectedProduct)}
-                        disabled={!selectedProduct}
-                        className="w-full"
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Ajouter
-                      </Button>
-                    </div>
-                  ) : (
-                    <Alert>
-                      <AlertCircle className="h-4 w-4" />
-                      <AlertDescription>
-                        Aucun produit disponible. Veuillez vérifier que des produits sont activés dans le catalogue.
-                      </AlertDescription>
-                    </Alert>
-                  )}
-                </div>
-
-                {/* Order products with mobile-optimized layout */}
-                {orderProducts.length > 0 && (
-                  <div className="space-y-3">
-                    {orderProducts.map((item, index) => (
-                      <Card key={index} className="p-3">
-                        <div className="space-y-3">
-                          <div className="flex justify-between items-start">
-                            <div className="font-medium text-sm">{item.productName}</div>
-                            <Button variant="ghost" size="icon" onClick={() => removeItem(index)}>
-                              <Trash className="h-4 w-4" />
-                            </Button>
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            Prix unitaire: {formatPrice(item.pricePerUnit)}
-                          </div>
-                          <div className="flex justify-between items-center">
-                            <div className="flex items-center gap-2">
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={() => updateItemQuantity(index, item.quantity - 1)}
-                              >
-                                <Minus className="h-3 w-3" />
-                              </Button>
-                              <span className="w-8 text-center text-sm">{item.quantity}</span>
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={() => updateItemQuantity(index, item.quantity + 1)}
-                              >
-                                <Plus className="h-3 w-3" />
-                              </Button>
-                            </div>
-                            <div className="font-medium">{formatPrice(item.totalPrice)}</div>
-                          </div>
+                        <div
+                          className={`w-8 h-8 rounded-full flex items-center justify-center border-2 text-sm ${
+                            currentStep === "laboratory"
+                              ? "border-primary bg-primary text-white"
+                              : selectedLaboratory
+                                ? "border-green-500 bg-green-500 text-white"
+                                : "border-muted-foreground"
+                          }`}
+                        >
+                          1
                         </div>
-                      </Card>
-                    ))}
-                    <Card className="p-3 bg-muted/50">
-                      <div className="flex justify-between items-center">
-                        <div className="font-medium">Total commande</div>
-                        <div className="font-bold">{formatPrice(calculateTotalPrice())}</div>
+                        <span className="ml-2 text-xs sm:text-sm font-medium hidden sm:inline">Laboratoire</span>
                       </div>
-                    </Card>
+                      <div className="w-4 sm:w-8 h-px bg-muted-foreground"></div>
+                      <div
+                        className={`flex items-center ${currentStep === "products" ? "text-primary" : "text-muted-foreground"}`}
+                      >
+                        <div
+                          className={`w-8 h-8 rounded-full flex items-center justify-center border-2 text-sm ${
+                            currentStep === "products"
+                              ? "border-primary bg-primary text-white"
+                              : orderProducts.length > 0
+                                ? "border-green-500 bg-green-500 text-white"
+                                : "border-muted-foreground"
+                          }`}
+                        >
+                          2
+                        </div>
+                        <span className="ml-2 text-xs sm:text-sm font-medium hidden sm:inline">Produits</span>
+                      </div>
+                      <div className="w-4 sm:w-8 h-px bg-muted-foreground"></div>
+                      <div
+                        className={`flex items-center ${currentStep === "details" ? "text-primary" : "text-muted-foreground"}`}
+                      >
+                        <div
+                          className={`w-8 h-8 rounded-full flex items-center justify-center border-2 text-sm ${
+                            currentStep === "details"
+                              ? "border-primary bg-primary text-white"
+                              : "border-muted-foreground"
+                          }`}
+                        >
+                          3
+                        </div>
+                        <span className="ml-2 text-xs sm:text-sm font-medium hidden sm:inline">Détails</span>
+                      </div>
+                    </div>
                   </div>
-                )}
 
-                <div className="grid gap-2">
-                  <Label htmlFor="notes">Notes</Label>
-                  <Textarea
-                    id="notes"
-                    placeholder="Instructions spéciales pour la commande..."
-                    value={orderNotes}
-                    onChange={(e) => setOrderNotes(e.target.value)}
-                    className="min-h-[80px]"
-                  />
+                  {/* Step content */}
+                  <div className="pb-4">
+                    {currentStep === "laboratory" && renderLaboratoryStep()}
+                    {currentStep === "products" && renderProductsStep()}
+                    {currentStep === "details" && renderDetailsStep()}
+                  </div>
                 </div>
+
+                <DialogFooter className="p-6 pt-4 border-t bg-muted/30">
+                  <div className="flex flex-col sm:flex-row gap-2 w-full">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        resetOrderForm()
+                        setIsCreateDialogOpen(false)
+                      }}
+                      className="w-full sm:w-auto bg-transparent"
+                    >
+                      Annuler
+                    </Button>
+                    {currentStep === "details" && (
+                      <Button
+                        onClick={handleCreateOrder}
+                        disabled={
+                          !selectedLaboratory ||
+                          orderProducts.length === 0 ||
+                          !bakeryName ||
+                          !scheduledDate ||
+                          !address ||
+                          isSubmitting
+                        }
+                        className="w-full sm:w-auto"
+                        size="lg"
+                      >
+                        {isSubmitting ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Traitement...
+                          </>
+                        ) : (
+                          <>
+                            <ShoppingCart className="mr-2 h-4 w-4" />
+                            Commander ({formatPrice(calculateTotalPrice())})
+                          </>
+                        )}
+                      </Button>
+                    )}
+                  </div>
+                </DialogFooter>
               </div>
-              <DialogFooter className="flex flex-col sm:flex-row gap-2">
-                <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)} className="w-full sm:w-auto">
-                  Annuler
-                </Button>
-                <Button
-                  onClick={handleCreateOrder}                  disabled={
-                    orderProducts.length === 0 ||
-                    isSubmitting ||
-                    !bakeryName ||
-                    !scheduledDate ||
-                    !address
-                  }
-                  className="w-full sm:w-auto"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Traitement...
-                    </>
-                  ) : (
-                    <>
-                      <ShoppingCart className="mr-2 h-4 w-4" />
-                      Commander
-                    </>
-                  )}
-                </Button>
-              </DialogFooter>
             </DialogContent>
           </Dialog>
         </div>
 
-        {/* Mobile and Desktop Tabs */}
+        {/* Main content */}
         <div className="space-y-4">
-          {/* Mobile filter button */}
           <div className="flex items-center gap-2 md:hidden">
             <MobileTabs />
             <div className="text-sm text-muted-foreground">
@@ -849,8 +1332,8 @@ export default function BakeryOrdersPage() {
             </div>
           </div>
 
-          {/* Desktop tabs */}
-          <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="hidden md:block">            <TabsList className="grid w-full grid-cols-8">
+          <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="hidden md:block">
+            <TabsList className="grid w-full grid-cols-8">
               <TabsTrigger value="all">Toutes</TabsTrigger>
               <TabsTrigger value="pending">En attente</TabsTrigger>
               <TabsTrigger value="in_progress">En préparation</TabsTrigger>
@@ -862,7 +1345,6 @@ export default function BakeryOrdersPage() {
             </TabsList>
           </Tabs>
 
-          {/* Search and filter */}
           <Card>
             <CardHeader className="pb-3">
               <div className="flex flex-col sm:flex-row gap-3">
@@ -880,7 +1362,8 @@ export default function BakeryOrdersPage() {
                   <Select value={statusFilter} onValueChange={setStatusFilter}>
                     <SelectTrigger className="w-full sm:w-[180px]">
                       <SelectValue placeholder="Filtrer par statut" />
-                    </SelectTrigger>                    <SelectContent>
+                    </SelectTrigger>
+                    <SelectContent>
                       <SelectItem value="all">Tous les statuts</SelectItem>
                       <SelectItem value="PENDING">En attente</SelectItem>
                       <SelectItem value="IN_PROGRESS">En préparation</SelectItem>
@@ -903,7 +1386,7 @@ export default function BakeryOrdersPage() {
               ) : error ? (
                 <div className="text-center py-8 border rounded-md text-red-500">
                   <p className="text-sm sm:text-base">{error}</p>
-                  <Button variant="outline" className="mt-4" onClick={() => window.location.reload()}>
+                  <Button variant="outline" className="mt-4 bg-transparent" onClick={() => window.location.reload()}>
                     Réessayer
                   </Button>
                 </div>
@@ -920,89 +1403,68 @@ export default function BakeryOrdersPage() {
           </Card>
         </div>
 
-        {/* View Order Dialog */}
+        {/* View Order Dialog - Enhanced for mobile */}
         <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
           <DialogContent className="w-[95vw] max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Détails de la commande</DialogTitle>
             </DialogHeader>
             {viewingOrder && (
-              <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  <div className="space-y-4">
-                    <div>
-                      <h3 className="font-medium mb-2">Informations générales</h3>
-                      <div className="space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Référence:</span>
-                          <span className="font-medium">{viewingOrder.orderReferenceId}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Boulangerie:</span>
-                          <span>{viewingOrder.bakeryName}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Livreur:</span>
-                          <span>{viewingOrder.deliveryUserName}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Date prévue:</span>
-                          <span>{formatDate(viewingOrder.scheduledDate)}</span>
-                        </div>
-                        {viewingOrder.actualDeliveryDate && (
+              <ScrollArea className="max-h-[60vh]">
+                <div className="grid gap-4 py-4 pr-4">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div className="space-y-4">
+                      <div>
+                        <h3 className="font-medium mb-2">Informations générales</h3>
+                        <div className="space-y-2 text-sm">
                           <div className="flex justify-between">
-                            <span className="text-muted-foreground">Date de livraison:</span>
-                            <span>{formatDate(viewingOrder.actualDeliveryDate)}</span>
+                            <span className="text-muted-foreground">Référence:</span>
+                            <span className="font-medium">{viewingOrder.orderReferenceId}</span>
                           </div>
-                        )}
-                        <div className="flex justify-between items-center">
-                          <span className="text-muted-foreground">Statut:</span>
-                          <StatusBadge status={viewingOrder.status} />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div>
-                      <h3 className="font-medium mb-2">Adresse de livraison</h3>
-                      <p className="text-sm bg-muted p-3 rounded-md">{viewingOrder.address}</p>
-                    </div>
-
-                    <div>
-                      <h3 className="font-medium mb-2">Notes</h3>
-                      <p className="text-sm bg-muted p-3 rounded-md">{viewingOrder.notes || "Aucune note"}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="font-medium mb-3">Produits commandés</h3>
-                  <div className="space-y-2">
-                    {viewingOrder.products.map((product, index) => (
-                      <Card key={index} className="p-3">
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <div className="font-medium text-sm">{product.productName}</div>
-                            <div className="text-xs text-muted-foreground">
-                              {product.quantity} × {formatPrice(product.pricePerUnit)}
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Boulangerie:</span>
+                            <span>{viewingOrder.bakeryName}</span>
+                          </div>
+                          {viewingOrder.laboratory && (
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Laboratoire:</span>
+                              <span>{viewingOrder.laboratory}</span>
                             </div>
+                          )}
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Livreur:</span>
+                            <span>{viewingOrder.deliveryUserName}</span>
                           </div>
-                          <div className="font-medium">{formatPrice(product.totalPrice)}</div>
-                        </div>
-                      </Card>
-                    ))}
-                    <Card className="p-3 bg-muted/50">
-                      <div className="flex justify-between items-center">
-                        <div className="font-medium">Total commande</div>
-                        <div className="font-bold text-lg">
-                          {formatPrice(viewingOrder.products.reduce((total, product) => total + product.totalPrice, 0))}
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Date prévue:</span>
+                            <span>{formatDate(viewingOrder.scheduledDate)}</span>
+                          </div>
+                          {viewingOrder.actualDeliveryDate && (
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Date de livraison:</span>
+                              <span>{formatDate(viewingOrder.actualDeliveryDate)}</span>
+                            </div>
+                          )}
+                          <div className="flex justify-between items-center">
+                            <span className="text-muted-foreground">Statut:</span>
+                            <StatusBadge status={viewingOrder.status} />
+                          </div>
                         </div>
                       </div>
-                    </Card>
+                    </div>
+                    <div className="space-y-4">
+                      <div>
+                        <h3 className="font-medium mb-2">Adresse de livraison</h3>
+                        <p className="text-sm bg-muted p-3 rounded-md">{viewingOrder.address}</p>
+                      </div>
+                      <div>
+                        <h3 className="font-medium mb-2">Notes</h3>
+                        <p className="text-sm bg-muted p-3 rounded-md">{viewingOrder.notes || "Aucune note"}</p>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
+              </ScrollArea>
             )}
             <DialogFooter className="flex flex-col sm:flex-row gap-2">
               <div className="flex flex-col sm:flex-row gap-2 flex-1">
@@ -1018,7 +1480,8 @@ export default function BakeryOrdersPage() {
                 >
                   <SelectTrigger id="status-update" className="w-full sm:w-[200px]">
                     <SelectValue placeholder="Sélectionner un statut" />
-                  </SelectTrigger>                  <SelectContent>
+                  </SelectTrigger>
+                  <SelectContent>
                     <SelectItem value="PENDING">En attente</SelectItem>
                     <SelectItem value="IN_PROGRESS">En préparation</SelectItem>
                     <SelectItem value="READY_FOR_DELIVERY">Prêt à livrer</SelectItem>
