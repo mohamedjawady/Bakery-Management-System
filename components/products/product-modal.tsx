@@ -39,7 +39,8 @@ const productSchema = z.object({
   name: z.string().min(1, "Le nom est requis").max(100, "Le nom est trop long"),
   description: z.string().min(1, "La description est requise").max(500, "La description est trop longue"),
   ingredients: z.string().min(1, "Les ingrédients sont requis"),
-  unitPrice: z.number().min(0.01, "Le prix doit être supérieur à 0"),
+  unitPrice: z.number().min(0.01, "Le prix HT doit être supérieur à 0"),
+  taxRate: z.number().min(0).max(1, "Le taux de TVA doit être entre 0 et 100%").optional(),
   laboratory: z.string().min(1, "Le laboratoire est requis"),
   category: z.string().optional(),
   notes: z.string().optional(),
@@ -79,6 +80,7 @@ export function ProductModal({ product, isOpen, onClose, mode, onSave }: Product
       description: "",
       ingredients: "",
       unitPrice: 0,
+      taxRate: 0.15, // Default 15% VAT
       laboratory: "",
       category: "general",
       notes: "",
@@ -146,6 +148,7 @@ export function ProductModal({ product, isOpen, onClose, mode, onSave }: Product
         description: product.description,
         ingredients: product.ingredients.join(", "),
         unitPrice: product.unitPrice,
+        taxRate: product.taxRate || 0.15, // Default to 15% if not set
         laboratory: product.laboratory || "",
         category: product.category || "general",
         notes: product.notes || "",
@@ -160,6 +163,7 @@ export function ProductModal({ product, isOpen, onClose, mode, onSave }: Product
         description: "",
         ingredients: "",
         unitPrice: 0,
+        taxRate: 0.15, // Default 15% VAT
         laboratory: "",
         category: "general",
         notes: "",
@@ -316,8 +320,33 @@ export function ProductModal({ product, isOpen, onClose, mode, onSave }: Product
                 </div>
 
                 <div>
-                  <Label className="text-sm font-medium text-muted-foreground">Prix unitaire</Label>
-                  <p className="text-xl font-bold text-green-600">{product && formatPrice(product.unitPrice)}</p>
+                  <Label className="text-sm font-medium text-muted-foreground">Informations de prix</Label>
+                  <div className="bg-muted/50 p-4 rounded-lg space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm">Prix HT:</span>
+                      <span className="font-semibold">{product && formatPrice(product.unitPrice)}</span>
+                    </div>
+                    {product?.taxRate && (
+                      <>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm">TVA ({(product.taxRate * 100).toFixed(0)}%):</span>
+                          <span className="font-medium">{product && formatPrice(product.unitPrice * product.taxRate)}</span>
+                        </div>
+                        <div className="flex justify-between items-center border-t pt-2">
+                          <span className="text-sm font-semibold">Prix TTC:</span>
+                          <span className="text-lg font-bold text-green-600">
+                            {product && formatPrice(product.unitPrice * (1 + product.taxRate))}
+                          </span>
+                        </div>
+                      </>
+                    )}
+                    {!product?.taxRate && (
+                      <div className="flex justify-between items-center border-t pt-2">
+                        <span className="text-sm font-semibold">Prix TTC:</span>
+                        <span className="text-lg font-bold text-green-600">{product && formatPrice(product.unitPrice)}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div>
@@ -533,21 +562,72 @@ export function ProductModal({ product, isOpen, onClose, mode, onSave }: Product
                 <FormField
                   control={form.control}
                   name="unitPrice"
+                  render={({ field }) => {
+                    const watchedPrice = form.watch("unitPrice");
+                    const watchedTaxRate = form.watch("taxRate") || 0.15;
+                    const priceTTC = watchedPrice * (1 + watchedTaxRate);
+                    const taxAmount = watchedPrice * watchedTaxRate;
+                    
+                    return (
+                      <FormItem>
+                        <FormLabel>Prix unitaire HT (€) *</FormLabel>
+                        <FormControl>
+                          <div className="space-y-2">
+                            <div className="relative">
+                              <Euro className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                              <Input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                placeholder="0.00"
+                                className="pl-10"
+                                {...field}
+                                onChange={(e) => field.onChange(Number.parseFloat(e.target.value) || 0)}
+                              />
+                            </div>
+                            {watchedPrice > 0 && (
+                              <div className="text-sm text-muted-foreground space-y-1 p-2 bg-muted/50 rounded">
+                                <div className="flex justify-between">
+                                  <span>Prix HT:</span>
+                                  <span className="font-medium">{watchedPrice.toFixed(2)} €</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span>TVA ({(watchedTaxRate * 100).toFixed(0)}%):</span>
+                                  <span className="font-medium">{taxAmount.toFixed(2)} €</span>
+                                </div>
+                                <div className="flex justify-between border-t pt-1">
+                                  <span className="font-semibold">Prix TTC:</span>
+                                  <span className="font-semibold text-primary">{priceTTC.toFixed(2)} €</span>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    );
+                  }}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="taxRate"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Prix unitaire (€) *</FormLabel>
+                      <FormLabel>Taux de TVA (%)</FormLabel>
                       <FormControl>
                         <div className="relative">
-                          <Euro className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                           <Input
                             type="number"
                             step="0.01"
                             min="0"
-                            placeholder="0.00"
-                            className="pl-10"
+                            max="100"
+                            placeholder="15.00"
                             {...field}
-                            onChange={(e) => field.onChange(Number.parseFloat(e.target.value) || 0)}
+                            value={(field.value * 100).toFixed(2)}
+                            onChange={(e) => field.onChange(Number.parseFloat(e.target.value) / 100 || 0.15)}
                           />
+                          <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">%</span>
                         </div>
                       </FormControl>
                       <FormMessage />
