@@ -1,37 +1,222 @@
+"use client"
+
+import { useEffect, useState } from "react"
 import { DashboardLayout } from "@/components/layout/dashboard-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ArrowDown, ArrowUp, Banknote, BarChart3, ClipboardList, ShoppingBag, Users } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { ArrowDown, ArrowUp, Banknote, BarChart3, ClipboardList, ShoppingBag, Users, Download, Loader2 } from "lucide-react"
 import { SalesChart, ProductsChart, BakeriesComparisonChart } from "@/components/charts/sales-chart"
+import { useToast } from "@/hooks/use-toast"
+import {
+  getDashboardOverview,
+  getSalesChartData,
+  getProductPerformance,
+  getBakeryComparison,
+  getRecentOrders,
+  getPerformanceIndicators,
+  exportSalesReport,
+  exportProductReport,
+  exportFinancialReport
+} from "@/lib/api/dashboard"
 
-const salesData = [
-  { name: 'Jan', sales: 4000 },
-  { name: 'Feb', sales: 3000 },
-  { name: 'Mar', sales: 2000 },
-  { name: 'Apr', sales: 2780 },
-  { name: 'May', sales: 1890 },
-  { name: 'Jun', sales: 2390 },
-  { name: 'Jul', sales: 3490 },
-];
+interface DashboardData {
+  revenue: {
+    current: number
+    change: number
+    formatted: string
+  }
+  orders: {
+    current: number
+    change: number
+  }
+  products: {
+    active: number
+    available: number
+    total: number
+  }
+  users: {
+    active: number
+    total: number
+  }
+  averageOrderValue: {
+    current: number
+    formatted: string
+  }
+}
 
-const productData = [
-  { name: 'Pain', sales: 4000 },
-  { name: 'Croissant', sales: 3000 },
-  { name: 'Baguette', sales: 2000 },
-  { name: 'Éclair', sales: 2780 },
-  { name: 'Tarte', sales: 1890 },
-  { name: 'Macaron', sales: 2390 },
-];
+interface SalesData {
+  name: string
+  sales: number
+}
 
-const bakeriesData = [
-  { name: 'Saint-Michel', value: 35 },
-  { name: 'Montmartre', value: 25 },
-  { name: 'Opéra', value: 20 },
-  { name: 'Bastille', value: 15 },
-  { name: 'Marais', value: 5 },
-];
+interface ProductData {
+  name: string
+  sales: number
+  quantity: number
+}
+
+interface BakeryData {
+  name: string
+  value: number
+}
+
+interface RecentOrder {
+  orderId: string
+  bakeryName: string
+  amount: number
+  status: string
+  createdAt: string
+}
+
+interface PerformanceIndicator {
+  title: string
+  value: string
+  change: string
+  up: boolean
+}
 
 export default function AdminDashboard() {
+  const [overview, setOverview] = useState<DashboardData | null>(null)
+  const [salesData, setSalesData] = useState<SalesData[]>([])
+  const [productData, setProductData] = useState<ProductData[]>([])
+  const [bakeryData, setBakeryData] = useState<BakeryData[]>([])
+  const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([])
+  const [performanceIndicators, setPerformanceIndicators] = useState<PerformanceIndicator[]>([])
+  const [loading, setLoading] = useState(true)
+  const [exportLoading, setExportLoading] = useState<string | null>(null)
+  const { toast } = useToast()
+
+  const fetchDashboardData = async () => {
+    // Check if we're in the browser and have a token
+    if (typeof window === 'undefined') {
+      console.log('Window is undefined, skipping API calls')
+      setLoading(false)
+      return
+    }
+
+    // Get token from userInfo object in localStorage
+    const userInfo = localStorage.getItem('userInfo')
+    let token = null
+    
+    if (userInfo) {
+      try {
+        const parsedUserInfo = JSON.parse(userInfo)
+        token = parsedUserInfo.token
+      } catch (error) {
+        console.error('Error parsing userInfo from localStorage:', error)
+      }
+    }
+    
+    console.log('Token check - userInfo exists:', !!userInfo)
+    console.log('Token check - token exists:', !!token)
+    
+    if (!token) {
+      console.log('No token found in userInfo')
+      setLoading(false)
+      return
+    }
+
+    try {
+      console.log('Starting API calls...')
+      setLoading(true)
+      
+      // Fetch all dashboard data in parallel
+      const [
+        overviewRes,
+        salesRes,
+        productRes,
+        bakeryRes,
+        ordersRes,
+        indicatorsRes
+      ] = await Promise.all([
+        getDashboardOverview(),
+        getSalesChartData(),
+        getProductPerformance(),
+        getBakeryComparison(),
+        getRecentOrders(),
+        getPerformanceIndicators()
+      ])
+
+      console.log('API calls completed successfully')
+      setOverview(overviewRes.data)
+      setSalesData(salesRes.data)
+      setProductData(productRes.data)
+      setBakeryData(bakeryRes.data)
+      setRecentOrders(ordersRes.data)
+      setPerformanceIndicators(indicatorsRes.data)
+    } catch (error) {
+      console.error('Erreur lors du chargement du tableau de bord:', error)
+      toast({
+        title: "Erreur",
+        description: "Impossible de charger les données du tableau de bord.",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleExport = async (type: 'sales' | 'products' | 'financial') => {
+    try {
+      setExportLoading(type)
+      
+      switch (type) {
+        case 'sales':
+          await exportSalesReport()
+          break
+        case 'products':
+          await exportProductReport()
+          break
+        case 'financial':
+          await exportFinancialReport()
+          break
+      }
+      
+      toast({
+        title: "Export réussi",
+        description: "Le rapport a été téléchargé avec succès.",
+      })
+    } catch (error) {
+      console.error('Erreur lors de l\'export:', error)
+      toast({
+        title: "Erreur d'export",
+        description: error instanceof Error ? error.message : "Une erreur est survenue lors de l'export.",
+        variant: "destructive",
+      })
+    } finally {
+      setExportLoading(null)
+    }
+  }
+
+  useEffect(() => {
+    console.log('Dashboard useEffect running...')
+    
+    // Test basic API connectivity first
+    const testApiConnectivity = async () => {
+      try {
+        console.log('Testing API connectivity...')
+        const response = await fetch('http://localhost:5000/api/dashboard/test')
+        const data = await response.json()
+        console.log('API test successful:', data)
+      } catch (error) {
+        console.error('API test failed:', error)
+      }
+    }
+    
+    testApiConnectivity()
+    fetchDashboardData()
+  }, [])
+
+  if (loading) {
+    return (
+      <DashboardLayout role="admin">
+        <div className="flex items-center justify-center h-96">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      </DashboardLayout>
+    )
+  }
   return (
     <DashboardLayout role="admin">
       <div className="flex flex-col gap-4">
@@ -45,11 +230,11 @@ export default function AdminDashboard() {
               <Banknote className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">€45,231.89</div>
+              <div className="text-2xl font-bold">{overview?.revenue.formatted || "€0.00"}</div>
               <p className="text-xs text-muted-foreground">
-                <span className="text-emerald-500 flex items-center">
-                  <ArrowUp className="mr-1 h-4 w-4" />
-                  +20.1%
+                <span className={`flex items-center ${(overview?.revenue.change || 0) >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                  {(overview?.revenue.change || 0) >= 0 ? <ArrowUp className="mr-1 h-4 w-4" /> : <ArrowDown className="mr-1 h-4 w-4" />}
+                  {(overview?.revenue.change || 0) >= 0 ? '+' : ''}{(overview?.revenue.change || 0).toFixed(1)}%
                 </span>{" "}
                 par rapport au mois dernier
               </p>
@@ -61,11 +246,11 @@ export default function AdminDashboard() {
               <ClipboardList className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">+573</div>
+              <div className="text-2xl font-bold">{overview?.orders.current || 0}</div>
               <p className="text-xs text-muted-foreground">
-                <span className="text-emerald-500 flex items-center">
-                  <ArrowUp className="mr-1 h-4 w-4" />
-                  +12.2%
+                <span className={`flex items-center ${(overview?.orders.change || 0) >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                  {(overview?.orders.change || 0) >= 0 ? <ArrowUp className="mr-1 h-4 w-4" /> : <ArrowDown className="mr-1 h-4 w-4" />}
+                  {(overview?.orders.change || 0) >= 0 ? '+' : ''}{(overview?.orders.change || 0).toFixed(1)}%
                 </span>{" "}
                 par rapport au mois dernier
               </p>
@@ -73,17 +258,15 @@ export default function AdminDashboard() {
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Produits</CardTitle>
+              <CardTitle className="text-sm font-medium">Produits actifs</CardTitle>
               <ShoppingBag className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">124</div>
+              <div className="text-2xl font-bold">{overview?.products.active || 0}</div>
               <p className="text-xs text-muted-foreground">
-                <span className="text-emerald-500 flex items-center">
-                  <ArrowUp className="mr-1 h-4 w-4" />
-                  +4.1%
-                </span>{" "}
-                par rapport au mois dernier
+                <span className="text-muted-foreground">
+                  {overview?.products.available || 0} disponibles sur {overview?.products.total || 0} total
+                </span>
               </p>
             </CardContent>
           </Card>
@@ -93,13 +276,11 @@ export default function AdminDashboard() {
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">42</div>
+              <div className="text-2xl font-bold">{overview?.users.active || 0}</div>
               <p className="text-xs text-muted-foreground">
-                <span className="text-rose-500 flex items-center">
-                  <ArrowDown className="mr-1 h-4 w-4" />
-                  -2.5%
-                </span>{" "}
-                par rapport au mois dernier
+                <span className="text-muted-foreground">
+                  sur {overview?.users.total || 0} utilisateurs total
+                </span>
               </p>
             </CardContent>
           </Card>
@@ -123,21 +304,26 @@ export default function AdminDashboard() {
               <Card className="col-span-3">
                 <CardHeader>
                   <CardTitle>Commandes récentes</CardTitle>
-                  <CardDescription>Vous avez 12 nouvelles commandes aujourd'hui.</CardDescription>
+                  <CardDescription>
+                    {recentOrders.length > 0 ? `${recentOrders.length} commandes récentes` : "Aucune commande récente"}
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {[1, 2, 3].map((i) => (
-                      <div key={i} className="flex items-center">
+                    {recentOrders.slice(0, 5).map((order) => (
+                      <div key={order.orderId} className="flex items-center">
                         <div className="space-y-1">
                           <p className="text-sm font-medium leading-none">
-                            Commande #{Math.floor(Math.random() * 10000)}
+                            {order.orderId}
                           </p>
-                          <p className="text-sm text-muted-foreground">Boulangerie Saint-Michel</p>
+                          <p className="text-sm text-muted-foreground">{order.bakeryName}</p>
                         </div>
-                        <div className="ml-auto font-medium">€{(Math.random() * 100).toFixed(2)}</div>
+                        <div className="ml-auto font-medium">€{(Number(order.amount) || 0).toFixed(2)}</div>
                       </div>
                     ))}
+                    {recentOrders.length === 0 && (
+                      <p className="text-sm text-muted-foreground">Aucune commande récente à afficher.</p>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -158,7 +344,7 @@ export default function AdminDashboard() {
                   <CardDescription>Part du chiffre d'affaires par boulangerie</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <BakeriesComparisonChart data={bakeriesData} />
+                  <BakeriesComparisonChart data={bakeryData} />
                 </CardContent>
               </Card>
               <Card className="col-span-7">
@@ -168,12 +354,7 @@ export default function AdminDashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    {[
-                      { title: "Panier Moyen", value: "€24.50", change: "+5.3%", up: true },
-                      { title: "Taux de conversion", value: "3.2%", change: "+0.8%", up: true },
-                      { title: "Taux de retour", value: "0.7%", change: "-0.3%", up: true },
-                      { title: "Coût d'acquisition", value: "€12.40", change: "+2.1%", up: false }
-                    ].map((item, i) => (
+                    {performanceIndicators.map((item, i) => (
                       <div key={i} className="bg-slate-50 dark:bg-slate-800 p-4 rounded-lg">
                         <p className="text-sm font-medium text-muted-foreground mb-1">{item.title}</p>
                         <p className="text-2xl font-bold">{item.value}</p>
@@ -198,25 +379,28 @@ export default function AdminDashboard() {
                   <div className="space-y-4">
                     {[
                       { 
+                        id: 'sales',
                         title: "Rapport mensuel des ventes", 
                         description: "Analyse détaillée des ventes du mois par produit et boulangerie", 
-                        date: "01/04/2025", 
+                        date: new Date().toLocaleDateString('fr-FR'), 
                         status: "Prêt" 
                       },
                       { 
-                        title: "Rapport financier trimestriel", 
-                        description: "États financiers et prévisions pour Q2 2025", 
-                        date: "01/05/2025", 
-                        status: "En attente" 
+                        id: 'products',
+                        title: "Rapport de performance des produits", 
+                        description: "Analyse des ventes et performances par produit", 
+                        date: new Date().toLocaleDateString('fr-FR'), 
+                        status: "Prêt" 
                       },
                       { 
-                        title: "Analyse des tendances clients", 
-                        description: "Comportements d'achat et préférences des clients", 
-                        date: "10/05/2025", 
-                        status: "En attente" 
+                        id: 'financial',
+                        title: "Rapport financier trimestriel", 
+                        description: "États financiers et chiffre d'affaires par boulangerie", 
+                        date: new Date().toLocaleDateString('fr-FR'), 
+                        status: "Prêt" 
                       }
-                    ].map((report, i) => (
-                      <div key={i} className="flex items-center justify-between p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
+                    ].map((report) => (
+                      <div key={report.id} className="flex items-center justify-between p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
                         <div>
                           <h4 className="font-medium text-base">{report.title}</h4>
                           <p className="text-sm text-muted-foreground">{report.description}</p>
@@ -226,9 +410,18 @@ export default function AdminDashboard() {
                             <p className="text-sm font-medium">{report.date}</p>
                             <p className={`text-xs ${report.status === "Prêt" ? "text-emerald-500" : "text-amber-500"}`}>{report.status}</p>
                           </div>
-                          <button className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 p-2 rounded">
-                            <BarChart3 className="h-4 w-4 text-muted-foreground" />
-                          </button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleExport(report.id as 'sales' | 'products' | 'financial')}
+                            disabled={exportLoading === report.id}
+                          >
+                            {exportLoading === report.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Download className="h-4 w-4" />
+                            )}
+                          </Button>
                         </div>
                       </div>
                     ))}
