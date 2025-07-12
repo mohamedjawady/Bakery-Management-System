@@ -204,18 +204,6 @@ export default function AdminDashboard() {
                         status: "Prêt" 
                       },
                       { 
-                        title: "Analyse de la performance des employés", 
-                        description: "Évaluation des performances individuelles et collectives", 
-                        date: "15/04/2025", 
-                        status: "Prêt" 
-                      },
-                      { 
-                        title: "Audit des ingrédients", 
-                        description: "Analyse des coûts et de l'utilisation des ingrédients", 
-                        date: "22/04/2025", 
-                        status: "Prêt" 
-                      },
-                      { 
                         title: "Rapport financier trimestriel", 
                         description: "États financiers et prévisions pour Q2 2025", 
                         date: "01/05/2025", 
