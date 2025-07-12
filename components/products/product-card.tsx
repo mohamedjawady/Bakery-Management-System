@@ -80,7 +80,27 @@ export function ProductCard({
         {/* Description */}
         <p className="text-sm text-muted-foreground line-clamp-2">
           {product.description}
-        </p>        {/* Key Information */}
+        </p>
+
+        {/* Pricing Information */}
+        <div className="bg-muted/50 p-3 rounded-lg space-y-1">
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-muted-foreground">Prix HT:</span>
+            <span className="font-medium">{formatPrice(product.unitPrice)}</span>
+          </div>
+          {product.taxRate && (
+            <>
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-muted-foreground">TVA ({(product.taxRate * 100).toFixed(0)}%):</span>
+                <span className="text-xs">{formatPrice(product.unitPrice * product.taxRate)}</span>
+              </div>
+              <div className="flex justify-between items-center border-t pt-1">
+                <span className="text-sm font-semibold">Prix TTC:</span>
+                <span className="font-semibold text-primary">{formatPrice(product.unitPrice * (1 + product.taxRate))}</span>
+              </div>
+            </>
+          )}
+        </div>        {/* Key Information */}
         <div className="flex items-center gap-4 text-xs text-muted-foreground">
           {product.preparationTime && (
             <div className="flex items-center gap-1">

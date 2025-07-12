@@ -52,7 +52,10 @@ interface Product {
   description: string
   laboratory: string
   ingredients: string[]
-  unitPrice: number
+  unitPrice: number // Prix HT
+  taxRate?: number // Taux de TVA
+  unitPriceTTC?: number // Prix TTC
+  taxAmount?: number // Montant de la taxe
   active: boolean
   category?: string
   image?: string
@@ -62,10 +65,14 @@ interface Product {
 
 interface OrderProduct {
   productName: string
-  pricePerUnit: number
-  quantity: number
-  totalPrice: number
   laboratory: string
+  unitPriceHT: number // Prix unitaire HT
+  unitPriceTTC: number // Prix unitaire TTC
+  taxRate: number // Taux de TVA
+  quantity: number
+  totalPriceHT: number // Total HT pour ce produit
+  taxAmount: number // Montant total de la taxe pour ce produit
+  totalPriceTTC: number // Total TTC pour ce produit
 }
 
 interface LaboratoryOrderDialogProps {
@@ -76,6 +83,26 @@ interface LaboratoryOrderDialogProps {
 }
 
 export function LaboratoryOrderDialog({ isOpen, onClose, onCreateOrder, isSubmitting }: LaboratoryOrderDialogProps) {
+  // Utility functions
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('fr-FR', {
+      style: 'currency',
+      currency: 'EUR',
+    }).format(price);
+  };
+
+  const calculateOrderTotals = () => {
+    const totalHT = orderProducts.reduce((sum, item) => sum + item.totalPriceHT, 0);
+    const totalTax = orderProducts.reduce((sum, item) => sum + item.taxAmount, 0);
+    const totalTTC = orderProducts.reduce((sum, item) => sum + item.totalPriceTTC, 0);
+    
+    return {
+      totalHT: Number(totalHT.toFixed(2)),
+      totalTax: Number(totalTax.toFixed(2)),
+      totalTTC: Number(totalTTC.toFixed(2))
+    };
+  };
+
   // State management
   const [currentStep, setCurrentStep] = useState<"laboratory" | "products" | "details">("laboratory")
   const [laboratories, setLaboratories] = useState<Laboratory[]>([])
@@ -258,22 +285,32 @@ export function LaboratoryOrderDialog({ isOpen, onClose, onCreateOrder, isSubmit
   // Add product to order
   const addProductToOrder = (product: Product) => {
     const existingItemIndex = orderProducts.findIndex((item) => item.productName === product.name)
+    
+    const taxRate = product.taxRate || 0.15; // Default 15% if not set
+    const unitPriceTTC = product.unitPrice * (1 + taxRate);
+    const taxAmountPerUnit = product.unitPrice * taxRate;
 
     if (existingItemIndex >= 0) {
       const updatedItems = [...orderProducts]
-      updatedItems[existingItemIndex].quantity += 1
-      updatedItems[existingItemIndex].totalPrice =
-        updatedItems[existingItemIndex].quantity * updatedItems[existingItemIndex].pricePerUnit
+      const newQuantity = updatedItems[existingItemIndex].quantity + 1;
+      updatedItems[existingItemIndex].quantity = newQuantity;
+      updatedItems[existingItemIndex].totalPriceHT = updatedItems[existingItemIndex].unitPriceHT * newQuantity;
+      updatedItems[existingItemIndex].taxAmount = updatedItems[existingItemIndex].unitPriceHT * taxRate * newQuantity;
+      updatedItems[existingItemIndex].totalPriceTTC = updatedItems[existingItemIndex].totalPriceHT + updatedItems[existingItemIndex].taxAmount;
       setOrderProducts(updatedItems)
     } else {
       setOrderProducts([
         ...orderProducts,
         {
           productName: product.name,
-          pricePerUnit: product.unitPrice,
-          quantity: 1,
-          totalPrice: product.unitPrice,
           laboratory: product.laboratory,
+          unitPriceHT: product.unitPrice,
+          unitPriceTTC: unitPriceTTC,
+          taxRate: taxRate,
+          quantity: 1,
+          totalPriceHT: product.unitPrice,
+          taxAmount: taxAmountPerUnit,
+          totalPriceTTC: unitPriceTTC,
         },
       ])
     }
@@ -288,7 +325,9 @@ export function LaboratoryOrderDialog({ isOpen, onClose, onCreateOrder, isSubmit
     } else {
       const updatedItems = [...orderProducts]
       updatedItems[index].quantity = newQuantity
-      updatedItems[index].totalPrice = updatedItems[index].pricePerUnit * newQuantity
+      updatedItems[index].totalPriceHT = updatedItems[index].unitPriceHT * newQuantity
+      updatedItems[index].taxAmount = updatedItems[index].unitPriceHT * updatedItems[index].taxRate * newQuantity
+      updatedItems[index].totalPriceTTC = updatedItems[index].totalPriceHT + updatedItems[index].taxAmount
       setOrderProducts(updatedItems)
     }
   }
@@ -417,7 +456,15 @@ export function LaboratoryOrderDialog({ isOpen, onClose, onCreateOrder, isSubmit
                     </div>
                     <p className="text-sm text-muted-foreground">{product.description}</p>
                     <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                      <span>Prix: {formatPrice(product.unitPrice)}</span>
+                      <div className="space-y-1">
+                        <div>Prix HT: {formatPrice(product.unitPrice)}</div>
+                        {product.taxRate && (
+                          <>
+                            <div>TVA ({(product.taxRate * 100).toFixed(0)}%): {formatPrice(product.unitPrice * product.taxRate)}</div>
+                            <div className="font-medium">Prix TTC: {formatPrice(product.unitPrice * (1 + product.taxRate))}</div>
+                          </>
+                        )}
+                      </div>
                       {product.preparationTime && <span>Préparation: {product.preparationTime}min</span>}
                     </div>
                   </div>
@@ -443,8 +490,10 @@ export function LaboratoryOrderDialog({ isOpen, onClose, onCreateOrder, isSubmit
               <div key={index} className="flex items-center justify-between p-2 bg-muted/50 rounded">
                 <div className="flex-1">
                   <div className="font-medium text-sm">{item.productName}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {formatPrice(item.pricePerUnit)} × {item.quantity}
+                  <div className="text-xs text-muted-foreground space-y-1">
+                    <div>HT: {formatPrice(item.unitPriceHT)} × {item.quantity}</div>
+                    <div>TVA ({(item.taxRate * 100).toFixed(0)}%): {formatPrice(item.taxAmount)}</div>
+                    <div className="font-medium">TTC: {formatPrice(item.totalPriceTTC)}</div>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -474,12 +523,22 @@ export function LaboratoryOrderDialog({ isOpen, onClose, onCreateOrder, isSubmit
                     <Trash className="h-3 w-3" />
                   </Button>
                 </div>
-                <div className="font-medium ml-4">{formatPrice(item.totalPrice)}</div>
+                <div className="font-medium ml-4">{formatPrice(item.totalPriceTTC)}</div>
               </div>
             ))}
-            <div className="flex justify-between items-center pt-2 border-t">
-              <span className="font-medium">Total:</span>
-              <span className="font-bold text-lg">{formatPrice(calculateTotalPrice())}</span>
+            <div className="space-y-2 pt-2 border-t">
+              <div className="flex justify-between items-center text-sm">
+                <span>Total HT:</span>
+                <span>{formatPrice(calculateOrderTotals().totalHT)}</span>
+              </div>
+              <div className="flex justify-between items-center text-sm">
+                <span>Total TVA:</span>
+                <span>{formatPrice(calculateOrderTotals().totalTax)}</span>
+              </div>
+              <div className="flex justify-between items-center border-t pt-2">
+                <span className="font-medium">Total TTC:</span>
+                <span className="font-bold text-lg">{formatPrice(calculateOrderTotals().totalTTC)}</span>
+              </div>
             </div>
             <Button className="w-full" onClick={() => setCurrentStep("details")} disabled={orderProducts.length === 0}>
               Continuer vers les détails
