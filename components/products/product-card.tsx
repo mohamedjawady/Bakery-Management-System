@@ -25,15 +25,6 @@ export function ProductCard({
     }).format(price);
   };
 
-  // Format preparation time
-  const formatPrepTime = (minutes?: number) => {
-    if (!minutes) return null;
-    if (minutes < 60) return `${minutes}min`;
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return mins > 0 ? `${hours}h${mins}min` : `${hours}h`;
-  };
-
   // Check if user can edit/delete based on role
   const canEdit = role === 'admin' || role === 'laboratory';
   const canDelete = role === 'admin';
@@ -102,13 +93,6 @@ export function ProductCard({
           )}
         </div>        {/* Key Information */}
         <div className="flex items-center gap-4 text-xs text-muted-foreground">
-          {product.preparationTime && (
-            <div className="flex items-center gap-1">
-              <Clock className="h-3 w-3" />
-              <span>{formatPrepTime(product.preparationTime)}</span>
-            </div>
-          )}
-          
           {product.ingredients.length > 0 && (
             <div className="flex items-center gap-1">
               <Star className="h-3 w-3" />

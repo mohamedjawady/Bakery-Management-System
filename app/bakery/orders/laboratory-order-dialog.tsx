@@ -60,7 +60,6 @@ interface Product {
   category?: string
   image?: string
   isAvailable: boolean
-  preparationTime?: number
 }
 
 interface OrderProduct {
@@ -189,7 +188,6 @@ export function LaboratoryOrderDialog({ isOpen, onClose, onCreateOrder, isSubmit
           active: true,
           category: "bread",
           isAvailable: true,
-          preparationTime: 180,
         },
         {
           _id: "2",
@@ -201,7 +199,6 @@ export function LaboratoryOrderDialog({ isOpen, onClose, onCreateOrder, isSubmit
           active: true,
           category: "pastry",
           isAvailable: true,
-          preparationTime: 120,
         },
         {
           _id: "3",
@@ -213,7 +210,6 @@ export function LaboratoryOrderDialog({ isOpen, onClose, onCreateOrder, isSubmit
           active: true,
           category: "bread",
           isAvailable: true,
-          preparationTime: 240,
         },
         {
           _id: "4",
@@ -225,7 +221,6 @@ export function LaboratoryOrderDialog({ isOpen, onClose, onCreateOrder, isSubmit
           active: true,
           category: "pastry",
           isAvailable: true,
-          preparationTime: 150,
         },
         {
           _id: "5",
@@ -237,7 +232,6 @@ export function LaboratoryOrderDialog({ isOpen, onClose, onCreateOrder, isSubmit
           active: true,
           category: "bread",
           isAvailable: true,
-          preparationTime: 200,
         },
       ])
     } finally {
@@ -341,15 +335,7 @@ export function LaboratoryOrderDialog({ isOpen, onClose, onCreateOrder, isSubmit
 
   // Calculate total price
   const calculateTotalPrice = () => {
-    return orderProducts.reduce((total, item) => total + item.totalPrice, 0)
-  }
-
-  // Format price
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat("fr-FR", {
-      style: "currency",
-      currency: "EUR",
-    }).format(price)
+    return orderProducts.reduce((total, item) => total + item.totalPriceTTC, 0)
   }
 
   // Handle order submission
@@ -465,7 +451,6 @@ export function LaboratoryOrderDialog({ isOpen, onClose, onCreateOrder, isSubmit
                           </>
                         )}
                       </div>
-                      {product.preparationTime && <span>Préparation: {product.preparationTime}min</span>}
                     </div>
                   </div>
                   <Button size="sm" onClick={() => addProductToOrder(product)} className="ml-4">

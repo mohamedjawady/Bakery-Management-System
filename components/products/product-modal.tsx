@@ -20,7 +20,7 @@ import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { Upload, X, Loader2, Clock, Euro, Building2 } from "lucide-react"
+import { Upload, X, Loader2, Clock, Euro, Building2, Percent } from "lucide-react"
 import type { ProductModalProps, ProductCreateInput, ProductUpdateInput } from "@/types/product"
 import { uploadProductImage } from "@/lib/api/products"
 import Image from "next/image"
@@ -34,7 +34,6 @@ interface Laboratory {
   isActive: boolean
 }
 
-// Form validation schema - Updated laboratory field to be required
 const productSchema = z.object({
   name: z.string().min(1, "Le nom est requis").max(100, "Le nom est trop long"),
   description: z.string().min(1, "La description est requise").max(500, "La description est trop longue"),
@@ -44,7 +43,6 @@ const productSchema = z.object({
   laboratory: z.string().min(1, "Le laboratoire est requis"),
   category: z.string().optional(),
   notes: z.string().optional(),
-  preparationTime: z.number().min(0, "Le temps de préparation ne peut pas être négatif").optional(),
   isAvailable: z.boolean().optional(),
   active: z.boolean().optional(),
 })
@@ -84,7 +82,6 @@ export function ProductModal({ product, isOpen, onClose, mode, onSave }: Product
       laboratory: "",
       category: "general",
       notes: "",
-      preparationTime: undefined,
       isAvailable: true,
       active: true,
     },
@@ -152,7 +149,6 @@ export function ProductModal({ product, isOpen, onClose, mode, onSave }: Product
         laboratory: product.laboratory || "",
         category: product.category || "general",
         notes: product.notes || "",
-        preparationTime: product.preparationTime || undefined,
         isAvailable: product.isAvailable,
         active: product.active,
       })
@@ -167,7 +163,6 @@ export function ProductModal({ product, isOpen, onClose, mode, onSave }: Product
         laboratory: "",
         category: "general",
         notes: "",
-        preparationTime: undefined,
         isAvailable: true,
         active: true,
       })
@@ -222,7 +217,6 @@ export function ProductModal({ product, isOpen, onClose, mode, onSave }: Product
         laboratory: data.laboratory,
         category: data.category,
         notes: data.notes || undefined,
-        preparationTime: data.preparationTime,
         isAvailable: data.isAvailable,
         active: data.active,
         image: imagePreview || undefined,
@@ -358,16 +352,6 @@ export function ProductModal({ product, isOpen, onClose, mode, onSave }: Product
               </div>
 
               <div className="space-y-4">
-                {product?.preparationTime && (
-                  <div>
-                    <Label className="text-sm font-medium text-muted-foreground">Temps de préparation</Label>
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4" />
-                      <span>{product.preparationTime} minutes</span>
-                    </div>
-                  </div>
-                )}
-
                 <div>
                   <Label className="text-sm font-medium text-muted-foreground">Statut</Label>
                   <div className="flex gap-2">
@@ -624,7 +608,7 @@ export function ProductModal({ product, isOpen, onClose, mode, onSave }: Product
                             max="100"
                             placeholder="15.00"
                             {...field}
-                            value={(field.value * 100).toFixed(2)}
+                            value={field.value ? (field.value * 100).toFixed(2) : ''}
                             onChange={(e) => field.onChange(Number.parseFloat(e.target.value) / 100 || 0.15)}
                           />
                           <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">%</span>
@@ -696,20 +680,25 @@ export function ProductModal({ product, isOpen, onClose, mode, onSave }: Product
 
                 <FormField
                   control={form.control}
-                  name="preparationTime"
+                  name="taxRate"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Temps de préparation (min)</FormLabel>
+                      <FormLabel>Taux de TVA (%)</FormLabel>
                       <FormControl>
                         <div className="relative">
-                          <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <Percent className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                           <Input
                             type="number"
                             min="0"
-                            placeholder="30"
+                            max="100"
+                            step="0.01"
+                            placeholder="15"
                             className="pl-10"
-                            {...field}
-                            onChange={(e) => field.onChange(Number.parseInt(e.target.value) || undefined)}
+                            value={field.value ? (field.value * 100).toFixed(2) : ''}
+                            onChange={(e) => {
+                              const value = parseFloat(e.target.value) / 100;
+                              field.onChange(isNaN(value) ? undefined : value);
+                            }}
                           />
                         </div>
                       </FormControl>
@@ -726,14 +715,18 @@ export function ProductModal({ product, isOpen, onClose, mode, onSave }: Product
                   <FormItem>
                     <FormLabel>Notes (optionnel)</FormLabel>
                     <FormControl>
-                      <Textarea placeholder="Informations complémentaires..." {...field} />
+                      <Textarea
+                        placeholder="Notes supplémentaires..."
+                        className="min-h-[100px]"
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
 
-              {/* Status Switches */}
+              {/* Status switches */}
               <div className="flex flex-col sm:flex-row gap-6 p-4 bg-muted/50 rounded-lg">
                 <FormField
                   control={form.control}

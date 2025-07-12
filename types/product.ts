@@ -15,7 +15,6 @@ export interface Product {
   image?: string;
   notes?: string;
   isAvailable: boolean;
-  preparationTime?: number;
   createdBy?: string;
   updatedBy?: string;
   createdAt: string;
@@ -33,7 +32,6 @@ export interface ProductCreateInput {
   image?: string;
   notes?: string;
   isAvailable?: boolean;
-  preparationTime?: number;
   active?: boolean;
 }
 

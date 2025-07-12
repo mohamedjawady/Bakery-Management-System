@@ -159,7 +159,6 @@ export default function BakeryOrdersPage() {
           description: "Pâte feuilletée pur beurre",
           unitPrice: 1.2,
           category: "Viennoiserie",
-          preparationTime: 20,
           laboratory: "Laboratoire Central Paris",
         },
         {
@@ -168,7 +167,6 @@ export default function BakeryOrdersPage() {
           description: "Pâte feuilletée au chocolat",
           unitPrice: 1.5,
           category: "Viennoiserie",
-          preparationTime: 25,
           laboratory: "Laboratoire Central Paris",
         },
         {
@@ -177,7 +175,6 @@ export default function BakeryOrdersPage() {
           description: "Pain traditionnel français",
           unitPrice: 0.9,
           category: "Pain",
-          preparationTime: 30,
           laboratory: "Laboratoire Lyon Sud",
         },
       ])
@@ -781,7 +778,6 @@ export default function BakeryOrdersPage() {
                         <div className="flex items-center justify-between text-sm">
                           <div className="flex items-center gap-4 text-muted-foreground">
                             <span className="font-medium text-primary">{formatPrice(product.unitPrice)}</span>
-                            {product.preparationTime && <span className="text-xs">⏱️ {product.preparationTime}min</span>}
                           </div>
                         </div>
 
