@@ -14,6 +14,7 @@ import { ProductCard } from "@/components/products/product-card"
 import { ProductFiltersComponent } from "@/components/products/product-filters"
 import { ProductModal } from "@/components/products/product-modal"
 import { ProductPagination } from "@/components/products/product-pagination"
+import { ExportButton } from "@/components/products/export-button"
 import { Product, ProductFilters, ProductCreateInput, ProductUpdateInput } from "@/types/product"
 import { getProducts, getProductCategories, createProduct, updateProduct, deleteProduct } from "@/lib/api/products"
 
@@ -295,10 +296,12 @@ export default function AdminProductsPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm">
-              <FileDown className="mr-2 h-4 w-4" />
-              Exporter
-            </Button>
+            <ExportButton 
+              currentFilters={filters}
+              variant="outline" 
+              size="sm"
+              disabled={loading}
+            />
             <Button variant="outline" size="sm">
               <FileUp className="mr-2 h-4 w-4" />
               Importer

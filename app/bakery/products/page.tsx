@@ -12,6 +12,7 @@ import { ProductCard } from "@/components/products/product-card"
 import { ProductFiltersComponent } from "@/components/products/product-filters"
 import { ProductModal } from "@/components/products/product-modal"
 import { ProductPagination } from "@/components/products/product-pagination"
+import { ExportButton } from "@/components/products/export-button"
 import { Product, ProductFilters } from "@/types/product"
 import { getProducts, getProductCategories } from "@/lib/api/products"
 
@@ -177,12 +178,20 @@ export default function BakeryProductsPage() {
               Consultez et gérez les produits de la boulangerie
             </p>
           </div>
-          {canEdit && (
-            <Button onClick={handleCreateProduct} className="w-full sm:w-auto">
-              <Plus className="h-4 w-4 mr-2" />
-              <span className="sm:inline">Nouveau produit</span>
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            <ExportButton 
+              currentFilters={filters}
+              variant="outline" 
+              size="sm"
+              disabled={loading}
+            />
+            {canEdit && (
+              <Button onClick={handleCreateProduct} className="w-full sm:w-auto">
+                <Plus className="h-4 w-4 mr-2" />
+                <span className="sm:inline">Nouveau produit</span>
+              </Button>
+            )}
+          </div>
         </div>        {/* Filters */}
         <ProductFiltersComponent
           filters={filters}
