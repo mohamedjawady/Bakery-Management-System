@@ -53,7 +53,16 @@ export function ProductCard({
 
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between">
-          <CardTitle className="text-lg line-clamp-2">{product.name}</CardTitle>
+          <div className="flex-1">
+            <CardTitle className="text-lg line-clamp-2">{product.name}</CardTitle>
+            {product.productRef && (
+              <div className="mt-1">
+                <Badge variant="outline" className="font-mono text-xs">
+                  {product.productRef}
+                </Badge>
+              </div>
+            )}
+          </div>
           <div className="flex flex-col items-end gap-1">
             <Badge variant="outline" className="text-sm font-semibold">
               {formatPrice(product.unitPrice)}

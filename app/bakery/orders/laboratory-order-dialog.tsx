@@ -49,6 +49,7 @@ interface Laboratory {
 interface Product {
   _id: string
   name: string
+  productRef?: string // Product reference identifier
   description: string
   laboratory: string
   ingredients: string[]
@@ -64,6 +65,7 @@ interface Product {
 
 interface OrderProduct {
   productName: string
+  productRef?: string // Product reference identifier
   laboratory: string
   unitPriceHT: number // Prix unitaire HT
   unitPriceTTC: number // Prix unitaire TTC
@@ -297,6 +299,7 @@ export function LaboratoryOrderDialog({ isOpen, onClose, onCreateOrder, isSubmit
         ...orderProducts,
         {
           productName: product.name,
+          productRef: product.productRef, // Include product reference
           laboratory: product.laboratory,
           unitPriceHT: product.unitPrice,
           unitPriceTTC: unitPriceTTC,
@@ -440,6 +443,13 @@ export function LaboratoryOrderDialog({ isOpen, onClose, onCreateOrder, isSubmit
                       <h4 className="font-medium">{product.name}</h4>
                       <Badge variant="outline">{product.category}</Badge>
                     </div>
+                    {product.productRef && (
+                      <div className="text-xs text-muted-foreground">
+                        <Badge variant="outline" className="font-mono text-xs">
+                          Réf: {product.productRef}
+                        </Badge>
+                      </div>
+                    )}
                     <p className="text-sm text-muted-foreground">{product.description}</p>
                     <div className="flex items-center gap-4 text-xs text-muted-foreground">
                       <div className="space-y-1">
@@ -475,6 +485,13 @@ export function LaboratoryOrderDialog({ isOpen, onClose, onCreateOrder, isSubmit
               <div key={index} className="flex items-center justify-between p-2 bg-muted/50 rounded">
                 <div className="flex-1">
                   <div className="font-medium text-sm">{item.productName}</div>
+                  {item.productRef && (
+                    <div className="text-xs text-muted-foreground mb-1">
+                      <Badge variant="outline" className="font-mono text-xs">
+                        {item.productRef}
+                      </Badge>
+                    </div>
+                  )}
                   <div className="text-xs text-muted-foreground space-y-1">
                     <div>HT: {formatPrice(item.unitPriceHT)} × {item.quantity}</div>
                     <div>TVA ({(item.taxRate * 100).toFixed(0)}%): {formatPrice(item.taxAmount)}</div>
