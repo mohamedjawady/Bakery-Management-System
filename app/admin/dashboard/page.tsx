@@ -5,6 +5,8 @@ import { DashboardLayout } from "@/components/layout/dashboard-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { ArrowDown, ArrowUp, Banknote, BarChart3, ClipboardList, ShoppingBag, Users, Download, Loader2 } from "lucide-react"
 import { SalesChart, ProductsChart, BakeriesComparisonChart } from "@/components/charts/sales-chart"
 import { useToast } from "@/hooks/use-toast"
@@ -17,7 +19,8 @@ import {
   getPerformanceIndicators,
   exportSalesReport,
   exportProductReport,
-  exportFinancialReport
+  exportFinancialReport,
+  exportWeeklyBilling
 } from "@/lib/api/dashboard"
 
 interface DashboardData {
@@ -85,6 +88,11 @@ export default function AdminDashboard() {
   const [performanceIndicators, setPerformanceIndicators] = useState<PerformanceIndicator[]>([])
   const [loading, setLoading] = useState(true)
   const [exportLoading, setExportLoading] = useState<string | null>(null)
+  const [weeklyBillingDates, setWeeklyBillingDates] = useState({
+    startDate: '',
+    endDate: ''
+  })
+  const [weeklyBillingLoading, setWeeklyBillingLoading] = useState(false)
   const { toast } = useToast()
 
   const fetchDashboardData = async () => {
@@ -186,6 +194,66 @@ export default function AdminDashboard() {
       })
     } finally {
       setExportLoading(null)
+    }
+  }
+
+  const handleWeeklyBillingExport = async () => {
+    if (!weeklyBillingDates.startDate || !weeklyBillingDates.endDate) {
+      toast({
+        title: "Dates requises",
+        description: "Veuillez sélectionner une date de début et une date de fin.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    try {
+      setWeeklyBillingLoading(true)
+      await exportWeeklyBilling(weeklyBillingDates.startDate, weeklyBillingDates.endDate)
+      
+      toast({
+        title: "Export réussi",
+        description: "La facturation hebdomadaire a été téléchargée avec succès.",
+      })
+    } catch (error) {
+      console.error('Erreur lors de l\'export de la facturation hebdomadaire:', error)
+      toast({
+        title: "Erreur d'export",
+        description: error instanceof Error ? error.message : "Une erreur est survenue lors de l'export.",
+        variant: "destructive",
+      })
+    } finally {
+      setWeeklyBillingLoading(false)
+    }
+  }
+
+  // Helper function to get current week dates
+  const getCurrentWeekDates = () => {
+    const now = new Date()
+    const dayOfWeek = now.getDay()
+    const diff = now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1) // Monday start
+    const monday = new Date(now.setDate(diff))
+    const sunday = new Date(monday)
+    sunday.setDate(monday.getDate() + 6)
+    
+    return {
+      startDate: monday.toISOString().split('T')[0],
+      endDate: sunday.toISOString().split('T')[0]
+    }
+  }
+
+  // Helper function to get previous week dates
+  const getPreviousWeekDates = () => {
+    const now = new Date()
+    const dayOfWeek = now.getDay()
+    const diff = now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1) - 7 // Previous Monday
+    const monday = new Date(now.setDate(diff))
+    const sunday = new Date(monday)
+    sunday.setDate(monday.getDate() + 6)
+    
+    return {
+      startDate: monday.toISOString().split('T')[0],
+      endDate: sunday.toISOString().split('T')[0]
     }
   }
 
@@ -291,6 +359,7 @@ export default function AdminDashboard() {
             <TabsTrigger value="overview">Vue d'ensemble</TabsTrigger>
             <TabsTrigger value="analytics">Analytiques</TabsTrigger>
             <TabsTrigger value="reports">Rapports</TabsTrigger>
+            <TabsTrigger value="billing">Facturation</TabsTrigger>
           </TabsList>
           <TabsContent value="overview" className="space-y-4">
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">              <Card className="col-span-4">
@@ -425,6 +494,91 @@ export default function AdminDashboard() {
                         </div>
                       </div>
                     ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="billing" className="space-y-4">
+            <div className="grid gap-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Banknote className="h-5 w-5" />
+                    Facturation Hebdomadaire
+                  </CardTitle>
+                  <CardDescription>
+                    Générez des factures Excel par boulangerie pour une semaine donnée. Chaque boulangerie aura sa propre feuille dans le fichier Excel.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="start-date">Date de début</Label>
+                      <Input
+                        id="start-date"
+                        type="date"
+                        value={weeklyBillingDates.startDate}
+                        onChange={(e) => setWeeklyBillingDates(prev => ({ ...prev, startDate: e.target.value }))}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="end-date">Date de fin</Label>
+                      <Input
+                        id="end-date"
+                        type="date"
+                        value={weeklyBillingDates.endDate}
+                        onChange={(e) => setWeeklyBillingDates(prev => ({ ...prev, endDate: e.target.value }))}
+                      />
+                    </div>
+                    <div className="flex items-end">
+                      <Button
+                        onClick={handleWeeklyBillingExport}
+                        disabled={weeklyBillingLoading || !weeklyBillingDates.startDate || !weeklyBillingDates.endDate}
+                        className="w-full"
+                      >
+                        {weeklyBillingLoading ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Génération...
+                          </>
+                        ) : (
+                          <>
+                            <Download className="mr-2 h-4 w-4" />
+                            Générer Excel
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="border-t pt-4">
+                    <h4 className="font-medium mb-3">Raccourcis rapides</h4>
+                    <div className="flex gap-2 flex-wrap">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setWeeklyBillingDates(getCurrentWeekDates())}
+                      >
+                        Semaine actuelle
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setWeeklyBillingDates(getPreviousWeekDates())}
+                      >
+                        Semaine précédente
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg">
+                    <h4 className="font-medium text-blue-800 dark:text-blue-200 mb-2">ℹ️ À propos de la facturation hebdomadaire</h4>
+                    <p className="text-sm text-blue-700 dark:text-blue-300">
+                      Le fichier Excel généré contiendra une feuille séparée pour chaque boulangerie avec les détails de toutes leurs commandes pour la période sélectionnée. 
+                      Une feuille de résumé général sera également incluse. Ce fichier peut être imprimé et remis physiquement aux boulangeries pour le paiement.
+                    </p>
                   </div>
                 </CardContent>
               </Card>
