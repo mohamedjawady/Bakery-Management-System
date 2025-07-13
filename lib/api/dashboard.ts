@@ -270,3 +270,40 @@ export const exportFinancialReport = async () => {
   window.URL.revokeObjectURL(url);
   document.body.removeChild(a);
 };
+
+// Export Weekly Billing
+export const exportWeeklyBilling = async (startDate: string, endDate: string) => {
+  const params = new URLSearchParams({
+    startDate,
+    endDate
+  });
+  
+  const response = await fetch(`${API_BASE_URL}/api/dashboard/export/weekly-billing?${params}`, {
+    method: 'GET',
+    headers: getAuthHeaders(),
+  });
+  
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ message: 'Une erreur est survenue' }));
+    throw new Error(errorData.message || 'Une erreur est survenue');
+  }
+  
+  // Handle file download
+  const blob = await response.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.style.display = 'none';
+  a.href = url;
+  
+  // Get filename from Content-Disposition header
+  const contentDisposition = response.headers.get('Content-Disposition');
+  const filename = contentDisposition 
+    ? contentDisposition.split('filename=')[1]?.replace(/"/g, '') 
+    : 'facturation-hebdomadaire.xlsx';
+  
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  window.URL.revokeObjectURL(url);
+  document.body.removeChild(a);
+};
