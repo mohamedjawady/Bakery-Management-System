@@ -18,6 +18,8 @@ interface Order {
   status: "PENDING" | "IN_PROGRESS" | "COMPLETED" | "DELIVERED" | "CANCELLED"
   items: OrderItem[]
   total: number
+  totalHT: number
+  totalTTC: number
   createdAt: string
   deliveryDate: string
 }
@@ -27,6 +29,11 @@ interface OrderItem {
   productName: string
   quantity: number
   unitPrice: number
+  unitPriceHT: number
+  unitPriceTTC: number
+  totalPrice: number
+  totalPriceHT: number
+  totalPriceTTC: number
 }
 
 export default function OrdersPage() {
@@ -53,16 +60,38 @@ export default function OrdersPage() {
 console.log(data);
 
         // Validate and sanitize the data
-        const validatedOrders = data.map((order) => {
-  const items = Array.isArray(order.products) ? order.products : [];
-  const total = items.reduce((sum, item) => sum + (item.totalPrice || 0), 0);
+        const validatedOrders = data.map((order: any) => {
+  const items = Array.isArray(order.products) ? order.products.map((item: any) => ({
+    productId: item.productId || item._id || 'unknown',
+    productName: item.productName || 'Produit inconnu',
+    quantity: item.quantity || 0,
+    unitPrice: item.unitPriceTTC || 0, // Map unitPriceTTC to unitPrice for backward compatibility
+    unitPriceHT: item.unitPriceHT || 0,
+    unitPriceTTC: item.unitPriceTTC || 0,
+    totalPrice: item.totalPrice || 0,
+    totalPriceHT: item.totalPriceHT || 0,
+    totalPriceTTC: item.totalPriceTTC || 0
+  })) : [];
+  
+  const total = items.reduce((sum: number, item: any) => sum + (item.totalPrice || 0), 0);
+  const totalHT = items.reduce((sum: number, item: any) => sum + (item.totalPriceHT || 0), 0);
+  const totalTTC = items.reduce((sum: number, item: any) => sum + (item.totalPriceTTC || 0), 0);
+
+  // Normalize status to match expected values
+  let normalizedStatus = order.status || "PENDING";
+  const validStatuses = ["PENDING", "IN_PROGRESS", "COMPLETED", "DELIVERED", "CANCELLED"];
+  if (!validStatuses.includes(normalizedStatus)) {
+    normalizedStatus = "PENDING";
+  }
 
   return {
     id: order._id?.toString() || `unknown-${Math.random().toString(36).substr(2, 9)}`,
     customerName: order.bakeryName?.toString() || "Client inconnu",
-    status: order.status || "PENDING",
+    status: normalizedStatus as Order["status"],
     items,
     total,
+    totalHT,
+    totalTTC,
     createdAt: order.createdAt || new Date().toISOString(),
     deliveryDate: order.deliveryDate || new Date().toISOString(),
   };
@@ -128,12 +157,12 @@ console.log(validatedOrders);
       DELIVERED: { bg: "bg-purple-50", text: "text-purple-700", border: "border-purple-200", label: "Livré" },
       CANCELLED: { bg: "bg-red-50", text: "text-red-700", border: "border-red-200", label: "Annulé" },
     }
-    const variant = variants[status]
-    // return (
-    //   <Badge variant="outline" className={` ${variant.text} ${variant.border}`}>
-    //     {variant.label}
-    //   </Badge>
-    // )
+    const variant = variants[status] || { bg: "bg-gray-50", text: "text-gray-700", border: "border-gray-200", label: status || "Inconnu" }
+    return (
+      <Badge variant="outline" className={` ${variant.text} ${variant.border}`}>
+        {variant.label}
+      </Badge>
+    )
   }
 
   // Handle status update
@@ -268,7 +297,7 @@ console.log(validatedOrders);
                                 <span className="sr-only">Voir</span>
                               </Button>
                             </DialogTrigger>
-                            <DialogContent>
+                            <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
                               <DialogHeader>
                                 <DialogTitle >Détails de la commande {order.id}</DialogTitle>
                               </DialogHeader>
@@ -286,36 +315,69 @@ console.log(validatedOrders);
                                   </div>
                                   <div>
                                     <h3 className="font-medium mb-2">Articles</h3>
-                                    <Table>
-                                      <TableHeader>
-                                        <TableRow>
-                                          <TableHead>Produit</TableHead>
-                                          <TableHead className="text-right">Quantité</TableHead>
-                                          <TableHead className="text-right">Prix unitaire</TableHead>
-                                          <TableHead className="text-right">Total</TableHead>
-                                        </TableRow>
-                                      </TableHeader>
+                                    <div className="overflow-x-auto">
+                                      <Table className="min-w-full">
+                                        <TableHeader>
+                                          <TableRow>
+                                            <TableHead className="min-w-[200px]">Produit</TableHead>
+                                            <TableHead className="text-right min-w-[80px]">Quantité</TableHead>
+                                            <TableHead className="text-right min-w-[120px]">Prix unitaire HT</TableHead>
+                                            <TableHead className="text-right min-w-[120px]">Prix unitaire TTC</TableHead>
+                                            <TableHead className="text-right min-w-[100px]">Total HT</TableHead>
+                                            <TableHead className="text-right min-w-[100px]">Total TTC</TableHead>
+                                          </TableRow>
+                                        </TableHeader>
                                       <TableBody>
                                         {viewingOrder.items.map((item) => (
                                           <TableRow key={item.productId}>
                                             <TableCell>{item.productName}</TableCell>
                                             <TableCell className="text-right">{item.quantity}</TableCell>
-                                            <TableCell className="text-right">{formatPrice(item.pricePerUnit)}</TableCell>
+                                            <TableCell className="text-right">{formatPrice(item.unitPriceHT)}</TableCell>
+                                            <TableCell className="text-right">{formatPrice(item.unitPriceTTC)}</TableCell>
                                             <TableCell className="text-right">
-                                              {formatPrice(item.totalPrice)}
+                                              {formatPrice(item.totalPriceHT)}
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                              {formatPrice(item.totalPriceTTC)}
                                             </TableCell>
                                           </TableRow>
                                         ))}
                                         <TableRow>
-                                          <TableCell colSpan={3} className="text-right font-medium">
-                                            Total
+                                          <TableCell colSpan={4} className="text-right font-medium">
+                                            Total HT
                                           </TableCell>
                                           <TableCell className="text-right font-medium">
-                                            {formatPrice(viewingOrder.total)}
+                                            {formatPrice(viewingOrder.totalHT)}
+                                          </TableCell>
+                                          <TableCell className="text-right font-medium">
+                                            -
+                                          </TableCell>
+                                        </TableRow>
+                                        <TableRow>
+                                          <TableCell colSpan={4} className="text-right font-medium">
+                                            TVA
+                                          </TableCell>
+                                          <TableCell className="text-right font-medium">
+                                            {formatPrice(viewingOrder.totalTTC - viewingOrder.totalHT)}
+                                          </TableCell>
+                                          <TableCell className="text-right font-medium">
+                                            -
+                                          </TableCell>
+                                        </TableRow>
+                                        <TableRow>
+                                          <TableCell colSpan={4} className="text-right font-medium">
+                                            Total TTC
+                                          </TableCell>
+                                          <TableCell className="text-right font-medium">
+                                            -
+                                          </TableCell>
+                                          <TableCell className="text-right font-medium">
+                                            {formatPrice(viewingOrder.totalTTC)}
                                           </TableCell>
                                         </TableRow>
                                       </TableBody>
                                     </Table>
+                                    </div>
                                   </div>
                                   <div className="grid grid-cols-2 gap-4">
                                     <div>

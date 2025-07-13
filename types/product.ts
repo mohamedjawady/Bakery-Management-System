@@ -3,6 +3,7 @@
 export interface Product {
   _id: string;
   name: string;
+  productRef?: string; // Product reference identifier
   description: string;
   laboratory: string;
   ingredients: string[];

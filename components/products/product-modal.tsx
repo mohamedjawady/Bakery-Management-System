@@ -306,6 +306,15 @@ export function ProductModal({ product, isOpen, onClose, mode, onSave }: Product
                 </div>
 
                 <div>
+                  <Label className="text-sm font-medium text-muted-foreground">Référence Produit</Label>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="font-mono text-sm">
+                      {product?.productRef || 'N/A'}
+                    </Badge>
+                  </div>
+                </div>
+
+                <div>
                   <Label className="text-sm font-medium text-muted-foreground">Laboratoire</Label>
                   <div className="flex items-center gap-2">
                     <Building2 className="h-4 w-4" />
