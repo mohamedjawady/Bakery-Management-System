@@ -70,7 +70,7 @@ export default function UsersPage() {
     firstName: "",
     lastName: "",
     email: "",
-    role: "bakery",
+    // role is now undefined by default - no default selection
     password: "",
     bakeryName: "",
     labName: "",
@@ -140,7 +140,6 @@ export default function UsersPage() {
       bakeryName: "",
       labName: "",
     })
-
     if (role === "bakery" && bakeries.length === 0) {
       fetchBakeries()
     } else if (role === "laboratory" && laboratories.length === 0) {
@@ -157,7 +156,6 @@ export default function UsersPage() {
         bakeryName: "",
         labName: "",
       })
-
       if (role === "bakery" && bakeries.length === 0) {
         fetchBakeries()
       } else if (role === "laboratory" && laboratories.length === 0) {
@@ -182,10 +180,12 @@ export default function UsersPage() {
             Authorization: `Bearer ${token}`,
           },
         })
+
         if (!response.ok) {
           if (response.status === 401) router.push("/login")
           throw new Error("Failed to fetch users")
         }
+
         const data = await response.json()
         setUsers(data)
       } catch (error) {
@@ -264,6 +264,7 @@ export default function UsersPage() {
       if (newUser.role === "bakery" && newUser.bakeryName) {
         payload.bakeryName = newUser.bakeryName
       }
+
       if (newUser.role === "laboratory" && newUser.labName) {
         payload.labName = newUser.labName
       }
@@ -284,6 +285,7 @@ export default function UsersPage() {
       }
 
       const createdUser = await response.json()
+
       const fetchResponse = await fetch(API_BASE_URL, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -291,16 +293,18 @@ export default function UsersPage() {
       })
       const updatedUsers = await fetchResponse.json()
       setUsers(updatedUsers)
+
       setNewUser({
         firstName: "",
         lastName: "",
         email: "",
-        role: "bakery",
+        // Reset role to undefined (no selection)
         password: "",
         bakeryName: "",
         labName: "",
       })
       setIsCreateDialogOpen(false)
+
       toast({
         title: "Utilisateur créé",
         description: `L'utilisateur ${createdUser.firstName} ${createdUser.lastName} a été créé avec succès`,
@@ -361,6 +365,7 @@ export default function UsersPage() {
       if (editingUser.role === "bakery" && editingUser.bakeryName) {
         payload.bakeryName = editingUser.bakeryName
       }
+
       if (editingUser.role === "laboratory" && editingUser.labName) {
         payload.labName = editingUser.labName
       }
@@ -392,8 +397,10 @@ export default function UsersPage() {
       })
       const refreshedUsers = await fetchResponse.json()
       setUsers(refreshedUsers)
+
       setIsEditDialogOpen(false)
       setEditingUser(null)
+
       toast({
         title: "Utilisateur mis à jour",
         description: `L'utilisateur ${editingUser.firstName} ${editingUser.lastName} a été mis à jour avec succès`,
@@ -421,6 +428,7 @@ export default function UsersPage() {
       setIsLoading(false)
       return
     }
+
     try {
       const response = await fetch(`${API_BASE_URL}/${userToDelete._id}`, {
         method: "DELETE",
@@ -442,8 +450,10 @@ export default function UsersPage() {
       })
       const refreshedUsers = await fetchResponse.json()
       setUsers(refreshedUsers)
+
       setIsDeleteDialogOpen(false)
       setUserToDelete(null)
+
       toast({
         title: "Utilisateur désactivé",
         description: `L'utilisateur ${userToDelete.firstName} ${userToDelete.lastName} a été désactivé avec succès`,
@@ -531,7 +541,7 @@ export default function UsersPage() {
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="role">Rôle</Label>
-                  <Select value={newUser.role} onValueChange={handleNewUserRoleChange}>
+                  <Select value={newUser.role || ""} onValueChange={handleNewUserRoleChange}>
                     <SelectTrigger>
                       <SelectValue placeholder="Sélectionnez un rôle" />
                     </SelectTrigger>
@@ -874,6 +884,7 @@ export default function UsersPage() {
                                 </DialogFooter>
                               </DialogContent>
                             </Dialog>
+
                             <Dialog
                               open={isDeleteDialogOpen && userToDelete?._id === user._id}
                               onOpenChange={(open) => {

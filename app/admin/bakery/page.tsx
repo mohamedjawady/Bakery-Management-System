@@ -136,7 +136,7 @@ export default function LaboratoriesPage() {
       console.error("Fetch error:", error)
       toast({
         title: "Erreur de chargement",
-        description: "Impossible de récupérer la liste des laboratoires.",
+        description: "Impossible de récupérer la liste des boulangeries.",
         variant: "destructive",
       })
       setLaboratories([])
@@ -234,13 +234,13 @@ export default function LaboratoriesPage() {
       setIsCreateDialogOpen(false)
 
       toast({
-        title: "Laboratoire créé",
-        description: result.message || `Le laboratoire ${payload.bakeryName} a été créé avec succès`,
+        title: "boulangerie créé",
+        description: result.message || `Le boulangerie ${payload.bakeryName} a été créé avec succès`,
       })
     } catch (error: any) {
       toast({
         title: "Erreur de création",
-        description: error.message || "Impossible de créer le laboratoire.",
+        description: error.message || "Impossible de créer le boulangerie.",
         variant: "destructive",
       })
     } finally {
@@ -320,13 +320,13 @@ export default function LaboratoriesPage() {
       setEditingLab(null)
 
       toast({
-        title: "Laboratoire mis à jour",
-        description: result.message || `Le laboratoire ${payload.bakeryName} a été mis à jour avec succès`,
+        title: "boulangerie mis à jour",
+        description: result.message || `Le boulangerie ${payload.bakeryName} a été mis à jour avec succès`,
       })
     } catch (error: any) {
       toast({
         title: "Erreur de mise à jour",
-        description: error.message || "Impossible de mettre à jour le laboratoire.",
+        description: error.message || "Impossible de mettre à jour le boulangerie.",
         variant: "destructive",
       })
     } finally {
@@ -370,13 +370,13 @@ export default function LaboratoriesPage() {
       setLabToDelete(null)
 
       toast({
-        title: "Laboratoire désactivé",
-        description: result.message || `Le laboratoire ${labToDelete.bakeryName} a été désactivé avec succès`,
+        title: "boulangerie désactivé",
+        description: result.message || `Le boulangerie ${labToDelete.bakeryName} a été désactivé avec succès`,
       })
     } catch (error: any) {
       toast({
         title: "Erreur de désactivation",
-        description: error.message || "Impossible de désactiver le laboratoire.",
+        description: error.message || "Impossible de désactiver le boulangerie.",
         variant: "destructive",
       })
     } finally {
@@ -447,19 +447,19 @@ export default function LaboratoriesPage() {
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Laboratoires</h1>
-            <p className="text-muted-foreground">Gérez les laboratoires et leurs informations</p>
+            <h1 className="text-3xl font-bold tracking-tight">boulangeries</h1>
+            <p className="text-muted-foreground">Gérez les boulangeries et leurs informations</p>
           </div>
           <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
             <DialogTrigger asChild>
               <Button disabled={isLoading || isSubmitting}>
-                <Plus className="mr-2 h-4 w-4" /> Nouveau laboratoire
+                <Plus className="mr-2 h-4 w-4" /> Nouveau boulangerie
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Créer un nouveau laboratoire</DialogTitle>
-                <DialogDescription>Remplissez les informations pour créer un nouveau laboratoire</DialogDescription>
+                <DialogTitle>Créer un nouveau boulangerie</DialogTitle>
+                <DialogDescription>Remplissez les informations pour créer un nouveau boulangerie</DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="grid gap-2">
@@ -472,12 +472,12 @@ export default function LaboratoriesPage() {
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="headChef">Chef de laboratoire</Label>
+                  <Label htmlFor="headChef">Chef de boulangerie</Label>
                   <Input
                     id="headChef"
                     value={newLab.headChef}
                     onChange={(e) => setNewLab({ ...newLab, headChef: e.target.value })}
-                    placeholder="Nom du chef de laboratoire"
+                    placeholder="Nom du chef de boulangerie"
                   />
                 </div>
                 <div className="grid gap-2">
@@ -486,7 +486,7 @@ export default function LaboratoriesPage() {
                     id="address"
                     value={newLab.address}
                     onChange={(e) => setNewLab({ ...newLab, address: e.target.value })}
-                    placeholder="Adresse complète du laboratoire"
+                    placeholder="Adresse complète du boulangerie"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -506,7 +506,7 @@ export default function LaboratoriesPage() {
                       type="email"
                       value={newLab.email}
                       onChange={(e) => setNewLab({ ...newLab, email: e.target.value })}
-                      placeholder="email@laboratoire.fr"
+                      placeholder="email@boulangerie.fr"
                     />
                   </div>
                 </div>
@@ -569,14 +569,14 @@ export default function LaboratoriesPage() {
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle>Liste des laboratoires</CardTitle>
-            <CardDescription>{laboratories.length} laboratoires trouvés</CardDescription>
+            <CardTitle>Liste des boulangeries</CardTitle>
+            <CardDescription>{laboratories.length} boulangeries trouvés</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="mb-4 flex items-center gap-2">
               <Search className="h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Rechercher un laboratoire..."
+                placeholder="Rechercher un boulangerie..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="max-w-sm"
@@ -601,14 +601,14 @@ export default function LaboratoriesPage() {
                       <TableCell colSpan={7} className="text-center py-8">
                         <div className="flex justify-center items-center">
                           <Loader2 className="mr-2 h-8 w-8 animate-spin" />
-                          Chargement des laboratoires...
+                          Chargement des boulangeries...
                         </div>
                       </TableCell>
                     </TableRow>
                   ) : filteredLaboratories.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={7} className="text-center py-8">
-                        {searchTerm ? "Aucun laboratoire trouvé pour cette recherche" : "Aucun laboratoire trouvé"}
+                        {searchTerm ? "Aucun boulangerie trouvé pour cette recherche" : "Aucun boulangerie trouvé"}
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -651,8 +651,8 @@ export default function LaboratoriesPage() {
                               </DialogTrigger>
                               <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
                                 <DialogHeader>
-                                  <DialogTitle>Détails du laboratoire</DialogTitle>
-                                  <DialogDescription>Informations complètes du laboratoire</DialogDescription>
+                                  <DialogTitle>Détails du boulangerie</DialogTitle>
+                                  <DialogDescription>Informations complètes du boulangerie</DialogDescription>
                                 </DialogHeader>
                                 {viewingLab && (
                                   <div className="grid gap-6 py-4">
@@ -666,7 +666,7 @@ export default function LaboratoriesPage() {
                                           </p>
                                         </div>
                                         <div>
-                                          <Label className="text-sm font-medium">Chef de laboratoire</Label>
+                                          <Label className="text-sm font-medium">Chef de boulangerie</Label>
                                           <p className="text-sm text-muted-foreground">
                                             {viewingLab.headChef || "Non assigné"}
                                           </p>
@@ -784,8 +784,8 @@ export default function LaboratoriesPage() {
                               </DialogTrigger>
                               <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
                                 <DialogHeader>
-                                  <DialogTitle>Modifier le laboratoire</DialogTitle>
-                                  <DialogDescription>Modifiez les informations du laboratoire</DialogDescription>
+                                  <DialogTitle>Modifier le boulangerie</DialogTitle>
+                                  <DialogDescription>Modifiez les informations du boulangerie</DialogDescription>
                                 </DialogHeader>
                                 {editingLab && (
                                   <div className="grid gap-4 py-4">
@@ -803,7 +803,7 @@ export default function LaboratoriesPage() {
                                       />
                                     </div>
                                     <div className="grid gap-2">
-                                      <Label htmlFor="edit-headChef">Chef de laboratoire</Label>
+                                      <Label htmlFor="edit-headChef">Chef de boulangerie</Label>
                                       <Input
                                         id="edit-headChef"
                                         value={editingLab.headChef || ""}
@@ -968,7 +968,7 @@ export default function LaboratoriesPage() {
                                   variant="ghost"
                                   size="icon"
                                   disabled={isSubmitting || !lab.isActive}
-                                  title={!lab.isActive ? "Laboratoire déjà inactif" : "Désactiver"}
+                                  title={!lab.isActive ? "boulangerie déjà inactif" : "Désactiver"}
                                 >
                                   <Trash className="h-4 w-4" />
                                   <span className="sr-only">Désactiver</span>
@@ -978,9 +978,9 @@ export default function LaboratoriesPage() {
                                 <DialogHeader>
                                   <DialogTitle>Confirmer la désactivation</DialogTitle>
                                   <DialogDescription>
-                                    Êtes-vous sûr de vouloir désactiver le laboratoire{" "}
-                                    <strong>{labToDelete?.bakeryName || "ce laboratoire"}</strong> ? Cette action peut
-                                    être annulée en modifiant le statut du laboratoire.
+                                    Êtes-vous sûr de vouloir désactiver le boulangerie{" "}
+                                    <strong>{labToDelete?.bakeryName || "ce boulangerie"}</strong> ? Cette action peut
+                                    être annulée en modifiant le statut du boulangerie.
                                   </DialogDescription>
                                 </DialogHeader>
                                 <DialogFooter>
