@@ -88,6 +88,7 @@ console.log(data);
     id: order._id?.toString() || `unknown-${Math.random().toString(36).substr(2, 9)}`,
     customerName: order.bakeryName?.toString() || "Client inconnu",
     status: normalizedStatus as Order["status"],
+    orderReferenceId:order.orderReferenceId,
     items,
     total,
     totalHT,
@@ -127,6 +128,7 @@ console.log(validatedOrders);
 
     return idMatch || nameMatch
   })
+console.log('filteredOrders',filteredOrders);
 
   // Format date
   const formatDate = (dateString: string) => {
@@ -258,7 +260,7 @@ console.log(validatedOrders);
                   ) : (
                     filteredOrders.map((order) => (
                       <TableRow key={order.id}>
-                        <TableCell className="font-medium">{order.id}</TableCell>
+                        <TableCell className="font-medium">{order.orderReferenceId}</TableCell>
                         <TableCell>{order.customerName}</TableCell>
                         <TableCell>{formatPrice(order.total)}</TableCell>
                         <TableCell>
