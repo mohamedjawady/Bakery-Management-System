@@ -20,7 +20,6 @@ import "@/styles/sidebar-hover-ultimate.css";
 import "@/styles/sidebar-hover-fix.css";
 import "@/styles/sidebar-administrateur-fix.css";
 import {
-  Bell,
   ChevronLeft,
   ChevronRight,
   ClipboardList,
@@ -277,22 +276,6 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
                   </Tooltip>
                 </TooltipProvider>
                 {/* Utility buttons are now direct children of the above div */}
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button variant="ghost" className="w-full h-9 sidebar-nav-item relative">
-                        <span className="relative flex items-center">
-                          <Bell className="h-4 w-4 sidebar-icon" />
-                          <span className="absolute top-0 right-0 h-1.5 w-1.5 rounded-full bg-red-600 transform translate-x-1/2 -translate-y-1/2"></span>
-                        </span>
-                        <span className="sidebar-link-text text-sm font-medium">Notifications</span>
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="right" className="sidebar-tooltip">
-                      Notifications
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>

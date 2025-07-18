@@ -94,13 +94,7 @@ export default function DeliveryDashboard() {
         </div>        <h2 className="text-xl font-semibold mt-4">Commandes Disponibles</h2>
         <p className="text-sm text-muted-foreground mb-4">Commandes prêtes à être récupérées pour livraison</p>
 
-        {/* Debug information */}
-        <div className="mb-4 p-4 bg-gray-100 rounded text-sm">
-          <p>Debug Info:</p>
-          <p>Total deliveries: {deliveries.length}</p>
-          <p>Ready for delivery: {deliveries.filter(d => d.status === "READY_FOR_DELIVERY").length}</p>
-          <p>All statuses: {deliveries.map(d => d.status).join(", ")}</p>
-        </div>
+        
 
         {loading ? (
           <div className="grid gap-4 md:grid-cols-2">
