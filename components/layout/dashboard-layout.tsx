@@ -302,8 +302,10 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
                         onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
                         aria-label="Toggle theme"
                       >
-                        <Sun className="h-4 w-4 sidebar-icon sun-icon" />
-                        <Moon className="h-4 w-4 sidebar-icon moon-icon" />
+                        <div className="relative h-4 w-4 sidebar-icon">
+                          <Sun className="h-4 w-4 sun-icon" />
+                          <Moon className="h-4 w-4 moon-icon" />
+                        </div>
                         <span className="sidebar-link-text text-sm font-medium">
                           {theme === "dark" ? "Mode clair" : "Mode sombre"}
                         </span>
@@ -386,8 +388,8 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
                 {/* Mobile Sidebar Content */}
                 <SheetContent side="left" className="w-[280px] sm:w-[320px] p-0 border-r sidebar-sheet [&>button]:hidden">
                   {/* Content from original mobile nav structure */}
-                  <nav className="mobile-nav-wrapper" aria-label="Mobile navigation">
-                    <div className="mobile-nav-header">
+                  <nav className="mobile-nav-wrapper h-full flex flex-col" aria-label="Mobile navigation">
+                    <div className="mobile-nav-header flex-shrink-0">
                       <div className="flex items-center">
                         <Croissant className="h-5 w-5 sidebar-logo mr-3" />
                         <span className="text-base font-medium">{roleLabels[role]}</span>
@@ -397,7 +399,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
                         <span className="sr-only">Close</span>
                       </Button>
                     </div>
-                    <div className="p-4 space-y-2">
+                    <div className="flex-1 overflow-y-auto p-4 space-y-2">
                       {navItems.map((item) => {
                         const Icon = item.icon;
                         const isActive = pathname === item.href;
@@ -416,7 +418,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
                         );
                       })}
                     </div>
-                    <div className="mt-auto p-4 border-t space-y-2">
+                    <div className="flex-shrink-0 mt-auto p-4 border-t space-y-2">
                       <Button
                         variant="outline"
                         className="w-full justify-start sidebar-nav-link theme-toggle-mobile"
