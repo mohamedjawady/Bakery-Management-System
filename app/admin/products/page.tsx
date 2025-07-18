@@ -53,12 +53,12 @@ export default function AdminProductsPage() {
   // Quick search state
   const [quickSearch, setQuickSearch] = useState('')
   
-  // Filter state (admin sees all products by default)
+  // Filter state (admin sees active products by default)
   const [filters, setFilters] = useState<ProductFilters>({
     search: '',
     category: '',
     available: undefined,
-    active: undefined, // Admin can see both active and inactive
+    active: true, // Show only active products by default
     sortBy: 'updatedAt',
     sortOrder: 'desc'
   })
@@ -175,12 +175,12 @@ export default function AdminProductsPage() {
   }
 
   const handleProductDelete = async (product: Product) => {
-    if (!confirm(`Êtes-vous sûr de vouloir supprimer le produit "${product.name}" ?`)) {
+    if (!confirm(`Êtes-vous sûr de vouloir supprimer définitivement le produit "${product.name}" ?\n\nCette action est irréversible.`)) {
       return
     }
 
     try {
-      await deleteProduct(product._id)
+      await deleteProduct(product._id, true) // Use permanent deletion
       toast({
         title: "Succès",
         description: "Produit supprimé avec succès",
