@@ -257,25 +257,73 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
                 })}
               </div>
                 <div className="mt-3 border-t pt-3 px-2 flex flex-col gap-1">
-                <TooltipProvider>
-                  <Tooltip delayDuration={300}>
-                    <TooltipTrigger asChild>
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        className="w-full h-9 sidebar-nav-item" 
-                        onClick={handleLogout}                        aria-label="Déconnexion"
-                      >
-                        <LogOut className="h-4 w-4 sidebar-icon" />
-                        <span className="sidebar-link-text text-sm font-medium">Déconnexion</span>
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="right" className="sidebar-tooltip">
-                      Déconnexion
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-                {/* Utility buttons are now direct children of the above div */}
+                {/* User dropdown - Mon Compte for most roles, direct link for delivery */}
+                {role === "delivery" ? (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button 
+                          variant="ghost" 
+                          className="w-full h-9 sidebar-nav-item"
+                          asChild
+                        >
+                          <Link href="/delivery/profile" className="flex items-center">
+                            <Avatar className="h-4 w-4 sidebar-icon">
+                              <AvatarImage src="/placeholder-user.jpg" alt="User avatar" />
+                              <AvatarFallback>{user?.email?.substring(0, 2).toUpperCase() || "JD"}</AvatarFallback>
+                            </Avatar>
+                            <span className="sidebar-link-text text-sm font-medium">Paramètres</span>
+                          </Link>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="right" className="sidebar-tooltip">
+                        Paramètres
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                ) : (
+                  <DropdownMenu>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="w-full h-9 sidebar-nav-item">
+                              <Avatar className="h-4 w-4 sidebar-icon">
+                                <AvatarImage src="/placeholder-user.jpg" alt="User avatar" />
+                                <AvatarFallback>{user?.email?.substring(0, 2).toUpperCase() || "JD"}</AvatarFallback>
+                              </Avatar>
+                              <span className="sidebar-link-text text-sm font-medium">Mon Compte</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                        </TooltipTrigger>
+                        <TooltipContent side="right" className="sidebar-tooltip">
+                          Mon Compte
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                    <DropdownMenuContent align="end" className="w-56">
+                      <div className="flex items-center justify-start gap-2 p-2">
+                        <div className="flex flex-col space-y-0.5 leading-none">
+                          <p className="font-medium text-sm">{user?.email || "Jean Dupont"}</p>
+                          <p className="text-xs text-muted-foreground">{roleLabels[role]}</p>
+                        </div>
+                      </div>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem asChild>
+                        <Link href={`/${role}/profile`} className="flex w-full cursor-pointer items-center">
+                          <Settings className="mr-2 h-4 w-4" />
+                          <span>Paramètres</span>
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={handleLogout}>
+                        <LogOut className="mr-2 h-4 w-4" />
+                        <span>Déconnexion</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+                {/* Theme toggle button */}
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -299,46 +347,25 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
-                <DropdownMenu>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="w-full h-9 sidebar-nav-item">
-                            <Avatar className="h-4 w-4 sidebar-icon">
-                              <AvatarImage src="/placeholder-user.jpg" alt="User avatar" />
-                              <AvatarFallback>{user?.email?.substring(0, 2).toUpperCase() || "JD"}</AvatarFallback>
-                            </Avatar>
-                            <span className="sidebar-link-text text-sm font-medium">Mon Compte</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                      </TooltipTrigger>
-                      <TooltipContent side="right" className="sidebar-tooltip">
-                        Mon Compte
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                  <DropdownMenuContent align="end" className="w-56">
-                    <div className="flex items-center justify-start gap-2 p-2">
-                      <div className="flex flex-col space-y-0.5 leading-none">
-                        <p className="font-medium text-sm">{user?.email || "Jean Dupont"}</p>
-                        <p className="text-xs text-muted-foreground">{roleLabels[role]}</p>
-                      </div>
-                    </div>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                      <Link href={`/${role}/profile`} className="flex w-full cursor-pointer items-center">
-                        <Settings className="mr-2 h-4 w-4" />
-                        <span>Paramètres</span>
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleLogout}>
-                      <LogOut className="mr-2 h-4 w-4" />
-                      <span>Déconnexion</span>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                {/* Logout button */}
+                <TooltipProvider>
+                  <Tooltip delayDuration={300}>
+                    <TooltipTrigger asChild>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        className="w-full h-9 sidebar-nav-item" 
+                        onClick={handleLogout}                        aria-label="Déconnexion"
+                      >
+                        <LogOut className="h-4 w-4 sidebar-icon" />
+                        <span className="sidebar-link-text text-sm font-medium">Déconnexion</span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="sidebar-tooltip">
+                      Déconnexion
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </div>
             </div>
             {/* Sidebar toggle button - hidden with hover-expandable behavior */}
@@ -372,17 +399,19 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
                 <SheetContent side="left" className="w-[280px] sm:w-[320px] p-0 border-r sidebar-sheet [&>button]:hidden">
                   {/* Content from original mobile nav structure */}
                   <nav className="mobile-nav-wrapper h-full flex flex-col" aria-label="Mobile navigation">
-                    <div className="mobile-nav-header flex-shrink-0">
-                      <div className="flex items-center">
-                        <Croissant className="h-5 w-5 sidebar-logo mr-3" />
-                        <span className="text-base font-medium">{roleLabels[role]}</span>
+                    <div className="mobile-nav-header flex-shrink-0 p-4 border-b">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center">
+                          <Croissant className="h-5 w-5 sidebar-logo mr-3" />
+                          <span className="text-base font-medium">{roleLabels[role]}</span>
+                        </div>
+                        <Button variant="ghost" size="sm" onClick={() => setOpen(false)} className="sidebar-close-button">
+                          <X className="h-5 w-5" />
+                          <span className="sr-only">Close</span>
+                        </Button>
                       </div>
-                      <Button variant="ghost" size="sm" onClick={() => setOpen(false)} className="sidebar-close-button">
-                        <X className="h-5 w-5" />
-                        <span className="sr-only">Close</span>
-                      </Button>
                     </div>
-                    <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                    <div className="flex-1 overflow-y-auto p-4 space-y-2 min-h-0">
                       {navItems.map((item) => {
                         const Icon = item.icon;
                         const isActive = pathname === item.href;
@@ -390,7 +419,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
                           <Button
                             key={item.href}
                             variant={isActive ? "secondary" : "ghost"}
-                            className="w-full justify-start sidebar-nav-link"
+                            className="w-full justify-start sidebar-nav-link h-12"
                             asChild
                           >
                             <Link href={item.href} className="flex items-center" onClick={() => setOpen(false)}>
@@ -400,11 +429,63 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
                           </Button>
                         );
                       })}
-                    </div>
-                    <div className="flex-shrink-0 mt-auto p-4 border-t space-y-2">
+                      
+                      {/* Divider */}
+                      <div className="border-t my-4"></div>
+                      
+                      {/* User dropdown - Mon Compte for most roles, direct link for delivery */}
+                      {role === "delivery" ? (
+                        <Button 
+                          variant="ghost" 
+                          className="w-full justify-start sidebar-nav-link h-12"
+                          asChild
+                        >
+                          <Link href="/delivery/profile" className="flex items-center" onClick={() => setOpen(false)}>
+                            <Avatar className="mr-3 h-5 w-5 sidebar-nav-icon">
+                              <AvatarImage src="/placeholder-user.jpg" alt="User avatar" />
+                              <AvatarFallback>{user?.email?.substring(0, 2).toUpperCase() || "JD"}</AvatarFallback>
+                            </Avatar>
+                            <span>Paramètres</span>
+                          </Link>
+                        </Button>
+                      ) : (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="w-full justify-start sidebar-nav-link h-12">
+                              <Avatar className="mr-3 h-5 w-5 sidebar-nav-icon">
+                                <AvatarImage src="/placeholder-user.jpg" alt="User avatar" />
+                                <AvatarFallback>{user?.email?.substring(0, 2).toUpperCase() || "JD"}</AvatarFallback>
+                              </Avatar>
+                              <span>Mon Compte</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-56">
+                            <div className="flex items-center justify-start gap-2 p-2">
+                              <div className="flex flex-col space-y-0.5 leading-none">
+                                <p className="font-medium text-sm">{user?.email || "Jean Dupont"}</p>
+                                <p className="text-xs text-muted-foreground">{roleLabels[role]}</p>
+                              </div>
+                            </div>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem asChild>
+                              <Link href={`/${role}/profile`} className="flex w-full cursor-pointer items-center">
+                                <Settings className="mr-2 h-4 w-4" />
+                                <span>Paramètres</span>
+                              </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={handleLogout}>
+                              <LogOut className="mr-2 h-4 w-4" />
+                              <span>Déconnexion</span>
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+
+                      {/* Theme toggle button */}
                       <Button
-                        variant="outline"
-                        className="w-full justify-start sidebar-nav-link theme-toggle-mobile"
+                        variant="ghost"
+                        className="w-full justify-start sidebar-nav-link h-12"
                         onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
                       >
                         {theme === "dark" ? (
@@ -419,10 +500,15 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
                           </>
                         )}
                       </Button>
-                      <Button variant="ghost" className="w-full justify-start sidebar-nav-link" onClick={handleLogout}>
+
+                      {/* Logout button */}
+                      <Button variant="ghost" className="w-full justify-start sidebar-nav-link h-12" onClick={handleLogout}>
                         <LogOut className="mr-3 h-5 w-5 sidebar-nav-icon" />
                         <span>Déconnexion</span>
                       </Button>
+                    </div>
+                    <div className="flex-shrink-0 p-4 border-t">
+                      {/* Empty bottom section - user controls moved to main area */}
                     </div>
                   </nav>
                 </SheetContent>
