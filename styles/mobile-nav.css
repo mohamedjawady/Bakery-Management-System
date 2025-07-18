@@ -120,3 +120,48 @@
     flex: 1;
   }
 }
+
+/* Additional mobile fixes for better visibility */
+.mobile-nav-wrapper .space-y-2 > * + * {
+  margin-top: 0.5rem;
+}
+
+/* Ensure sidebar navigation items are properly sized for touch */
+.sidebar-nav-link {
+  min-height: 48px;
+  font-size: 16px;
+  padding: 0.75rem 1rem;
+  touch-action: manipulation;
+}
+
+/* Increase touch target size for better mobile usability */
+@media (max-width: 768px) {
+  .sidebar-nav-link {
+    min-height: 52px;
+    padding: 1rem;
+  }
+  
+  .mobile-nav-header {
+    min-height: 64px;
+    padding: 1rem;
+  }
+  
+  .mobile-nav-wrapper .overflow-y-auto {
+    padding: 1rem;
+    max-height: calc(100vh - 128px); /* Account for header and footer */
+  }
+}
+
+/* Ensure content doesn't get cut off on very small screens */
+@media (max-height: 600px) {
+  .mobile-nav-wrapper .overflow-y-auto {
+    max-height: calc(100vh - 160px);
+  }
+}
+
+/* Fix for very small screens */
+@media (max-width: 320px) {
+  .sidebar-sheet {
+    width: 95vw !important;
+  }
+}
