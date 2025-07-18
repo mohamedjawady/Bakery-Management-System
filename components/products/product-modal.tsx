@@ -687,34 +687,7 @@ export function ProductModal({ product, isOpen, onClose, mode, onSave }: Product
                   )}
                 />
 
-                <FormField
-                  control={form.control}
-                  name="taxRate"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Taux de TVA (%)</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Percent className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input
-                            type="number"
-                            min="0"
-                            max="100"
-                            step="0.01"
-                            placeholder="15"
-                            className="pl-10"
-                            value={field.value ? (field.value * 100).toFixed(2) : ''}
-                            onChange={(e) => {
-                              const value = parseFloat(e.target.value) / 100;
-                              field.onChange(isNaN(value) ? undefined : value);
-                            }}
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                
               </div>
 
               <FormField

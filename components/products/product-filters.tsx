@@ -47,7 +47,8 @@ export function ProductFiltersComponent({
       page: 1,
       limit: 20,
       sortBy: 'createdAt',
-      sortOrder: 'desc'
+      sortOrder: 'desc',
+      active: true // Reset to show only active products by default
     });
   };
 
