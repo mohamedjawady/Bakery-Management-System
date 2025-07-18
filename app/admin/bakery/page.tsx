@@ -37,7 +37,6 @@ interface Laboratory {
     quantity: number
     status: "operational" | "maintenance" | "broken"
   }>
-  hygieneRating?: "A" | "B" | "C" | "D" | "E"
   lastInspectionDate?: string
   isActive: boolean
   createdAt: string
@@ -51,7 +50,6 @@ interface LaboratoryFormData {
   phone: string
   email: string
   capacity?: number
-  hygieneRating?: "A" | "B" | "C" | "D" | "E"
   lastInspectionDate: string
   isActive?: boolean
 }
@@ -65,7 +63,6 @@ const initialFormData: LaboratoryFormData = {
   phone: "",
   email: "",
   capacity: undefined,
-  hygieneRating: undefined,
   lastInspectionDate: "",
 }
 
@@ -205,7 +202,6 @@ export default function LaboratoriesPage() {
         phone: newLab.phone?.trim() || "",
         email: newLab.email?.trim() || "",
         capacity: newLab.capacity || undefined,
-        hygieneRating: newLab.hygieneRating || undefined,
         lastInspectionDate: newLab.lastInspectionDate || undefined,
       }
 
@@ -259,7 +255,6 @@ export default function LaboratoriesPage() {
       phone: editingLab.phone || "",
       email: editingLab.email || "",
       capacity: editingLab.capacity,
-      hygieneRating: editingLab.hygieneRating,
       lastInspectionDate: editingLab.lastInspectionDate || "",
       isActive: editingLab.isActive,
     }
@@ -290,7 +285,6 @@ export default function LaboratoriesPage() {
         phone: formData.phone?.trim() || "",
         email: formData.email?.trim() || "",
         capacity: formData.capacity || undefined,
-        hygieneRating: formData.hygieneRating || undefined,
         lastInspectionDate: formData.lastInspectionDate || undefined,
         isActive: formData.isActive,
       }
@@ -412,24 +406,6 @@ export default function LaboratoriesPage() {
     }
   }
 
-  // Get hygiene rating color
-  const getHygieneRatingColor = (rating?: string) => {
-    switch (rating) {
-      case "A":
-        return "bg-green-100 text-green-800"
-      case "B":
-        return "bg-blue-100 text-blue-800"
-      case "C":
-        return "bg-yellow-100 text-yellow-800"
-      case "D":
-        return "bg-orange-100 text-orange-800"
-      case "E":
-        return "bg-red-100 text-red-800"
-      default:
-        return "bg-gray-100 text-gray-800"
-    }
-  }
-
   // Reset dialogs
   const resetDialogs = () => {
     setIsCreateDialogOpen(false)
@@ -524,26 +500,6 @@ export default function LaboratoriesPage() {
                       placeholder="Capacité de production"
                     />
                   </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="hygieneRating">Note d'hygiène</Label>
-                    <Select
-                      value={newLab.hygieneRating || ""}
-                      onValueChange={(value) =>
-                        setNewLab({ ...newLab, hygieneRating: value as "A" | "B" | "C" | "D" | "E" })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sélectionnez une note" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="A">A - Excellent</SelectItem>
-                        <SelectItem value="B">B - Très bien</SelectItem>
-                        <SelectItem value="C">C - Bien</SelectItem>
-                        <SelectItem value="D">D - Satisfaisant</SelectItem>
-                        <SelectItem value="E">E - À améliorer</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="lastInspectionDate">Dernière inspection</Label>
@@ -589,7 +545,6 @@ export default function LaboratoriesPage() {
                     <TableHead>Nom</TableHead>
                     <TableHead>Chef</TableHead>
                     <TableHead>Adresse</TableHead>
-                    <TableHead>Note d'hygiène</TableHead>
                     <TableHead>Statut</TableHead>
                     <TableHead>Date de création</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
@@ -598,7 +553,7 @@ export default function LaboratoriesPage() {
                 <TableBody>
                   {isLoading ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8">
+                      <TableCell colSpan={6} className="text-center py-8">
                         <div className="flex justify-center items-center">
                           <Loader2 className="mr-2 h-8 w-8 animate-spin" />
                           Chargement des boulangeries...
@@ -607,7 +562,7 @@ export default function LaboratoriesPage() {
                     </TableRow>
                   ) : filteredLaboratories.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8">
+                      <TableCell colSpan={6} className="text-center py-8">
                         {searchTerm ? "Aucun boulangerie trouvé pour cette recherche" : "Aucun boulangerie trouvé"}
                       </TableCell>
                     </TableRow>
@@ -617,13 +572,6 @@ export default function LaboratoriesPage() {
                         <TableCell className="font-medium">{lab.bakeryName || "Nom non défini"}</TableCell>
                         <TableCell>{lab.headChef || "Non assigné"}</TableCell>
                         <TableCell className="max-w-[200px] truncate">{lab.address || "Non renseignée"}</TableCell>
-                        <TableCell>
-                          {lab.hygieneRating ? (
-                            <Badge className={getHygieneRatingColor(lab.hygieneRating)}>{lab.hygieneRating}</Badge>
-                          ) : (
-                            <span className="text-muted-foreground">Non évalué</span>
-                          )}
-                        </TableCell>
                         <TableCell>
                           {lab.isActive ? (
                             <Badge variant="default">Actif</Badge>
@@ -700,18 +648,6 @@ export default function LaboratoriesPage() {
                                           <Label className="text-sm font-medium">Capacité</Label>
                                           <p className="text-sm text-muted-foreground">
                                             {viewingLab.capacity || "Non définie"}
-                                          </p>
-                                        </div>
-                                        <div>
-                                          <Label className="text-sm font-medium">Note d'hygiène</Label>
-                                          <p className="text-sm text-muted-foreground">
-                                            {viewingLab.hygieneRating ? (
-                                              <Badge className={getHygieneRatingColor(viewingLab.hygieneRating)}>
-                                                {viewingLab.hygieneRating}
-                                              </Badge>
-                                            ) : (
-                                              "Non évalué"
-                                            )}
                                           </p>
                                         </div>
                                         <div>
@@ -872,29 +808,6 @@ export default function LaboratoriesPage() {
                                             })
                                           }
                                         />
-                                      </div>
-                                      <div className="grid gap-2">
-                                        <Label htmlFor="edit-hygieneRating">Note d'hygiène</Label>
-                                        <Select
-                                          value={editingLab.hygieneRating || ""}
-                                          onValueChange={(value) =>
-                                            setEditingLab({
-                                              ...editingLab,
-                                              hygieneRating: value as "A" | "B" | "C" | "D" | "E",
-                                            })
-                                          }
-                                        >
-                                          <SelectTrigger>
-                                            <SelectValue placeholder="Sélectionnez une note" />
-                                          </SelectTrigger>
-                                          <SelectContent>
-                                            <SelectItem value="A">A - Excellent</SelectItem>
-                                            <SelectItem value="B">B - Très bien</SelectItem>
-                                            <SelectItem value="C">C - Bien</SelectItem>
-                                            <SelectItem value="D">D - Satisfaisant</SelectItem>
-                                            <SelectItem value="E">E - À améliorer</SelectItem>
-                                          </SelectContent>
-                                        </Select>
                                       </div>
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
