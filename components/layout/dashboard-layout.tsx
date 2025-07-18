@@ -170,8 +170,8 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
   const adminNavItems = [
     { href: "/admin/dashboard", label: "Tableau de bord", icon: Home },
     { href: "/admin/users", label: "Utilisateurs", icon: Users },
-    { href: "/admin/laboratory", label: "Laboratory", icon: Users },
-    { href: "/admin/bakery", label: "Bakery", icon: Users },
+    { href: "/admin/laboratory", label: "Laboratoire", icon: Users },
+    { href: "/admin/bakery", label: "Boulangerie", icon: Users },
     { href: "/admin/products", label: "Produits", icon: ShoppingBag },
     { href: "/admin/orders", label: "Commandes", icon: ClipboardList },
     { href: "/admin/delivery", label: "Livraisons", icon: Truck },
