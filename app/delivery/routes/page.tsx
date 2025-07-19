@@ -590,12 +590,12 @@ export default function RoutesPage() {
                     <span className="sm:inline">Démarrer</span>
                   </Button>
                 )}
-                {route.status === "IN_PROGRESS" && (
+                {/* {route.status === "IN_PROGRESS" && (
                   <Button size="sm" variant="outline" className="flex-1 sm:flex-none">
                     <MapPin className="mr-2 h-4 w-4" />
                     <span className="sm:inline">Carte</span>
                   </Button>
-                )}
+                )} */}
                 <Button
                   size="sm"
                   variant="outline"
