@@ -19,6 +19,8 @@ export interface Delivery {
     pricePerUnit: number;
     quantity: number;
     totalPrice: number;
+    totalPriceTTC:number;
+   
   }>;
   createdAt: string;
   updatedAt: string;
