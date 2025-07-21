@@ -36,6 +36,15 @@ export interface DeliveryAssignRequest {
   deliveryUserName: string;
 }
 
+export interface DeliveryClaimRequest {
+  deliveryUserId: string;
+  deliveryUserName: string;
+}
+
+export interface DeliveryReleaseRequest {
+  reason?: string;
+}
+
 // API Response types
 export interface ApiResponse<T> {
   success: boolean;
@@ -84,6 +93,11 @@ class DeliveryAPI {
     return this.request<Delivery[]>('/');
   }
 
+  // Get available orders for claiming
+  async getAvailableOrders(): Promise<Delivery[]> {
+    return this.request<Delivery[]>('/available');
+  }
+
   // Get deliveries by status
   async getDeliveriesByStatus(status: Delivery['status']): Promise<Delivery[]> {
     return this.request<Delivery[]>(`/status/${status}`);
@@ -112,6 +126,22 @@ class DeliveryAPI {
     return this.request<Delivery>(`/${id}/assign`, {
       method: 'PATCH',
       body: JSON.stringify(assignData),
+    });
+  }
+
+  // Claim an order for delivery (self-assignment)
+  async claimOrder(id: string, claimData: DeliveryClaimRequest): Promise<{ message: string; order: Delivery }> {
+    return this.request<{ message: string; order: Delivery }>(`/${id}/claim`, {
+      method: 'PATCH',
+      body: JSON.stringify(claimData),
+    });
+  }
+
+  // Release an order (unclaim)
+  async releaseOrder(id: string, releaseData: DeliveryReleaseRequest): Promise<{ message: string; order: Delivery }> {
+    return this.request<{ message: string; order: Delivery }>(`/${id}/release`, {
+      method: 'PATCH',
+      body: JSON.stringify(releaseData),
     });
   }
 

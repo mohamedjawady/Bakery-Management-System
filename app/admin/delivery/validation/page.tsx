@@ -71,19 +71,34 @@ export default function DeliveryValidationPage() {
   const fetchData = async () => {
     setLoading(true)
     try {
+      // Get authentication token
+      const userInfo = localStorage.getItem('userInfo')
+      const token = userInfo ? JSON.parse(userInfo).token : null
+      
+      if (!token) {
+        throw new Error("Authentication required")
+      }
+
+      const headers = {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+
       // Fetch orders
-      const ordersResponse = await fetch("http://localhost:5000/orders")
+      const ordersResponse = await fetch("http://localhost:5000/orders", { headers })
       if (!ordersResponse.ok) {
         throw new Error("Failed to fetch orders")
       }
       const ordersData = await ordersResponse.json()
 
       // Fetch delivery users
-      const usersResponse = await fetch("/api/users")
+      const usersResponse = await fetch("/api/users", { headers })
       let usersData: DeliveryUser[] = []
       if (usersResponse.ok) {
         const allUsers = await usersResponse.json()
         usersData = allUsers.filter((user: DeliveryUser) => user.role === 'delivery')
+      } else {
+        console.error("Failed to fetch users:", usersResponse.status)
       }
 
       setOrders(ordersData)
@@ -92,7 +107,7 @@ export default function DeliveryValidationPage() {
       console.error("Error fetching data:", error)
       toast({
         title: "Erreur de chargement",
-        description: "Impossible de charger les données",
+        description: error instanceof Error ? error.message : "Impossible de charger les données",
         variant: "destructive",
       })
     } finally {
@@ -331,9 +346,6 @@ export default function DeliveryValidationPage() {
             <TabsTrigger value="delivery-users">
               Livreurs ({deliveryUsers.length})
             </TabsTrigger>
-            <TabsTrigger value="summary">
-              Résumé
-            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="issues" className="space-y-4">
@@ -477,75 +489,6 @@ export default function DeliveryValidationPage() {
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
-
-          <TabsContent value="summary" className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Recommandations</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {stats.high > 0 && (
-                    <Alert variant="destructive">
-                      <XCircle className="h-4 w-4" />
-                      <AlertDescription>
-                        <strong>Urgent:</strong> {stats.high} commande(s) avec des ID de livreur invalides. 
-                        Ces commandes ne peuvent pas être traitées correctement.
-                      </AlertDescription>
-                    </Alert>
-                  )}
-                  {stats.medium > 0 && (
-                    <Alert>
-                      <AlertTriangle className="h-4 w-4" />
-                      <AlertDescription>
-                        <strong>Attention:</strong> {stats.medium} commande(s) assignées à des livreurs inactifs.
-                        Réassignez ces commandes à des livreurs actifs.
-                      </AlertDescription>
-                    </Alert>
-                  )}
-                  {stats.total === 0 && (
-                    <Alert>
-                      <CheckCircle className="h-4 w-4" />
-                      <AlertDescription>
-                        Toutes les affectations de livraison sont correctes !
-                      </AlertDescription>
-                    </Alert>
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Actions Recommandées</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <div className="text-sm space-y-2">
-                    <div className="flex items-start gap-2">
-                      <div className="w-2 h-2 rounded-full bg-red-500 mt-2"></div>
-                      <div>
-                        <strong>Mettre à jour les ID codés en dur</strong><br />
-                        <span className="text-muted-foreground">Remplacez les ID de livreur codés en dur (1, 2, 3, etc.) par les vrais ID de la base de données</span>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-2">
-                      <div className="w-2 h-2 rounded-full bg-orange-500 mt-2"></div>
-                      <div>
-                        <strong>Réactiver ou réassigner</strong><br />
-                        <span className="text-muted-foreground">Réactivez les livreurs inactifs ou réassignez leurs commandes</span>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-2">
-                      <div className="w-2 h-2 rounded-full bg-blue-500 mt-2"></div>
-                      <div>
-                        <strong>Synchroniser les noms</strong><br />
-                        <span className="text-muted-foreground">Mettez à jour les noms de livreurs dans les commandes pour qu'ils correspondent à la base de données</span>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
           </TabsContent>
         </Tabs>
       </div>
