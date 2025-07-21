@@ -153,14 +153,6 @@ export default function BakeryOrdersPage() {
   const [sortBy, setSortBy] = useState<"name" | "price" | "category">("name")
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
 
-  // Add these new state variables after the existing product selection state
-  const [selectionMode, setSelectionMode] = useState(false)
-  const [selectedProductIds, setSelectedProductIds] = useState<string[]>([])
-  const [bulkQuantity, setBulkQuantity] = useState(1)
-
-  // Add this new state after the existing selection state variables
-  const [selectedProductQuantities, setSelectedProductQuantities] = useState<Record<string, number>>({})
-
   // Fallback data
   const fallbackDeliveryUsers: DeliveryUser[] = [
     { id: "1", name: "Jean Dupont", role: "delivery", isActive: true },
@@ -339,19 +331,61 @@ export default function BakeryOrdersPage() {
 
   // Effects
   useEffect(() => {
-    const userData = localStorage.getItem("userInfo") || localStorage.getItem("userData")
-    if (userData) {
+    const fetchUserDataAndBakeryInfo = async () => {
       try {
-        const user = JSON.parse(userData)
-        if (user.bakeryName) {
-          setBakeryName(user.bakeryName)
+        // First try to get basic info from localStorage
+        const userData = localStorage.getItem("userInfo") || localStorage.getItem("userData")
+        if (userData) {
+          const user = JSON.parse(userData)
+          if (user.bakeryName) {
+            setBakeryName(user.bakeryName)
+          }
+          
+          // Get token for API call
+          const token = user.token
+          if (token) {
+            // Fetch complete bakery info from API
+            const response = await fetch("/api/bakery-info", {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            })
+            
+            if (response.ok) {
+              const bakeryData = await response.json()
+              if (bakeryData) {
+                // Update with API data (more complete)
+                if (bakeryData.name) {
+                  setBakeryName(bakeryData.name)
+                }
+                if (bakeryData.address) {
+                  setAddress(bakeryData.address)
+                }
+              }
+            }
+          }
         }
       } catch (error) {
-        // It's possible for userData to be non-JSON or null,
-        // so ensure we catch parsing errors.
-        console.error("Error parsing user data from localStorage:", error)
+        console.error("Error fetching user data and bakery info:", error)
+        // Fallback to localStorage only
+        const userData = localStorage.getItem("userInfo") || localStorage.getItem("userData")
+        if (userData) {
+          try {
+            const user = JSON.parse(userData)
+            if (user.bakeryName) {
+              setBakeryName(user.bakeryName)
+            }
+            if (user.address) {
+              setAddress(user.address)
+            }
+          } catch (parseError) {
+            console.error("Error parsing user data from localStorage:", parseError)
+          }
+        }
       }
     }
+
+    fetchUserDataAndBakeryInfo()
   }, [])
 
   useEffect(() => {
@@ -455,10 +489,6 @@ export default function BakeryOrdersPage() {
     setProductSearchTerm("")
     setSelectedCategory("all")
     setSortBy("name")
-    setSelectionMode(false)
-    setSelectedProductIds([])
-    setBulkQuantity(1)
-    setSelectedProductQuantities({})
   }
 
   const addProductToOrder = (productId: string, initialQuantity = 1) => {
@@ -681,11 +711,34 @@ export default function BakeryOrdersPage() {
     return format(date, "dd/MM/yyyy HH:mm", { locale: fr })
   }
 
+  // Standard French VAT rate for bakery products
+  const TAX_RATE = 0.20 // 20%
+
   const formatPrice = (price: number): string => {
     return new Intl.NumberFormat("fr-FR", {
       style: "currency",
       currency: "EUR",
     }).format(price)
+  }
+
+  // Helper function to calculate HT price from TTC price
+  const calculateHTPriceFromTTC = (ttcPrice: number): number => {
+    return ttcPrice / (1 + TAX_RATE)
+  }
+
+  // Helper function to format price with both HT and TTC
+  const formatPriceWithTax = (ttcPrice: number, showBothPrices: boolean = true): React.ReactNode => {
+    if (!showBothPrices) {
+      return formatPrice(ttcPrice)
+    }
+    
+    const htPrice = calculateHTPriceFromTTC(ttcPrice)
+    return (
+      <div className="flex flex-col items-end text-sm">
+        <div className="text-muted-foreground">{formatPrice(htPrice)} HT</div>
+        <div className="font-bold">{formatPrice(ttcPrice)} TTC</div>
+      </div>
+    )
   }
 
   const selectAllProducts = () => {
@@ -705,317 +758,78 @@ export default function BakeryOrdersPage() {
     })
   }
 
-  // Update the toggleProductSelection function
-  const toggleProductSelection = (productId: string) => {
-    setSelectedProductIds((prev) => {
-      if (prev.includes(productId)) {
-        // Remove from selection and clear its quantity
-        setSelectedProductQuantities((prevQty) => {
-          const newQty = { ...prevQty }
-          delete newQty[productId]
-          return newQty
-        })
-        return prev.filter((id) => id !== productId)
-      } else {
-        // Add to selection with default quantity of 1
-        setSelectedProductQuantities((prevQty) => ({
-          ...prevQty,
-          [productId]: 1,
-        }))
-        return [...prev, productId]
-      }
-    })
+  // Helper function to remove an item from the order
+  const removeItemFromOrder = (index: number) => {
+    if (index >= 0 && index < orderProducts.length) {
+      const newOrderProducts = [...orderProducts]
+      newOrderProducts.splice(index, 1)
+      setOrderProducts(newOrderProducts)
+      toast({
+        title: "Produit retiré",
+        description: "Le produit a été retiré du panier",
+      })
+    }
   }
 
-  // Update the selectAllVisibleProducts function
-  const selectAllVisibleProducts = () => {
-    const visibleProductIds = getFilteredProducts().map((p) => p._id)
-    setSelectedProductIds(visibleProductIds)
-    // Set default quantity of 1 for all selected products
-    const quantities: Record<string, number> = {}
-    visibleProductIds.forEach((id) => {
-      quantities[id] = selectedProductQuantities[id] || 1
-    })
-    setSelectedProductQuantities(quantities)
-  }
-
-  // Update the clearProductSelection function
-  const clearProductSelection = () => {
-    setSelectedProductIds([])
-    setSelectedProductQuantities({})
-  }
-
-  // FIX: Refactored addSelectedProductsToCart to correctly add all selected products
-  const addSelectedProductsToCart = () => {
-    const newOrderProducts = [...orderProducts] // Create a mutable copy of the current cart
-    let productsProcessedCount = 0 // Count all selected products that are processed
-
-    selectedProductIds.forEach((productId) => {
-      const product = filteredProducts.find((p) => p._id === productId)
-      if (!product) return
-
-      const quantityToAdd = selectedProductQuantities[productId] || 1
-      const validQuantity = Math.max(1, Math.min(999, quantityToAdd))
-
-      const existingItemIndex = newOrderProducts.findIndex((item) => item.productName === product.name)
-
-      if (existingItemIndex >= 0) {
-        // If product already in cart, update its quantity by adding the new quantity
-        newOrderProducts[existingItemIndex] = {
-          ...newOrderProducts[existingItemIndex],
-          quantity: newOrderProducts[existingItemIndex].quantity + validQuantity,
-          totalPriceTTC:
-            (newOrderProducts[existingItemIndex].unitPriceTTC || product.unitPrice) *
-            (newOrderProducts[existingItemIndex].quantity + validQuantity),
-          totalPrice:
-            (newOrderProducts[existingItemIndex].unitPriceTTC || product.unitPrice) *
-            (newOrderProducts[existingItemIndex].quantity + validQuantity),
-        }
-      } else {
-        // If product not in cart, add it as a new item
-        newOrderProducts.push({
-          productName: product.name,
-          laboratory: product.laboratory || "Unknown",
-          quantity: validQuantity,
-          unitPriceTTC: product.unitPrice,
-          totalPriceTTC: product.unitPrice * validQuantity,
-          totalPrice: product.unitPrice * validQuantity,
-        })
-      }
-      productsProcessedCount++ // Increment count for each selected product processed
-    })
-
-    // Update the state once with the final array
-    setOrderProducts(newOrderProducts)
-
-    // Clear selection states after adding to cart
-    setSelectedProductIds([])
-    setSelectedProductQuantities({})
-    setSelectionMode(false)
-
-    toast({
-      title: "Produits ajoutés",
-      description: `${productsProcessedCount} produits ajoutés au panier avec leurs quantités respectives`,
-    })
-  }
-
-  // Add this new function to update individual product quantities
-  const updateSelectedProductQuantity = (productId: string, quantity: number) => {
-    const validQuantity = Math.max(1, Math.min(999, quantity))
-    setSelectedProductQuantities((prev) => ({
-      ...prev,
-      [productId]: validQuantity,
-    }))
-  }
-
-  // Add this new function to apply bulk quantity to all selected products
-  const applyBulkQuantityToSelected = () => {
-    const quantities: Record<string, number> = {}
-    selectedProductIds.forEach((id) => {
-      quantities[id] = bulkQuantity
-    })
-    setSelectedProductQuantities(quantities)
-    toast({
-      title: "Quantités mises à jour",
-      description: `Quantité de ${bulkQuantity} appliquée à tous les produits sélectionnés`,
-    })
-  }
-
-  // Component rendering
-  // Update the ProductCard component to handle individual quantities in selection mode
+  // Simplified ProductCard component with better UX
   const ProductCard = ({ product }: { product: Product }) => {
     const orderItem = orderProducts.find((item) => item.productName === product.name)
     const isSelected = !!orderItem
-    const isChecked = selectedProductIds.includes(product._id)
     const quantity = orderItem?.quantity || 0
-    const selectedQuantity = selectedProductQuantities[product._id] || 1
 
     return (
       <Card
-        className={`transition-all duration-300 hover:shadow-lg ${
+        className={`transition-all duration-200 hover:shadow-md ${
           isSelected
-            ? "border-2 border-primary bg-gradient-to-br from-primary/5 to-primary/10"
-            : isChecked && selectionMode
-              ? "border-2 border-blue-500 bg-gradient-to-br from-blue-50 to-blue-100"
-              : "border hover:border-primary/50"
+            ? "border-2 border-primary bg-primary/5"
+            : "border hover:border-primary/30"
         }`}
       >
-        {/* <CardContent className="p-4"> */}
-        {/* <img
-          src={product.image || "/placeholder.svg?height=128&width=256"}
-          alt={product.name}
-          width={256}
-          height={128}
-          className="w-full h-32 object-cover rounded-md mb-3"
-        /> */}
         <CardContent className="p-4">
-          <div className="flex flex-col gap-3">
-            {selectionMode && (
-              <div className="flex items-center justify-between">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={isChecked}
-                    onChange={() => toggleProductSelection(product._id)}
-                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                  />
-                  <span className="text-sm font-medium">Sélectionner</span>
-                </label>
-                {isChecked && (
-                  <Badge variant="default" className="bg-blue-500 hover:bg-blue-600">
-                    <CheckCircle className="h-3 w-3 mr-1" />
-                    Sélectionné
+          <div className="space-y-3">
+            {/* Product Info */}
+            <div className="flex items-start justify-between">
+              <div className="flex-1 min-w-0">
+                <h4 className="font-semibold text-base leading-tight truncate">{product.name}</h4>
+                {product.category && (
+                  <Badge variant="secondary" className="text-xs mt-1">
+                    {product.category}
+                  </Badge>
+                )}
+                {product.description && (
+                  <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{product.description}</p>
+                )}
+              </div>
+              <div className="text-right ml-3">
+                {formatPriceWithTax(product.unitPrice)}
+                {isSelected && (
+                  <Badge variant="default" className="bg-green-500 text-xs mt-1">
+                    Dans le panier
                   </Badge>
                 )}
               </div>
-            )}
-
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <h4 className="font-semibold text-base leading-tight line-clamp-1">{product.name}</h4>
-                  {product.category && (
-                    <Badge variant="secondary" className="text-xs px-2 py-0.5">
-                      {product.category}
-                    </Badge>
-                  )}
-                </div>
-                {product.description && (
-                  <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{product.description}</p>
-                )}
-              </div>
-              <span className="text-lg font-bold text-primary ml-2">{formatPrice(product.unitPrice)}</span>
             </div>
-
-            {isSelected && !selectionMode && (
-              <div className="flex justify-end">
-                <Badge variant="default" className="bg-green-500 hover:bg-green-600">
-                  <CheckCircle className="h-3 w-3 mr-1" />
-                  Dans le panier
-                </Badge>
-              </div>
-            )}
 
             <Separator />
 
-            {selectionMode && isChecked ? (
+            {/* Action Area */}
+            {isSelected ? (
+              // Product is in cart - show quantity controls
               <div className="space-y-3">
-                <div className="flex items-center justify-between p-2 bg-blue-50 rounded-lg border border-blue-200">
-                  <span className="font-medium text-sm text-blue-800">Quantité sélectionnée:</span>
-                  <span className="text-lg font-bold text-blue-800">{selectedQuantity}</span>
-                </div>
-                <div className="flex items-center justify-center gap-3">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => updateSelectedProductQuantity(product._id, selectedQuantity - 1)}
-                    disabled={selectedQuantity <= 1}
-                    className="h-10 w-10"
-                  >
-                    <Minus className="h-4 w-4" />
-                  </Button>
-                  <Input
-                    type="number"
-                    min="1"
-                    max="999"
-                    value={selectedQuantity}
-                    onChange={(e) => {
-                      const newQuantity = Number.parseInt(e.target.value) || 1
-                      if (newQuantity >= 1 && newQuantity <= 999) {
-                        updateSelectedProductQuantity(product._id, newQuantity)
-                      }
-                    }}
-                    className="w-20 text-center font-bold text-lg"
-                  />
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => updateSelectedProductQuantity(product._id, selectedQuantity + 1)}
-                    disabled={selectedQuantity >= 999}
-                    className="h-10 w-10"
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
-                <div className="grid grid-cols-4 gap-2">
-                  {[5, 10, 25, 50].map((qty) => (
-                    <Button
-                      key={qty}
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => updateSelectedProductQuantity(product._id, qty)}
-                      className="text-xs hover:bg-blue-100"
-                    >
-                      {qty}
-                    </Button>
-                  ))}
-                </div>
-                <div className="flex items-center justify-between p-2 bg-blue-50 rounded border border-blue-200">
-                  <span className="text-sm font-medium text-blue-800">Sous-total:</span>
-                  <span className="font-bold text-blue-800">{formatPrice(selectedQuantity * product.unitPrice)}</span>
-                </div>
-              </div>
-            ) : !selectionMode && !isSelected ? (
-              <div className="space-y-3">
-                <div className="grid grid-cols-4 gap-2">
-                  {[1, 5, 10, 25].map((qty) => (
-                    <Button
-                      key={qty}
-                      variant="outline"
-                      size="sm"
-                      onClick={() => addProductToOrder(product._id, qty)}
-                      className="text-xs font-medium hover:bg-primary hover:text-white transition-colors"
-                    >
-                      +{qty}
-                    </Button>
-                  ))}
-                </div>
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="number"
-                    min="1"
-                    max="999"
-                    placeholder="Qté"
-                    className="flex-1 text-center"
-                    id={`qty-input-${product._id}`}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        const qty = Number.parseInt((e.target as HTMLInputElement).value) || 1
-                        addProductToOrder(product._id, qty)
-                        ;(e.target as HTMLInputElement).value = ""
-                      }
-                    }}
-                  />
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      const input = document.getElementById(`qty-input-${product._id}`) as HTMLInputElement
-                      const qty = Number.parseInt(input?.value) || 1
-                      addProductToOrder(product._id, qty)
-                      if (input) input.value = ""
-                    }}
-                    className="px-4"
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            ) : !selectionMode && isSelected ? (
-              <div className="space-y-4">
                 <div className="flex items-center justify-between p-2 bg-primary/10 rounded-lg">
                   <span className="font-medium text-sm">Quantité:</span>
                   <span className="text-lg font-bold text-primary">{quantity}</span>
                 </div>
-                <div className="flex items-center justify-center gap-3">
+                
+                <div className="flex items-center justify-center gap-2">
                   <Button
                     variant="outline"
-                    size="icon"
+                    size="sm"
                     onClick={() => {
                       const index = orderProducts.findIndex((item) => item.productName === product.name)
                       if (index >= 0) updateItemQuantity(index, quantity - 1)
                     }}
                     disabled={quantity <= 1}
-                    className="h-10 w-10"
                   >
                     <Minus className="h-4 w-4" />
                   </Button>
@@ -1031,22 +845,22 @@ export default function BakeryOrdersPage() {
                         if (index >= 0) updateItemQuantity(index, newQuantity)
                       }
                     }}
-                    className="w-20 text-center font-bold text-lg"
+                    className="w-16 text-center font-medium"
                   />
                   <Button
                     variant="outline"
-                    size="icon"
+                    size="sm"
                     onClick={() => {
                       const index = orderProducts.findIndex((item) => item.productName === product.name)
                       if (index >= 0) updateItemQuantity(index, quantity + 1)
                     }}
                     disabled={quantity >= 999}
-                    className="h-10 w-10"
                   >
                     <Plus className="h-4 w-4" />
                   </Button>
                 </div>
-                <div className="grid grid-cols-4 gap-2">
+
+                <div className="grid grid-cols-4 gap-1">
                   {[5, 10, 25, 50].map((qty) => (
                     <Button
                       key={qty}
@@ -1056,32 +870,71 @@ export default function BakeryOrdersPage() {
                         const index = orderProducts.findIndex((item) => item.productName === product.name)
                         if (index >= 0) updateItemQuantity(index, qty)
                       }}
-                      className="text-xs hover:bg-primary/20"
+                      className="text-xs h-8"
                     >
                       {qty}
                     </Button>
                   ))}
                 </div>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between p-2 bg-green-50 rounded border border-green-200">
-                    <span className="text-sm font-medium text-green-800">Sous-total:</span>
-                    <span className="font-bold text-green-800">{formatPrice(quantity * product.unitPrice)}</span>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      const index = orderProducts.findIndex((item) => item.productName === product.name)
-                      if (index >= 0) removeItem(index)
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => removeItemFromOrder(orderProducts.findIndex((item) => item.productName === product.name))}
+                  className="w-full text-destructive hover:text-destructive"
+                >
+                  <Trash className="h-4 w-4 mr-1" />
+                  Retirer du panier
+                </Button>
+              </div>
+            ) : (
+              // Product not in cart - show add to cart options
+              <div className="space-y-3">
+                <div className="grid grid-cols-4 gap-1">
+                  {[1, 5, 10, 25].map((qty) => (
+                    <Button
+                      key={qty}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => addProductToOrder(product._id, qty)}
+                      className="text-xs h-8 hover:bg-primary hover:text-white transition-colors"
+                    >
+                      +{qty}
+                    </Button>
+                  ))}
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    min="1"
+                    max="999"
+                    placeholder="Quantité"
+                    className="flex-1 text-center"
+                    id={`qty-input-${product._id}`}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        const qty = Number.parseInt((e.target as HTMLInputElement).value) || 1
+                        addProductToOrder(product._id, qty)
+                        ;(e.target as HTMLInputElement).value = ""
+                      }
                     }}
-                    className="w-full text-destructive hover:text-destructive hover:bg-destructive/10"
+                  />
+                  <Button
+                    onClick={() => {
+                      const input = document.getElementById(`qty-input-${product._id}`) as HTMLInputElement
+                      const qty = Number.parseInt(input?.value) || 1
+                      addProductToOrder(product._id, qty)
+                      if (input) input.value = ""
+                    }}
+                    className="px-4"
                   >
-                    <Trash className="h-4 w-4 mr-2" />
-                    Retirer du panier
+                    <Plus className="h-4 w-4 mr-1" />
+                    Ajouter
                   </Button>
                 </div>
               </div>
-            ) : null}
+            )}
           </div>
         </CardContent>
       </Card>
@@ -1130,7 +983,7 @@ export default function BakeryOrdersPage() {
     </div>
   )
 
-  // Update the renderProductsStep function to fix the order and layout
+  // Simplified renderProductsStep function with better UX
   const renderProductsStep = () => (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -1193,153 +1046,20 @@ export default function BakeryOrdersPage() {
             </Select>
           </div>
 
-          {/* Selection Mode Toggle and Actions */}
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Button
-                  variant={selectionMode ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => {
-                    const newSelectionMode = !selectionMode
-                    setSelectionMode(newSelectionMode)
-                    if (!newSelectionMode) {
-                      // Clear selection when exiting selection mode
-                      setSelectedProductIds([])
-                      setSelectedProductQuantities({})
-                    }
-                  }}
-                  className="flex items-center gap-2"
-                >
-                  <CheckCircle className="h-4 w-4" />
-                  {selectionMode ? "Quitter sélection" : "Sélection multiple"}
-                </Button>
-
-                {selectionMode && (
-                  <Badge variant="secondary" className="px-3 py-1">
-                    {selectedProductIds.length} sélectionné{selectedProductIds.length !== 1 ? "s" : ""}
-                  </Badge>
-                )}
-              </div>
-
-              {!selectionMode && getFilteredProducts().length > 0 && (
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={selectAllProducts} className="text-xs bg-transparent">
-                    Tout ajouter (qté 1)
-                  </Button>
-                  {orderProducts.length > 0 && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={deselectAllProducts}
-                      className="text-xs bg-transparent"
-                    >
-                      Vider le panier
-                    </Button>
-                  )}
-                </div>
-              )}
+          {/* Simple Actions */}
+          {getFilteredProducts().length > 0 && orderProducts.length > 0 && (
+            <div className="flex justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={deselectAllProducts}
+                className="text-destructive hover:text-destructive"
+              >
+                <Trash className="h-4 w-4 mr-1" />
+                Vider le panier
+              </Button>
             </div>
-
-            {/* Multi-Selection Controls */}
-            {selectionMode && (
-              <div className="space-y-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                {/* Selection Actions */}
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={selectAllVisibleProducts}
-                    className="text-xs bg-transparent"
-                  >
-                    Tout sélectionner
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={clearProductSelection}
-                    className="text-xs bg-transparent"
-                    disabled={selectedProductIds.length === 0}
-                  >
-                    Tout désélectionner
-                  </Button>
-
-                  {selectedProductIds.length > 0 && (
-                    <>
-                      <div className="flex items-center gap-2 ml-auto">
-                        <Label htmlFor="bulk-quantity" className="text-sm font-medium whitespace-nowrap">
-                          Quantité:
-                        </Label>
-                        <Input
-                          id="bulk-quantity"
-                          type="number"
-                          min="1"
-                          max="999"
-                          value={bulkQuantity}
-                          onChange={(e) => setBulkQuantity(Number.parseInt(e.target.value) || 1)}
-                          className="w-20 text-center"
-                        />
-                        <Button onClick={applyBulkQuantityToSelected} size="sm" variant="outline">
-                          Appliquer à tous
-                        </Button>
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                {/* Selected Products Summary */}
-                {selectedProductIds.length > 0 && (
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-medium text-blue-800">Produits sélectionnés</h4>
-                      <div className="text-sm font-bold text-blue-800">
-                        Total:{" "}
-                        {formatPrice(
-                          selectedProductIds.reduce((total, productId) => {
-                            const product = filteredProducts.find((p) => p._id === productId)
-                            const quantity = selectedProductQuantities[productId] || 1
-                            return total + (product ? product.unitPrice * quantity : 0)
-                          }, 0),
-                        )}
-                      </div>
-                    </div>
-
-                    <ScrollArea className="max-h-40 border rounded-md">
-                      <div className="space-y-2 p-2">
-                        {selectedProductIds.map((productId) => {
-                          const product = filteredProducts.find((p) => p._id === productId)
-                          const quantity = selectedProductQuantities[productId] || 1
-                          if (!product) return null
-
-                          return (
-                            <div
-                              key={productId}
-                              className="flex items-center justify-between p-3 bg-white rounded border"
-                            >
-                              <div className="flex-1">
-                                <div className="font-medium text-sm">{product.name}</div>
-                                <div className="text-xs text-muted-foreground">
-                                  {formatPrice(product.unitPrice)} × {quantity}
-                                </div>
-                              </div>
-                              <div className="text-right">
-                                <div className="font-bold text-sm">{formatPrice(product.unitPrice * quantity)}</div>
-                              </div>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </ScrollArea>
-
-                    <Button onClick={addSelectedProductsToCart} className="w-full" size="lg">
-                      <ShoppingCart className="h-4 w-4 mr-2" />
-                      Ajouter au panier ({selectedProductIds.length} produits)
-                    </Button>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+          )}
         </CardContent>
       </Card>
 
@@ -1366,12 +1086,12 @@ export default function BakeryOrdersPage() {
         </div>
       )}
 
-      {/* Shopping Cart Summary */}
+      {/* Shopping Cart Summary - Non-blocking */}
       {orderProducts.length > 0 && (
-        <Card className="sticky bottom-4 border-primary shadow-xl bg-white">
+        <Card className="border-primary bg-primary/5">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-lg">
                 <ShoppingBag className="h-5 w-5" />
                 Panier ({orderProducts.length} produits)
               </CardTitle>
@@ -1387,41 +1107,38 @@ export default function BakeryOrdersPage() {
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            <ScrollArea className="max-h-48">
-              <div className="space-y-3">
-                {orderProducts.map((item, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                    <div className="flex-1">
-                      <div className="font-medium text-sm">{item.productName}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {formatPrice(item.unitPriceTTC)} × {item.quantity}
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-bold text-sm">{formatPrice(item.totalPrice)}</div>
+            <div className="space-y-2">
+              {orderProducts.map((item, index) => (
+                <div key={index} className="flex items-center justify-between p-2 bg-white rounded border">
+                  <div className="flex-1">
+                    <div className="font-medium text-sm">{item.productName}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {formatPrice(item.unitPriceTTC)} × {item.quantity}
                     </div>
                   </div>
-                ))}
-              </div>
-            </ScrollArea>
-            <div className="space-y-3 pt-3 border-t">
+                  <div className="text-right">
+                    {formatPriceWithTax(item.totalPrice, false)}
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {formatPrice(calculateHTPriceFromTTC(item.totalPrice))} HT
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="space-y-1 pt-2 border-t">
               <div className="flex justify-between text-sm">
-                <span>Articles:</span>
-                <span className="font-medium">{orderProducts.length}</span>
+                <span>Sous-total HT:</span>
+                <span>{formatPrice(calculateHTPriceFromTTC(calculateTotalPrice()))}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span>Quantité totale:</span>
-                <span className="font-medium">{orderProducts.reduce((total, item) => total + item.quantity, 0)}</span>
+                <span>TVA (20%):</span>
+                <span>{formatPrice(calculateTotalPrice() - calculateHTPriceFromTTC(calculateTotalPrice()))}</span>
               </div>
-              <div className="flex justify-between text-xl font-bold pt-2 border-t">
-                <span>Total:</span>
+              <div className="flex justify-between text-lg font-bold">
+                <span>Total TTC:</span>
                 <span className="text-primary">{formatPrice(calculateTotalPrice())}</span>
               </div>
             </div>
-            <Button className="w-full" onClick={() => setCurrentStep("details")} size="lg">
-              <ShoppingCart className="h-4 w-4 mr-2" />
-              Continuer la commande
-            </Button>
           </CardContent>
         </Card>
       )}
@@ -1449,8 +1166,10 @@ export default function BakeryOrdersPage() {
           type="text"
           id="bakeryName"
           value={bakeryName}
-          onChange={(e) => setBakeryName(e.target.value)}
-          placeholder="Entrez le nom de la boulangerie"
+          readOnly
+          disabled
+          placeholder="Nom de la boulangerie (auto-rempli)"
+          className="bg-muted cursor-not-allowed"
         />
       </div>
 
@@ -1499,27 +1218,91 @@ export default function BakeryOrdersPage() {
 
       <Card className="border-primary">
         <CardHeader>
-          <CardTitle>Récapitulatif de la commande</CardTitle>
+          <CardTitle className="flex items-center justify-between">
+            <span>Récapitulatif de la commande</span>
+            <Button variant="outline" size="sm" onClick={() => setCurrentStep("products")}>
+              <Plus className="h-4 w-4 mr-1" />
+              Ajouter produits
+            </Button>
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="space-y-2">
+          <div className="space-y-3">
             {orderProducts.map((product, index) => (
-              <div key={index} className="flex items-center justify-between py-2 border-b last:border-b-0">
+              <div key={index} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg border">
                 <div className="flex-1">
                   <div className="font-medium text-sm">{product.productName}</div>
                   <div className="text-xs text-muted-foreground">
-                    {formatPrice(product.unitPriceTTC)} × {product.quantity}
+                    {formatPrice(product.unitPriceTTC)} par unité
                   </div>
                 </div>
-                <div className="text-right">
-                  <div className="font-bold text-sm">{formatPrice(product.totalPrice)}</div>
+                
+                {/* Quantity controls */}
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => updateItemQuantity(index, product.quantity - 1)}
+                      disabled={product.quantity <= 1}
+                    >
+                      <Minus className="h-4 w-4" />
+                    </Button>
+                    <Input
+                      type="number"
+                      min="1"
+                      max="999"
+                      value={product.quantity}
+                      onChange={(e) => {
+                        const newQuantity = Number.parseInt(e.target.value) || 1
+                        if (newQuantity >= 1 && newQuantity <= 999) {
+                          updateItemQuantity(index, newQuantity)
+                        }
+                      }}
+                      className="w-16 text-center"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => updateItemQuantity(index, product.quantity + 1)}
+                      disabled={product.quantity >= 999}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  
+                  <div className="text-right min-w-[100px]">
+                    {formatPriceWithTax(product.totalPrice, false)}
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {formatPrice(calculateHTPriceFromTTC(product.totalPrice))} HT
+                    </div>
+                  </div>
+                  
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => removeItemFromOrder(index)}
+                    className="text-destructive hover:text-destructive"
+                  >
+                    <Trash className="h-4 w-4" />
+                  </Button>
                 </div>
               </div>
             ))}
           </div>
-          <div className="flex items-center justify-between pt-3 border-t font-bold text-lg">
-            <span>Total</span>
-            <span className="text-primary">{formatPrice(calculateTotalPrice())}</span>
+          <div className="space-y-2 pt-3 border-t">
+            <div className="flex items-center justify-between text-sm">
+              <span>Sous-total HT ({orderProducts.reduce((total, item) => total + item.quantity, 0)} articles):</span>
+              <span>{formatPrice(calculateHTPriceFromTTC(calculateTotalPrice()))}</span>
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <span>TVA (20%):</span>
+              <span>{formatPrice(calculateTotalPrice() - calculateHTPriceFromTTC(calculateTotalPrice()))}</span>
+            </div>
+            <div className="flex items-center justify-between font-bold text-lg">
+              <span>Total TTC:</span>
+              <span className="text-primary">{formatPrice(calculateTotalPrice())}</span>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -1582,9 +1365,15 @@ export default function BakeryOrdersPage() {
                 {products.length} articles ({totalQuantity} unités)
               </span>
             </div>
-            <div className="flex justify-between font-bold text-primary">
-              <span>Total:</span>
-              <span>{formatPrice(totalPrice)}</span>
+            <div className="space-y-1">
+              <div className="flex justify-between text-sm">
+                <span>Total HT:</span>
+                <span>{formatPrice(calculateHTPriceFromTTC(totalPrice))}</span>
+              </div>
+              <div className="flex justify-between font-bold text-primary">
+                <span>Total TTC:</span>
+                <span>{formatPrice(totalPrice)}</span>
+              </div>
             </div>
           </div>
           <div className="flex justify-end mt-4">
@@ -1676,6 +1465,16 @@ export default function BakeryOrdersPage() {
                   >
                     Annuler
                   </Button>
+                  {currentStep === "products" && orderProducts.length > 0 && (
+                    <Button
+                      onClick={() => setCurrentStep("details")}
+                      className="w-full sm:w-auto"
+                      size="lg"
+                    >
+                      <ShoppingCart className="h-4 w-4 mr-2" />
+                      Continuer la commande
+                    </Button>
+                  )}
                   {currentStep === "details" && (
                     <Button
                       onClick={handleCreateOrder}
@@ -1698,7 +1497,7 @@ export default function BakeryOrdersPage() {
                       ) : (
                         <>
                           <ShoppingCart className="mr-2 h-4 w-4" />
-                          Commander ({formatPrice(calculateTotalPrice())})
+                          Commander ({formatPrice(calculateTotalPrice())} TTC)
                         </>
                       )}
                     </Button>
@@ -1863,18 +1662,44 @@ export default function BakeryOrdersPage() {
                             </div>
                           </div>
                           <div className="text-right">
-                            <div className="font-bold text-sm">{formatPrice(product.totalPrice)}</div>
+                            {formatPriceWithTax(product.totalPrice, false)}
+                            <div className="text-xs text-muted-foreground mt-1">
+                              {formatPrice(calculateHTPriceFromTTC(product.totalPrice))} HT
+                            </div>
                           </div>
                         </div>
                       ))}
                     </div>
-                    <div className="flex justify-between items-center pt-3 border-t font-bold text-lg">
-                      <span>Total de la commande:</span>
-                      <span className="text-primary">
-                        {formatPrice(
-                          (viewingOrder.products || []).reduce((total, product) => total + product.totalPrice, 0),
-                        )}
-                      </span>
+                    <div className="space-y-2 pt-3 border-t">
+                      <div className="flex justify-between items-center text-sm">
+                        <span>Sous-total HT:</span>
+                        <span>
+                          {formatPrice(
+                            calculateHTPriceFromTTC(
+                              (viewingOrder.products || []).reduce((total, product) => total + product.totalPrice, 0)
+                            )
+                          )}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center text-sm">
+                        <span>TVA (20%):</span>
+                        <span>
+                          {formatPrice(
+                            (viewingOrder.products || []).reduce((total, product) => total + product.totalPrice, 0) -
+                            calculateHTPriceFromTTC(
+                              (viewingOrder.products || []).reduce((total, product) => total + product.totalPrice, 0)
+                            )
+                          )}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center font-bold text-lg">
+                        <span>Total TTC:</span>
+                        <span className="text-primary">
+                          {formatPrice(
+                            (viewingOrder.products || []).reduce((total, product) => total + product.totalPrice, 0),
+                          )}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
