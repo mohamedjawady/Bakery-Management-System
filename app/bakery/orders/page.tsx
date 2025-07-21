@@ -278,13 +278,27 @@ export default function BakeryOrdersPage() {
   const fetchDeliveryUsers = async () => {
     try {
       setIsLoadingUsers(true)
-      const response = await fetch("/api/users")
-      if (!response.ok) {
-        throw new Error(`Failed to fetch users: ${response.status}`)
+      
+      // Get token from localStorage
+      const userInfo = localStorage.getItem("userInfo")
+      const token = userInfo ? JSON.parse(userInfo).token : null
+      
+      if (!token) {
+        throw new Error("No authentication token found")
       }
-      const users = await response.json()
-      const activeDeliveryUsers = users.filter((user: DeliveryUser) => user.role === "delivery" && user.isActive)
-      setDeliveryUsersFromAPI(activeDeliveryUsers)
+      
+      const response = await fetch("/api/users/delivery", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch delivery users: ${response.status}`)
+      }
+      
+      const deliveryUsers = await response.json()
+      setDeliveryUsersFromAPI(deliveryUsers)
     } catch (error) {
       console.error("Error fetching delivery users:", error)
       toast({

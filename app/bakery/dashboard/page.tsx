@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-import { ArrowRight, Calendar, ClipboardCheck, ClipboardList, Clock, Plus, ShoppingBag } from "lucide-react"
+import { ArrowRight, Calendar, ClipboardCheck, ClipboardList, Clock, Plus, ShoppingBag, RefreshCw } from "lucide-react"
 import { useEffect, useState, useMemo, useCallback } from "react"
 import { format, isToday, isFuture, differenceInMinutes, differenceInHours } from "date-fns"
 import { fr } from "date-fns/locale" // Import French locale for date-fns
@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Separator } from "@/components/ui/separator" // Added Separator for design
 import { ScrollArea } from "@/components/ui/scroll-area" // Added ScrollArea for details dialog
 import { useToast } from "@/hooks/use-toast" // Import useToast
+import { useRouter } from "next/navigation" // Import useRouter
 import type { Order } from "@/types/order" // Corrected import path
 
 export default function BakeryDashboard() {
@@ -25,6 +26,7 @@ export default function BakeryDashboard() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false)
   const { toast } = useToast() // Initialize useToast
+  const router = useRouter() // Initialize useRouter
 
   // Function to fetch orders from the Next.js API route
   const fetchOrdersData = useCallback(async () => {
@@ -160,7 +162,19 @@ export default function BakeryDashboard() {
             <h1 className="text-3xl font-bold tracking-tight">Boulangerie Saint-Michel</h1>
             <p className="text-muted-foreground">Bienvenue sur votre tableau de bord boulangerie.</p>
           </div>
-       
+          <div className="flex items-center gap-2">
+            <Button 
+              onClick={() => router.push('/bakery/orders')}
+              size="sm"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Nouvelle commande
+            </Button>
+            <Button onClick={fetchOrdersData} variant="outline" size="sm" disabled={loading}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+              Actualiser
+            </Button>
+          </div>
         </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           <Card>
