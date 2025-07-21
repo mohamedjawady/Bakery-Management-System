@@ -185,6 +185,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
     { href: "/bakery/products", label: "Produits", icon: ShoppingBag },
     { href: "/bakery/annoucements", label: "Annoucements", icon: Megaphone },
     { href: "/bakery/orders", label: "Commandes", icon: ClipboardList },
+    { href: "/bakery/reclamations", label: "Réclamations", icon: AlertTriangle },
   ];
 
   const laboratoryNavItems = [
