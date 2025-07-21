@@ -22,10 +22,11 @@ import { Eye, Filter, MapPin, Search, Truck, RefreshCw, AlertCircle } from "luci
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { deliveryApi, type Delivery, getStatusLabel, getStatusColor, formatDeliveryDate } from "@/lib/api/deliveriess"
+import { deliveryApi, type Delivery, getStatusLabel, getStatusColor, formatDeliveryDate } from "@/lib/api/deliveries"
 
 // Define order type from API - now using Delivery interface
 type Order = Delivery & {
+  id: string
   referenceId?: string
   customerName?: string
   items?: any[]
