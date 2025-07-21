@@ -24,9 +24,18 @@ type LaboratoryInfoFormValues = z.infer<typeof laboratoryInfoSchema>;
 
 interface LaboratoryInfoData extends LaboratoryInfoFormValues {
   _id?: string;
-  singleton?: string;
+  capacity?: number;
+  equipment?: Array<{
+    name: string;
+    quantity: number;
+    status: string;
+    _id: string;
+  }>;
+  lastInspectionDate?: string;
+  isActive?: boolean;
   createdAt?: string;
   updatedAt?: string;
+  __v?: number;
 }
 
 function LaboratoryInformationContent() {
@@ -57,7 +66,7 @@ function LaboratoryInformationContent() {
         }
         const { token } = JSON.parse(userInfo);
 
-        const fetchResponse = await fetch('/api/laboratory-info', {
+        const fetchResponse = await fetch('/api/laboratory-info/my-lab', {
           headers: {
             'Authorization': `Bearer ${token}`,
           },
@@ -66,9 +75,41 @@ function LaboratoryInformationContent() {
         if (!fetchResponse.ok) {
           throw new Error('Échec de la récupération des informations du laboratoire');
         }
-        const data: LaboratoryInfoData = await fetchResponse.json();
-        form.reset(data); 
+        const data = await fetchResponse.json();
+        console.log('API Response:', data); // Debug log
+        
+        // Handle both array and single object responses
+        let laboratoryData: LaboratoryInfoData;
+        if (Array.isArray(data)) {
+          console.log('Data is array, length:', data.length); // Debug log
+          // If it's an array, take the first laboratory or find the one matching the user
+          // For now, we'll take the first active laboratory
+          const activeLab = data.find(lab => lab.isActive) || data[0];
+          if (activeLab) {
+            console.log('Selected lab:', activeLab); // Debug log
+            laboratoryData = {
+              labName: activeLab.labName,
+              headChef: activeLab.headChef,
+              address: activeLab.address,
+              phone: activeLab.phone,
+              email: activeLab.email,
+              _id: activeLab._id,
+              createdAt: activeLab.createdAt,
+              updatedAt: activeLab.updatedAt
+            };
+          } else {
+            throw new Error('Aucun laboratoire trouvé');
+          }
+        } else {
+          console.log('Data is single object:', data); // Debug log
+          // If it's a single object, use it directly
+          laboratoryData = data;
+        }
+        
+        console.log('Laboratory data to reset form:', laboratoryData); // Debug log
+        form.reset(laboratoryData); 
       } catch (error) {
+        console.error('Error fetching laboratory info:', error);
         toast({
           title: 'Erreur',
           description: error instanceof Error ? error.message : 'Impossible de récupérer les données du laboratoire.',
@@ -92,7 +133,7 @@ function LaboratoryInformationContent() {
       }
       const { token } = JSON.parse(userInfo);
 
-      const updateResponse = await fetch('/api/laboratory-info', {
+      const updateResponse = await fetch('/api/laboratory-info/my-lab', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

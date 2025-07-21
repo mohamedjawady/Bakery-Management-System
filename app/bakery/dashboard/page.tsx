@@ -8,15 +8,18 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-import { ArrowRight, Calendar, ClipboardCheck, ClipboardList, Clock, Plus, ShoppingBag, RefreshCw } from "lucide-react"
+import { ArrowRight, Calendar, ClipboardCheck, ClipboardList, Clock, Plus, ShoppingBag, RefreshCw, Search, Filter, Eye, Loader2 } from "lucide-react"
 import { useEffect, useState, useMemo, useCallback } from "react"
 import { format, isToday, isFuture, differenceInMinutes, differenceInHours } from "date-fns"
 import { fr } from "date-fns/locale" // Import French locale for date-fns
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Separator } from "@/components/ui/separator" // Added Separator for design
 import { ScrollArea } from "@/components/ui/scroll-area" // Added ScrollArea for details dialog
 import { useToast } from "@/hooks/use-toast" // Import useToast
 import { useRouter } from "next/navigation" // Import useRouter
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Label } from "@/components/ui/label"
 import type { Order } from "@/types/order" // Corrected import path
 
 export default function BakeryDashboard() {
@@ -25,6 +28,12 @@ export default function BakeryDashboard() {
   const [error, setError] = useState<string | null>(null)
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false)
+  // Table functionality state
+  const [searchTerm, setSearchTerm] = useState("")
+  const [statusFilter, setStatusFilter] = useState<string>("all")
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false)
+  const [viewingOrder, setViewingOrder] = useState<Order | null>(null)
+  const [activeTab, setActiveTab] = useState("all")
   const { toast } = useToast() // Initialize useToast
   const router = useRouter() // Initialize useRouter
 
@@ -78,8 +87,178 @@ export default function BakeryDashboard() {
       .sort((a, b) => new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime())[0]
   }, [orders])
 
-  const updateOrderStatus = async (orderId: string, newStatus: Order["status"]) => {
+  // Utility functions
+  const formatDate = (dateString: string): string => {
+    if (!dateString) return "Non défini"
+    const date = new Date(dateString)
+    return format(date, "dd/MM/yyyy HH:mm", { locale: fr })
+  }
+
+  // Standard French VAT rate for bakery products
+  const TAX_RATE = 0.20 // 20%
+
+  const formatPrice = (price: number): string => {
+    return new Intl.NumberFormat("fr-FR", {
+      style: "currency",
+      currency: "EUR",
+    }).format(price)
+  }
+
+  // Helper function to calculate HT price from TTC price
+  const calculateHTPriceFromTTC = (ttcPrice: number): number => {
+    return ttcPrice / (1 + TAX_RATE)
+  }
+
+  // Status Badge Component
+  const StatusBadge = ({ status }: { status: string }) => {
+    const getStatusConfig = (status: string) => {
+      switch (status) {
+        case "PENDING":
+          return { label: "En attente", className: "bg-yellow-100 text-yellow-800 border-yellow-200" }
+        case "IN_PROGRESS":
+          return { label: "En préparation", className: "bg-blue-100 text-blue-800 border-blue-200" }
+        case "READY_FOR_DELIVERY":
+          return { label: "Prêt à livrer", className: "bg-purple-100 text-purple-800 border-purple-200" }
+        case "DISPATCHED":
+          return { label: "Dispatché", className: "bg-orange-100 text-orange-800 border-orange-200" }
+        case "DELIVERING":
+          return { label: "En livraison", className: "bg-indigo-100 text-indigo-800 border-indigo-200" }
+        case "DELIVERED":
+          return { label: "Livré", className: "bg-green-100 text-green-800 border-green-200" }
+        case "CANCELLED":
+          return { label: "Annulé", className: "bg-red-100 text-red-800 border-red-200" }
+        default:
+          return { label: status, className: "bg-gray-100 text-gray-800 border-gray-200" }
+      }
+    }
+
+    const config = getStatusConfig(status)
+    return (
+      <Badge variant="outline" className={config.className}>
+        {config.label}
+      </Badge>
+    )
+  }
+
+  // Order filtering (copied from orders page)
+  const filteredOrders = orders.filter((order) => {
+    // Provide default empty strings if properties are null or undefined
+    const orderRefId = order.orderReferenceId || ""
+    const bakeryNameLower = order.bakeryName?.toLowerCase() || ""
+    const deliveryUserNameLower = order.deliveryUserName?.toLowerCase() || ""
+
+    const matchesSearch =
+      orderRefId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      bakeryNameLower.includes(searchTerm.toLowerCase()) ||
+      (order.deliveryUserName &&
+        order.deliveryUserName !== "À assigner" &&
+        deliveryUserNameLower.includes(searchTerm.toLowerCase()))
+
+    const matchesStatus = statusFilter === "all" || order.status === statusFilter
+
+    const matchesTab =
+      activeTab === "all" ||
+      (activeTab === "pending" && order.status === "PENDING") ||
+      (activeTab === "in_progress" && order.status === "IN_PROGRESS") ||
+      (activeTab === "ready" && order.status === "READY_FOR_DELIVERY") ||
+      (activeTab === "dispatched" && order.status === "DISPATCHED") ||
+      (activeTab === "delivering" && order.status === "DELIVERING") ||
+      (activeTab === "delivered" && order.status === "DELIVERED") ||
+      (activeTab === "cancelled" && order.status === "CANCELLED")
+
+    return matchesSearch && matchesStatus && matchesTab
+  })
+
+  // OrderCard Component (copied from orders page)
+  const OrderCard = ({ order }: { order: Order }) => {
+    // FIX: Ensure order.products is an array before calling reduce
+    const products = order.products || []
+    const totalPrice = products.reduce((total, product) => total + product.totalPrice, 0)
+    const totalQuantity = products.reduce((total, product) => total + product.quantity, 0)
+
+    return (
+      <Card className="border-2 hover:shadow-md transition-shadow duration-200">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">
+            {order.orderReferenceId} - {order.bakeryName}
+          </CardTitle>
+          <StatusBadge status={order.status} />
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2 text-sm text-muted-foreground">
+            <div className="flex justify-between">
+              <span>Date prévue:</span>
+              <span className="font-medium">{formatDate(order.scheduledDate)}</span>
+            </div>
+            {order.laboratory && (
+              <div className="flex justify-between">
+                <span>Laboratoire:</span>
+                <span className="font-medium">{order.laboratory}</span>
+              </div>
+            )}
+            <div className="flex justify-between">
+              <span>Livreur:</span>
+              <span className="font-medium">{order.deliveryUserName}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Produits:</span>
+              <span className="font-medium">
+                {products.length} articles ({totalQuantity} unités)
+              </span>
+            </div>
+            <div className="space-y-1">
+              <div className="flex justify-between text-sm">
+                <span>Total HT:</span>
+                <span>{formatPrice(calculateHTPriceFromTTC(totalPrice))}</span>
+              </div>
+              <div className="flex justify-between font-bold text-primary">
+                <span>Total TTC:</span>
+                <span>{formatPrice(totalPrice)}</span>
+              </div>
+            </div>
+          </div>
+          <div className="flex justify-end mt-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setViewingOrder(order)
+                setIsViewDialogOpen(true)
+              }}
+            >
+              <Eye className="h-4 w-4 mr-2" />
+              Voir détails
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  // Mobile Tabs Component (copied from orders page)
+  const MobileTabs = () => {
+    return (
+      <Select value={activeTab} onValueChange={setActiveTab}>
+        <SelectTrigger className="w-full">
+          <SelectValue placeholder="Filtrer par statut" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">Toutes</SelectItem>
+          <SelectItem value="pending">En attente</SelectItem>
+          <SelectItem value="in_progress">En préparation</SelectItem>
+          <SelectItem value="ready">Prêt</SelectItem>
+          <SelectItem value="dispatched">Dispatché</SelectItem>
+          <SelectItem value="delivering">En livraison</SelectItem>
+          <SelectItem value="delivered">Livré</SelectItem>
+          <SelectItem value="cancelled">Annulé</SelectItem>
+        </SelectContent>
+      </Select>
+    )
+  }
+
+  const updateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
+      setLoading(true)
       const response = await fetch(`http://localhost:5000/orders/${orderId}`, {
         method: "PATCH",
         headers: {
@@ -89,29 +268,33 @@ export default function BakeryDashboard() {
       })
 
       if (!response.ok) {
-        const errorData = await response.json()
-        console.error(`Failed to update order ${orderId} to ${newStatus}:`, errorData)
-        toast({
-          title: "Erreur de mise à jour",
-          description: `Échec de la mise à jour de la commande: ${errorData.message || response.statusText}`,
-          variant: "destructive",
-        })
-        return
+        throw new Error(`Failed to update order: ${response.status}`)
       }
 
-      // Refresh orders after successful update
-      fetchOrdersData()
+      const updatedOrder = (await response.json()) as Order // Cast to Order
+      setOrders(
+        orders.map(
+          (order) => (order._id === updatedOrder._id ? updatedOrder : order), // Use _id directly for comparison
+        ),
+      )
+
+      if (viewingOrder && viewingOrder._id === updatedOrder._id) {
+        setViewingOrder(updatedOrder)
+      }
+
       toast({
-        title: "Mise à jour réussie",
-        description: `Le statut de la commande ${orderId} a été mis à jour à ${newStatus}.`,
+        title: "Statut mis à jour",
+        description: `Le statut de la commande a été mis à jour avec succès`,
       })
-    } catch (err) {
-      console.error(`Error updating order ${orderId}:`, err)
+    } catch (error) {
+      console.error("Error updating order status:", error)
       toast({
-        title: "Erreur inattendue",
-        description: "Une erreur est survenue lors de la mise à jour de la commande.",
+        title: "Erreur",
+        description: "Impossible de mettre à jour le statut de la commande. Veuillez réessayer.",
         variant: "destructive",
       })
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -380,127 +563,243 @@ export default function BakeryDashboard() {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* Orders Table Section - Cloned from orders page */}
+        <div className="space-y-4 mt-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-bold tracking-tight">Toutes les commandes</h2>
+              <p className="text-muted-foreground">Gérez toutes vos commandes de produits</p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 md:hidden">
+              <MobileTabs />
+              <div className="text-sm text-muted-foreground">
+                {filteredOrders.length} commande{filteredOrders.length !== 1 ? "s" : ""}
+              </div>
+            </div>
+
+            <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="hidden md:block">
+              <TabsList className="grid w-full grid-cols-8">
+                <TabsTrigger value="all">Toutes</TabsTrigger>
+                <TabsTrigger value="pending">En attente</TabsTrigger>
+                <TabsTrigger value="in_progress">En préparation</TabsTrigger>
+                <TabsTrigger value="ready">Prêt</TabsTrigger>
+                <TabsTrigger value="dispatched">Dispatché</TabsTrigger>
+                <TabsTrigger value="delivering">En livraison</TabsTrigger>
+                <TabsTrigger value="delivered">Livré</TabsTrigger>
+                <TabsTrigger value="cancelled">Annulé</TabsTrigger>
+              </TabsList>
+            </Tabs>
+
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <div className="flex items-center gap-2 flex-1">
+                    <Search className="h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Rechercher une commande..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="flex-1"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <Filter className="h-4 w-4 text-muted-foreground" />
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                      <SelectTrigger className="w-full sm:w-[180px]">
+                        <SelectValue placeholder="Filtrer par statut" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tous les statuts</SelectItem>
+                        <SelectItem value="PENDING">En attente</SelectItem>
+                        <SelectItem value="IN_PROGRESS">En préparation</SelectItem>
+                        <SelectItem value="READY_FOR_DELIVERY">Prêt à livrer</SelectItem>
+                        <SelectItem value="DISPATCHED">Dispatché</SelectItem>
+                        <SelectItem value="DELIVERING">En livraison</SelectItem>
+                        <SelectItem value="DELIVERED">Livré</SelectItem>
+                        <SelectItem value="CANCELLED">Annulé</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="flex justify-center items-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <span className="ml-2 text-sm sm:text-lg">Chargement des commandes...</span>
+                  </div>
+                ) : error ? (
+                  <div className="text-center py-8 border rounded-md text-red-500">
+                    <p className="text-sm sm:text-base">{error}</p>
+                    <Button variant="outline" className="mt-4 bg-transparent" onClick={() => window.location.reload()}>
+                      Réessayer
+                    </Button>
+                  </div>
+                ) : filteredOrders.length === 0 ? (
+                  <div className="text-center py-8 border rounded-md text-sm sm:text-base">Aucune commande trouvée</div>
+                ) : (
+                  <div className="space-y-3">
+                    {filteredOrders.map((order) => (
+                      <OrderCard key={order._id} order={order} />
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </div>
 
-      {/* Order Details Dialog */}
-      <Dialog open={isDetailsDialogOpen} onOpenChange={setIsDetailsDialogOpen}>
-        <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col">
+      {/* Orders Detail Dialog - Cloned from orders page */}
+      <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+        <DialogContent className="w-[95vw] max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Détails de la Commande #{selectedOrder?.orderId}</DialogTitle>
-            <DialogDescription>Informations détaillées sur la commande sélectionnée.</DialogDescription>
+            <DialogTitle>Détails de la commande</DialogTitle>
           </DialogHeader>
-          {selectedOrder ? (
-            <ScrollArea className="flex-1 pr-4">
-              {" "}
-              {/* Added ScrollArea here */}
-              <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-2">
-                  <span className="font-medium text-muted-foreground">Référence:</span>
-                  <span className="font-semibold">{selectedOrder.orderReferenceId}</span>
-
-                  <span className="font-medium text-muted-foreground">Boulangerie:</span>
-                  <span className="font-semibold">{selectedOrder.bakeryName}</span>
-
-                  <span className="font-medium text-muted-foreground">Livreur:</span>
-                  <span className="font-semibold">{selectedOrder.deliveryUserName}</span>
-
-                  <span className="font-medium text-muted-foreground">Adresse:</span>
-                  <span className="font-semibold">{selectedOrder.address}</span>
-
-                  <span className="font-medium text-muted-foreground">Date prévue:</span>
-                  <span className="font-semibold">
-                    {format(new Date(selectedOrder.scheduledDate), "PPP HH:mm", { locale: fr })}
-                  </span>
-
-                  <span className="font-medium text-muted-foreground">Statut:</span>
-                  <span>
-                    <Badge>{selectedOrder.status}</Badge>
-                  </span>
-
-                  {selectedOrder.notes && (
-                    <>
-                      <span className="font-medium text-muted-foreground">Notes:</span>
-                      <span>{selectedOrder.notes}</span>
-                    </>
-                  )}
-
-                  <span className="font-medium text-muted-foreground">Créée le:</span>
-                  <span>{format(new Date(selectedOrder.createdAt), "PPP HH:mm", { locale: fr })}</span>
-
-                  <span className="font-medium text-muted-foreground">Dernière mise à jour:</span>
-                  <span>{format(new Date(selectedOrder.updatedAt), "PPP HH:mm", { locale: fr })}</span>
+          {viewingOrder && (
+            <ScrollArea className="max-h-[60vh]">
+              <div className="grid gap-4 py-4 pr-4">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="font-medium mb-2">Informations générales</h3>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Référence:</span>
+                          <span className="font-medium">{viewingOrder.orderReferenceId}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Boulangerie:</span>
+                          <span>{viewingOrder.bakeryName}</span>
+                        </div>
+                        {viewingOrder.laboratory && (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Laboratoire:</span>
+                            <span>{viewingOrder.laboratory}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Livreur:</span>
+                          <span>{viewingOrder.deliveryUserName}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Date prévue:</span>
+                          <span>{formatDate(viewingOrder.scheduledDate)}</span>
+                        </div>
+                        {viewingOrder.actualDeliveryDate && (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Date de livraison:</span>
+                            <span>{formatDate(viewingOrder.actualDeliveryDate)}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between items-center">
+                          <span className="text-muted-foreground">Statut:</span>
+                          <StatusBadge status={viewingOrder.status} />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="font-medium mb-2">Adresse de livraison</h3>
+                      <p className="text-sm bg-muted p-3 rounded-md">{viewingOrder.address}</p>
+                    </div>
+                    <div>
+                      <h3 className="font-medium mb-2">Notes</h3>
+                      <p className="text-sm bg-muted p-3 rounded-md">{viewingOrder.notes || "Aucune note"}</p>
+                    </div>
+                  </div>
                 </div>
-
-                <Separator className="my-4" />
-
-                <h3 className="text-lg font-semibold">Produits:</h3>
-                <ul className="space-y-3">
-                  {selectedOrder.products.map((product, idx) => (
-                    <li key={idx} className="border rounded-md p-3 bg-muted/30">
-                      <div className="flex justify-between items-center">
-                        <span className="font-semibold text-base">{product.productName}</span>
-                        <span className="text-primary font-bold">x{product.quantity}</span>
-                      </div>
-                      <div className="text-sm text-muted-foreground mt-1">Laboratoire: {product.laboratory}</div>
-                      <div className="grid grid-cols-2 gap-x-4 text-sm mt-2">
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Prix HT:</span>
-                          <span className="font-medium">
-                            {new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(
-                              product.unitPriceHT,
-                            )}
-                          </span>
+                <div className="space-y-4">
+                  <h3 className="font-medium">Produits commandés</h3>
+                  <div className="space-y-3">
+                    {(viewingOrder.products || []).map((product, index) => (
+                      <div
+                        key={product.productRef || `${product.productName}-${product.laboratory}-${index}`}
+                        className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
+                      >
+                        <div className="flex-1">
+                          <div className="font-medium text-sm">{product.productName}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {formatPrice(product.unitPriceTTC)} × {product.quantity}
+                          </div>
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">TVA:</span>
-                          <span className="font-medium">{product.taxRate * 100}%</span>
-                        </div>
-                        <div className="flex justify-between col-span-2 mt-1">
-                          <span className="font-semibold">Total TTC:</span>
-                          <span className="font-bold text-primary">
-                            {new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(
-                              product.totalPriceTTC,
-                            )}
-                          </span>
+                        <div className="text-right">
+                          <div className="font-bold text-sm">{formatPrice(product.totalPrice)}</div>
+                          <div className="text-xs text-muted-foreground mt-1">
+                            {formatPrice(calculateHTPriceFromTTC(product.totalPrice))} HT
+                          </div>
                         </div>
                       </div>
-                    </li>
-                  ))}
-                </ul>
-
-                <Separator className="my-4" />
-
-                <div className="grid gap-2">
-                  <div className="flex justify-between font-semibold text-base">
-                    <span>Total HT Commande:</span>
-                    <span>
-                      {new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(
-                        selectedOrder.orderTotalHT,
-                      )}
-                    </span>
+                    ))}
                   </div>
-                  <div className="flex justify-between font-semibold text-base">
-                    <span>Montant TVA Commande:</span>
-                    <span>
-                      {new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(
-                        selectedOrder.orderTaxAmount,
-                      )}
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-xl font-bold mt-2 text-primary">
-                    <span>Total TTC Commande:</span>
-                    <span>
-                      {new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(
-                        selectedOrder.orderTotalTTC,
-                      )}
-                    </span>
+                  <div className="space-y-2 pt-3 border-t">
+                    <div className="flex justify-between items-center text-sm">
+                      <span>Sous-total HT:</span>
+                      <span>
+                        {formatPrice(
+                          calculateHTPriceFromTTC(
+                            (viewingOrder.products || []).reduce((total, product) => total + product.totalPrice, 0)
+                          )
+                        )}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm">
+                      <span>TVA (20%):</span>
+                      <span>
+                        {formatPrice(
+                          (viewingOrder.products || []).reduce((total, product) => total + product.totalPrice, 0) -
+                          calculateHTPriceFromTTC(
+                            (viewingOrder.products || []).reduce((total, product) => total + product.totalPrice, 0)
+                          )
+                        )}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center font-bold text-lg">
+                      <span>Total TTC:</span>
+                      <span className="text-primary">
+                        {formatPrice(
+                          (viewingOrder.products || []).reduce((total, product) => total + product.totalPrice, 0),
+                        )}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
             </ScrollArea>
-          ) : (
-            <div className="text-center text-muted-foreground py-4">Aucune commande sélectionnée.</div>
           )}
+          <DialogFooter className="flex flex-col sm:flex-row gap-2">
+            <div className="flex flex-col sm:flex-row gap-2 flex-1">
+              <Label htmlFor="status-update" className="text-sm font-medium mt-2 sm:mt-0 sm:mr-2">
+                Mettre à jour le statut:
+              </Label>
+              <Select
+                onValueChange={(value) => viewingOrder && updateOrderStatus(viewingOrder._id, value)}
+                defaultValue={viewingOrder?.status || ""}
+                disabled={!viewingOrder}
+              >
+                <SelectTrigger id="status-update" className="w-full sm:w-[200px]">
+                  <SelectValue placeholder="Sélectionner un statut" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="PENDING">En attente</SelectItem>
+                  <SelectItem value="IN_PROGRESS">En préparation</SelectItem>
+                  <SelectItem value="READY_FOR_DELIVERY">Prêt à livrer</SelectItem>
+                  <SelectItem value="DISPATCHED">Dispatché</SelectItem>
+                  <SelectItem value="DELIVERING">En livraison</SelectItem>
+                  <SelectItem value="DELIVERED">Livré</SelectItem>
+                  <SelectItem value="CANCELLED">Annulé</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Button onClick={() => setIsViewDialogOpen(false)} className="w-full sm:w-auto">
+              Fermer
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </DashboardLayout>
