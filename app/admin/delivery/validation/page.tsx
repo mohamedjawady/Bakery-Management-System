@@ -121,8 +121,18 @@ export default function DeliveryValidationPage() {
     const issues: ValidationIssue[] = []
 
     orders.forEach(order => {
-      // Check if deliveryUserId exists in delivery users
-      const assignedUser = deliveryUsers.find(user => user._id === order.deliveryUserId)
+      // Skip validation for orders that are not assigned yet
+      if (!order.deliveryUserId || 
+          order.deliveryUserId === 'DISPATCH_PENDING' || 
+          order.deliveryUserId.trim() === '') {
+        return // Skip unassigned orders
+      }
+
+      // Check if deliveryUserId exists in delivery users (by _id or email)
+      const assignedUser = deliveryUsers.find(user => 
+        user._id === order.deliveryUserId || 
+        user.email === order.deliveryUserId
+      )
       
       if (!assignedUser) {
         // Check if it's a hardcoded ID that doesn't exist in database
@@ -133,6 +143,17 @@ export default function DeliveryValidationPage() {
             orderReference: order.orderReferenceId,
             issueType: 'INVALID_USER',
             description: `ID de livreur "${order.deliveryUserId}" est codé en dur et n'existe pas dans la base de données`,
+            severity: 'HIGH',
+            deliveryUserId: order.deliveryUserId,
+            deliveryUserName: order.deliveryUserName
+          })
+        } else if (order.deliveryUserId.includes('@')) {
+          // Email-based assignment but user not found
+          issues.push({
+            orderId: order._id,
+            orderReference: order.orderReferenceId,
+            issueType: 'MISSING_USER',
+            description: `Aucun livreur trouvé avec l'email "${order.deliveryUserId}"`,
             severity: 'HIGH',
             deliveryUserId: order.deliveryUserId,
             deliveryUserName: order.deliveryUserName
