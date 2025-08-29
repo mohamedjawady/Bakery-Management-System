@@ -78,7 +78,7 @@ export function ProductModal({ product, isOpen, onClose, mode, onSave }: Product
       description: "",
       ingredients: "",
       unitPrice: 0,
-      taxRate: 0.15, // Default 15% VAT
+      taxRate: 0.06, // Default 15% VAT
       laboratory: "",
       category: "general",
       notes: "",
@@ -145,7 +145,7 @@ export function ProductModal({ product, isOpen, onClose, mode, onSave }: Product
         description: product.description,
         ingredients: product.ingredients.join(", "),
         unitPrice: product.unitPrice,
-        taxRate: product.taxRate || 0.15, // Default to 15% if not set
+        taxRate: product.taxRate || 0.06, // Default to 15% if not set
         laboratory: product.laboratory || "",
         category: product.category || "general",
         notes: product.notes || "",
@@ -159,7 +159,7 @@ export function ProductModal({ product, isOpen, onClose, mode, onSave }: Product
         description: "",
         ingredients: "",
         unitPrice: 0,
-        taxRate: 0.15, // Default 15% VAT
+        taxRate: 0.06, // Default 15% VAT
         laboratory: "",
         category: "general",
         notes: "",
@@ -557,7 +557,7 @@ export function ProductModal({ product, isOpen, onClose, mode, onSave }: Product
                   name="unitPrice"
                   render={({ field }) => {
                     const watchedPrice = form.watch("unitPrice");
-                    const watchedTaxRate = form.watch("taxRate") || 0.15;
+                    const watchedTaxRate = form.watch("taxRate") || 0.06;
                     const priceTTC = watchedPrice * (1 + watchedTaxRate);
                     const taxAmount = watchedPrice * watchedTaxRate;
                     
@@ -615,10 +615,10 @@ export function ProductModal({ product, isOpen, onClose, mode, onSave }: Product
                             step="0.01"
                             min="0"
                             max="100"
-                            placeholder="15.00"
+                            placeholder="6.00"
                             {...field}
                             value={field.value ? (field.value * 100).toFixed(2) : ''}
-                            onChange={(e) => field.onChange(Number.parseFloat(e.target.value) / 100 || 0.15)}
+                            onChange={(e) => field.onChange(Number.parseFloat(e.target.value) / 100 || 0.06)}
                           />
                           <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">%</span>
                         </div>

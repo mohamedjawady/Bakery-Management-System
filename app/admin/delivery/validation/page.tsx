@@ -455,9 +455,7 @@ export default function ConflictResolutionPage() {
                                           </SelectTrigger>
                                           <SelectContent>
                                             <SelectItem value="ACCEPT_AS_IS">Accepter en l'état</SelectItem>
-                                            <SelectItem value="PARTIAL_REFUND">Remboursement partiel</SelectItem>
-                                            <SelectItem value="FULL_REFUND">Remboursement complet</SelectItem>
-                                            <SelectItem value="REPLACE_ORDER">Remplacer la commande</SelectItem>
+                                            <SelectItem value="REJECT">Rejeter</SelectItem>
                                             <SelectItem value="UPDATE_ORDER">Corriger la commande</SelectItem>
                                           </SelectContent>
                                         </Select>

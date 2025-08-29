@@ -282,7 +282,7 @@ export function LaboratoryOrderDialog({ isOpen, onClose, onCreateOrder, isSubmit
   const addProductToOrder = (product: Product) => {
     const existingItemIndex = orderProducts.findIndex((item) => item.productName === product.name)
     
-    const taxRate = product.taxRate || 0.15; // Default 15% if not set
+    const taxRate = product.taxRate || 0.06; // Default 15% if not set
     const unitPriceTTC = product.unitPrice * (1 + taxRate);
     const taxAmountPerUnit = product.unitPrice * taxRate;
 
