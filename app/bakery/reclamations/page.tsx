@@ -16,9 +16,11 @@ import {
   AlertTriangle,
   Package,
   Plus,
-  Trash2
+  Trash2,
+  Eye,
+  CheckCircle
 } from "lucide-react"
-import { reportConflict, type Discrepancy } from "@/lib/api/conflicts"
+import { reportConflict, getConflictOrders, type Discrepancy } from "@/lib/api/conflicts"
 
 // Types
 interface Order {
@@ -43,13 +45,59 @@ interface Order {
   createdAt: string
 }
 
+interface ConflictOrder {
+  _id: string
+  orderId: string
+  orderReferenceId: string
+  bakeryName: string
+  deliveryUserId: string
+  deliveryUserName: string
+  scheduledDate: string
+  actualDeliveryDate?: string
+  status: string
+  address: string
+  products: Array<{
+    productName: string
+    productRef?: string
+    laboratory: string
+    unitPriceHT: number
+    unitPriceTTC: number
+    taxRate: number
+    quantity: number
+    totalPriceHT: number
+    taxAmount: number
+    totalPriceTTC: number
+    totalPrice: number
+  }>
+  orderTotalHT: number
+  orderTaxAmount: number
+  orderTotalTTC: number
+  hasConflict: boolean
+  conflictStatus: 'NONE' | 'REPORTED' | 'UNDER_REVIEW' | 'RESOLVED'
+  reclamation: {
+    reportedBy: string
+    reportedAt: string
+    description: string
+    discrepancies: Discrepancy[]
+    reviewedBy?: string
+    reviewedAt?: string
+    adminNotes?: string
+    resolution?: 'ACCEPT_AS_IS' | 'PARTIAL_REFUND' | 'FULL_REFUND' | 'REPLACE_ORDER' | 'UPDATE_ORDER'
+  }
+  createdAt: string
+}
+
 export default function BakeryReclamationPage() {
   const [orders, setOrders] = useState<Order[]>([])
+  const [conflictOrders, setConflictOrders] = useState<ConflictOrder[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingConflicts, setLoadingConflicts] = useState(true)
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
+  const [selectedConflict, setSelectedConflict] = useState<ConflictOrder | null>(null)
   const [isReporting, setIsReporting] = useState(false)
   const [conflictDescription, setConflictDescription] = useState("")
   const [discrepancies, setDiscrepancies] = useState<Discrepancy[]>([])
+  const [activeTab, setActiveTab] = useState<'report' | 'view'>('view')
   const { toast } = useToast()
 
   // Fetch orders for the bakery
@@ -89,6 +137,36 @@ export default function BakeryReclamationPage() {
       })
     } finally {
       setLoading(false)
+    }
+  }
+
+  // Fetch existing conflict orders for this bakery
+  const fetchConflictOrders = async () => {
+    setLoadingConflicts(true)
+    try {
+      const userInfo = localStorage.getItem('userInfo')
+      const token = userInfo ? JSON.parse(userInfo).token : null
+      
+      if (!token) {
+        throw new Error("Authentication required")
+      }
+
+      const allConflicts = await getConflictOrders(token)
+      // Filter conflicts for this bakery only
+      const bakeryInfo = JSON.parse(userInfo!)
+      const bakeryConflicts = allConflicts.filter((conflict: ConflictOrder) => 
+        conflict.bakeryName === bakeryInfo.bakeryName
+      )
+      setConflictOrders(bakeryConflicts)
+    } catch (error) {
+      console.error("Error fetching conflict orders:", error)
+      toast({
+        title: "Erreur de chargement",
+        description: error instanceof Error ? error.message : "Impossible de charger les réclamations",
+        variant: "destructive",
+      })
+    } finally {
+      setLoadingConflicts(false)
     }
   }
 
@@ -167,6 +245,7 @@ export default function BakeryReclamationPage() {
       setConflictDescription("")
       setDiscrepancies([])
       fetchOrders()
+      fetchConflictOrders() // Also refresh conflict orders
     } catch (error) {
       console.error("Error reporting conflict:", error)
       toast({
@@ -179,17 +258,45 @@ export default function BakeryReclamationPage() {
     }
   }
 
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'REPORTED':
+        return <Badge variant="destructive">Signalé</Badge>
+      case 'UNDER_REVIEW':
+        return <Badge variant="outline" className="border-orange-400 text-orange-600">En cours</Badge>
+      case 'RESOLVED':
+        return <Badge variant="outline" className="border-green-400 text-green-600">Résolu</Badge>
+      default:
+        return <Badge variant="outline">{status}</Badge>
+    }
+  }
+
+  const getIssueTypeBadge = (type: string) => {
+    const types: Record<string, { label: string; color: string }> = {
+      'QUANTITY_MISMATCH': { label: 'Quantité', color: 'bg-blue-100 text-blue-800' },
+      'QUALITY_ISSUE': { label: 'Qualité', color: 'bg-red-100 text-red-800' },
+      'WRONG_PRODUCT': { label: 'Mauvais produit', color: 'bg-purple-100 text-purple-800' },
+      'DAMAGED': { label: 'Endommagé', color: 'bg-orange-100 text-orange-800' },
+      'EXPIRED': { label: 'Expiré', color: 'bg-yellow-100 text-yellow-800' },
+      'MISSING': { label: 'Manquant', color: 'bg-gray-100 text-gray-800' },
+      'OTHER': { label: 'Autre', color: 'bg-gray-100 text-gray-800' }
+    }
+    const typeInfo = types[type] || types['OTHER']
+    return <span className={`px-2 py-1 rounded text-xs ${typeInfo.color}`}>{typeInfo.label}</span>
+  }
+
   useEffect(() => {
     fetchOrders()
+    fetchConflictOrders()
   }, [])
 
-  if (loading) {
+  if (loading && loadingConflicts) {
     return (
       <DashboardLayout role="bakery">
         <div className="flex items-center justify-center h-64">
           <div className="flex items-center gap-2">
             <RefreshCw className="h-4 w-4 animate-spin" />
-            <span>Chargement des commandes...</span>
+            <span>Chargement...</span>
           </div>
         </div>
       </DashboardLayout>
@@ -202,29 +309,248 @@ export default function BakeryReclamationPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Signaler un Problème de Livraison</h1>
+            <h1 className="text-3xl font-bold tracking-tight">Gestion des Réclamations</h1>
             <p className="text-muted-foreground">
-              Signalez les écarts entre ce que vous avez commandé et ce que vous avez reçu
+              Consultez vos réclamations et signalez de nouveaux problèmes de livraison
             </p>
           </div>
           <div className="flex gap-2">
-            <Button onClick={fetchOrders} variant="outline" disabled={loading}>
-              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            <Button 
+              onClick={() => {
+                fetchOrders()
+                fetchConflictOrders()
+              }} 
+              variant="outline" 
+              disabled={loading || loadingConflicts}
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${(loading || loadingConflicts) ? 'animate-spin' : ''}`} />
               Actualiser
             </Button>
           </div>
         </div>
 
-        {/* Orders List */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Commandes Livrées</CardTitle>
-            <CardDescription>
-              Sélectionnez une commande pour signaler un problème
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="rounded-md border">
+        {/* Tab Navigation */}
+        <div className="flex gap-1 p-1 bg-muted rounded-lg w-fit">
+          <Button
+            variant={activeTab === 'view' ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => setActiveTab('view')}
+          >
+            Mes Réclamations ({conflictOrders.length})
+          </Button>
+          <Button
+            variant={activeTab === 'report' ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => setActiveTab('report')}
+          >
+            Signaler un Problème
+          </Button>
+        </div>
+
+        {/* View Existing Reclamations Tab */}
+        {activeTab === 'view' && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Mes Réclamations</CardTitle>
+              <CardDescription>
+                Historique de vos réclamations et leurs résolutions
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loadingConflicts ? (
+                <div className="flex items-center justify-center py-8">
+                  <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+                  Chargement des réclamations...
+                </div>
+              ) : (
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Commande</TableHead>
+                        <TableHead>Signalé le</TableHead>
+                        <TableHead>Statut</TableHead>
+                        <TableHead>Problèmes</TableHead>
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {conflictOrders.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center py-8">
+                            Aucune réclamation trouvée
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        conflictOrders.map((conflict) => (
+                          <TableRow key={conflict._id}>
+                            <TableCell className="font-medium">
+                              <div>
+                                <div>{conflict.orderReferenceId}</div>
+                                <div className="text-xs text-muted-foreground">
+                                  {new Date(conflict.scheduledDate).toLocaleDateString('fr-FR')}
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="text-sm">
+                                {new Date(conflict.reclamation.reportedAt).toLocaleDateString('fr-FR')}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {getStatusBadge(conflict.conflictStatus)}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex flex-wrap gap-1">
+                                {conflict.reclamation.discrepancies?.slice(0, 2).map((disc, idx) => (
+                                  <div key={idx}>
+                                    {getIssueTypeBadge(disc.issueType)}
+                                  </div>
+                                ))}
+                                {conflict.reclamation.discrepancies?.length > 2 && (
+                                  <span className="text-xs text-muted-foreground">
+                                    +{conflict.reclamation.discrepancies.length - 2} autres
+                                  </span>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    onClick={() => setSelectedConflict(conflict)}
+                                  >
+                                    <Eye className="h-4 w-4 mr-1" />
+                                    Voir Détails
+                                  </Button>
+                                </DialogTrigger>
+                                <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                                  <DialogHeader>
+                                    <DialogTitle>Réclamation - Commande {conflict.orderReferenceId}</DialogTitle>
+                                    <DialogDescription>
+                                      Signalée le {new Date(conflict.reclamation.reportedAt).toLocaleDateString('fr-FR')}
+                                    </DialogDescription>
+                                  </DialogHeader>
+                                  
+                                  {selectedConflict && (
+                                    <div className="space-y-6">
+                                      {/* Your original problem description */}
+                                      <div>
+                                        <h4 className="text-sm font-medium mb-2">Votre description du problème</h4>
+                                        <p className="text-sm bg-muted p-3 rounded">{selectedConflict.reclamation.description}</p>
+                                      </div>
+
+                                      {/* Discrepancies you reported */}
+                                      <div>
+                                        <h4 className="text-sm font-medium mb-2">Écarts signalés</h4>
+                                        <div className="space-y-3">
+                                          {selectedConflict.reclamation.discrepancies?.map((disc, idx) => (
+                                            <div key={idx} className="border rounded p-3">
+                                              <div className="flex items-center justify-between mb-2">
+                                                <span className="font-medium">{disc.productName}</span>
+                                                {getIssueTypeBadge(disc.issueType)}
+                                              </div>
+                                              <div className="grid grid-cols-2 gap-4 text-sm">
+                                                <div>
+                                                  <span className="text-muted-foreground">Commandé:</span>
+                                                  <div>{disc.ordered.quantity} unités</div>
+                                                </div>
+                                                <div>
+                                                  <span className="text-muted-foreground">Reçu:</span>
+                                                  <div>{disc.received.quantity} unités</div>
+                                                  {disc.received.condition && (
+                                                    <div className="text-xs text-muted-foreground">
+                                                      État: {disc.received.condition}
+                                                    </div>
+                                                  )}
+                                                </div>
+                                              </div>
+                                              {disc.notes && (
+                                                <div className="mt-2 text-xs text-muted-foreground">
+                                                  Vos notes: {disc.notes}
+                                                </div>
+                                              )}
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+
+                                      {/* Admin resolution */}
+                                      {selectedConflict.conflictStatus === 'RESOLVED' && selectedConflict.reclamation.reviewedBy && (
+                                        <div className="bg-green-50 p-4 rounded border border-green-200">
+                                          <h4 className="text-sm font-medium text-green-800 mb-3 flex items-center">
+                                            <CheckCircle className="h-4 w-4 mr-2" />
+                                            Résolution Administrative
+                                          </h4>
+                                          <div className="space-y-2 text-sm text-green-700">
+                                            <div><strong>Résolu par:</strong> {selectedConflict.reclamation.reviewedBy}</div>
+                                            <div><strong>Date de résolution:</strong> {new Date(selectedConflict.reclamation.reviewedAt!).toLocaleDateString('fr-FR')}</div>
+                                            <div><strong>Décision:</strong> 
+                                              <span className="ml-2">
+                                                {selectedConflict.reclamation.resolution === 'ACCEPT_AS_IS' && 'Accepter en l\'état'}
+                                                {selectedConflict.reclamation.resolution === 'PARTIAL_REFUND' && 'Remboursement partiel'}
+                                                {selectedConflict.reclamation.resolution === 'FULL_REFUND' && 'Remboursement complet'}
+                                                {selectedConflict.reclamation.resolution === 'REPLACE_ORDER' && 'Remplacer la commande'}
+                                                {selectedConflict.reclamation.resolution === 'UPDATE_ORDER' && 'Corriger la commande'}
+                                              </span>
+                                            </div>
+                                            {selectedConflict.reclamation.adminNotes && (
+                                              <div className="mt-3">
+                                                <strong>Notes administratives:</strong>
+                                                <div className="mt-1 p-2 bg-white rounded border text-gray-700">
+                                                  {selectedConflict.reclamation.adminNotes}
+                                                </div>
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      {/* Status if not resolved */}
+                                      {selectedConflict.conflictStatus !== 'RESOLVED' && (
+                                        <div className="bg-blue-50 p-4 rounded border border-blue-200">
+                                          <h4 className="text-sm font-medium text-blue-800 mb-2">Statut Actuel</h4>
+                                          <div className="text-sm text-blue-700">
+                                            {selectedConflict.conflictStatus === 'REPORTED' && 'Votre réclamation a été reçue et est en attente d\'examen par l\'administration.'}
+                                            {selectedConflict.conflictStatus === 'UNDER_REVIEW' && 'Votre réclamation est actuellement en cours d\'examen par l\'administration.'}
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                </DialogContent>
+                              </Dialog>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Report New Problem Tab */}
+        {activeTab === 'report' && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Commandes Livrées</CardTitle>
+              <CardDescription>
+                Sélectionnez une commande pour signaler un problème
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className="flex items-center justify-center py-8">
+                  <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+                  Chargement des commandes...
+                </div>
+              ) : (
+                <div className="rounded-md border">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -466,9 +792,11 @@ export default function BakeryReclamationPage() {
                   )}
                 </TableBody>
               </Table>
-            </div>
-          </CardContent>
-        </Card>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
       </div>
     </DashboardLayout>
   )
