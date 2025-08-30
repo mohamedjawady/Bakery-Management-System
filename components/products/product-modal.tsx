@@ -20,7 +20,7 @@ import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { Upload, X, Loader2, Clock, Euro, Building2, Percent } from "lucide-react"
+import { Upload, X, Loader2, Clock, Euro, Building2, Percent, Package, FileText, ChefHat } from "lucide-react"
 import type { ProductModalProps, ProductCreateInput, ProductUpdateInput } from "@/types/product"
 import { uploadProductImage } from "@/lib/api/products"
 import Image from "next/image"
@@ -255,499 +255,598 @@ export function ProductModal({ product, isOpen, onClose, mode, onSave }: Product
 
   // Get laboratory name by ID
   const getLaboratoryName = (laboratory: string) => {
-        console.log("laboratories",laboratories);
+    console.log("laboratories", laboratories)
     const lab = laboratories.find((l) => l.labName === laboratory)
 
-    
     return lab ? lab.labName : laboratory
   }
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            {getModalTitle()}
+      <DialogContent className="max-w-5xl max-h-[95vh] overflow-hidden flex flex-col">
+        <DialogHeader className="pb-6 border-b border-border">
+          <div className="flex items-center justify-between">
+            <div className="space-y-2">
+              <DialogTitle className="text-2xl font-bold text-foreground flex items-center gap-3">
+                <Package className="h-6 w-6 text-primary" />
+                {getModalTitle()}
+              </DialogTitle>
+              <DialogDescription className="text-base text-muted-foreground">
+                {mode === "view" && "Informations détaillées du produit"}
+                {mode === "edit" && "Modifiez les informations du produit"}
+                {mode === "create" && "Créez un nouveau produit pour votre catalogue"}
+              </DialogDescription>
+            </div>
             {product && mode === "view" && (
-              <div className="flex gap-2 ml-auto">
-                {!product.active && <Badge variant="destructive">Inactif</Badge>}
-                {!product.isAvailable && product.active && <Badge variant="outline">Non disponible</Badge>}
-                {product.active && product.isAvailable && (
-                  <Badge variant="default" className="bg-green-100 text-green-800">
-                    Disponible
+              <div className="flex gap-2">
+                {!product.active && (
+                  <Badge variant="destructive" className="text-sm">
+                    Inactif
                   </Badge>
+                )}
+                {!product.isAvailable && product.active && (
+                  <Badge variant="outline" className="text-sm">
+                    Non disponible
+                  </Badge>
+                )}
+                {product.active && product.isAvailable && (
+                  <Badge className="bg-primary text-primary-foreground text-sm">Disponible</Badge>
                 )}
               </div>
             )}
-          </DialogTitle>
-          <DialogDescription>
-            {mode === "view" && "Informations détaillées du produit"}
-            {mode === "edit" && "Modifiez les informations du produit"}
-            {mode === "create" && "Créez un nouveau produit pour votre catalogue"}
-          </DialogDescription>
+          </div>
         </DialogHeader>
 
-        {mode === "view" ? (
-          // View Mode - Display Only
-          <div className="space-y-6">
-            {/* Product Image */}
-            {product?.image && (
-              <div className="relative h-64 w-full rounded-lg overflow-hidden">
-                <Image src={product.image || "/placeholder.svg"} alt={product.name} fill className="object-cover" />
-              </div>
-            )}
-
-            {/* Basic Information */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-4">
-                <div>
-                  <Label className="text-sm font-medium text-muted-foreground">Nom</Label>
-                  <p className="text-lg font-semibold">{product?.name}</p>
+        <div className="flex-1 overflow-y-auto py-6">
+          {mode === "view" ? (
+            // View Mode - Display Only
+            <div className="space-y-8">
+              {product?.image && (
+                <div className="relative h-80 w-full rounded-xl overflow-hidden bg-muted/50 border border-border">
+                  <Image src={product.image || "/placeholder.svg"} alt={product.name} fill className="object-cover" />
                 </div>
+              )}
 
-                <div>
-                  <Label className="text-sm font-medium text-muted-foreground">Référence Produit</Label>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="font-mono text-sm">
-                      {product?.productRef || 'N/A'}
-                    </Badge>
-                  </div>
-                </div>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Left Column */}
+                <div className="space-y-6">
+                  <div className="bg-card border border-border rounded-xl p-6 space-y-4">
+                    <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                      <Package className="h-5 w-5 text-primary" />
+                      Informations générales
+                    </h3>
 
-                <div>
-                  <Label className="text-sm font-medium text-muted-foreground">Laboratoire</Label>
-                  <div className="flex items-center gap-2">
-                    <Building2 className="h-4 w-4" />
-                    <span className="font-medium">{getLaboratoryName(product?.laboratory || "")}</span>
-                  </div>
-                </div>
+                    <div className="space-y-4">
+                      <div>
+                        <Label className="text-sm font-medium text-muted-foreground">Nom du produit</Label>
+                        <p className="text-xl font-bold text-foreground mt-1">{product?.name}</p>
+                      </div>
 
-                <div>
-                  <Label className="text-sm font-medium text-muted-foreground">Informations de prix</Label>
-                  <div className="bg-muted/50 p-4 rounded-lg space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm">Prix HT:</span>
-                      <span className="font-semibold">{product && formatPrice(product.unitPrice)}</span>
-                    </div>
-                    {product?.taxRate && (
-                      <>
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm">TVA ({(product.taxRate * 100).toFixed(0)}%):</span>
-                          <span className="font-medium">{product && formatPrice(product.unitPrice * product.taxRate)}</span>
+                      <div>
+                        <Label className="text-sm font-medium text-muted-foreground">Référence Produit</Label>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Badge variant="outline" className="font-mono text-sm px-3 py-1">
+                            {product?.productRef || "N/A"}
+                          </Badge>
                         </div>
-                        <div className="flex justify-between items-center border-t pt-2">
-                          <span className="text-sm font-semibold">Prix TTC:</span>
-                          <span className="text-lg font-bold text-green-600">
-                            {product && formatPrice(product.unitPrice * (1 + product.taxRate))}
+                      </div>
+
+                      <div>
+                        <Label className="text-sm font-medium text-muted-foreground">Laboratoire</Label>
+                        <div className="flex items-center gap-3 mt-1 p-3 bg-muted/50 rounded-lg">
+                          <Building2 className="h-5 w-5 text-primary" />
+                          <span className="font-semibold text-foreground">
+                            {getLaboratoryName(product?.laboratory || "")}
                           </span>
                         </div>
-                      </>
-                    )}
-                    {!product?.taxRate && (
-                      <div className="flex justify-between items-center border-t pt-2">
-                        <span className="text-sm font-semibold">Prix TTC:</span>
-                        <span className="text-lg font-bold text-green-600">{product && formatPrice(product.unitPrice)}</span>
+                      </div>
+
+                      <div>
+                        <Label className="text-sm font-medium text-muted-foreground">Catégorie</Label>
+                        <div className="mt-1">
+                          <Badge variant="secondary" className="capitalize text-sm px-3 py-1">
+                            {product?.category || "Général"}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-card border border-border rounded-xl p-6">
+                    <h3 className="text-lg font-semibold text-foreground mb-4">Statut</h3>
+                    <div className="flex flex-wrap gap-3">
+                      <Badge variant={product?.active ? "default" : "destructive"} className="text-sm px-4 py-2">
+                        {product?.active ? "Actif" : "Inactif"}
+                      </Badge>
+                      <Badge variant={product?.isAvailable ? "default" : "outline"} className="text-sm px-4 py-2">
+                        {product?.isAvailable ? "Disponible" : "Non disponible"}
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Column */}
+                <div className="space-y-6">
+                  <div className="bg-gradient-to-br from-primary/5 to-accent/5 border border-primary/20 rounded-xl p-6">
+                    <h3 className="text-lg font-semibold text-foreground flex items-center gap-2 mb-4">
+                      <Euro className="h-5 w-5 text-primary" />
+                      Informations de prix
+                    </h3>
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center py-2">
+                        <span className="text-muted-foreground">Prix HT:</span>
+                        <span className="text-lg font-semibold text-foreground">
+                          {product && formatPrice(product.unitPrice)}
+                        </span>
+                      </div>
+                      {product?.taxRate && (
+                        <>
+                          <div className="flex justify-between items-center py-2">
+                            <span className="text-muted-foreground">TVA ({(product.taxRate * 100).toFixed(0)}%):</span>
+                            <span className="font-medium text-foreground">
+                              {product && formatPrice(product.unitPrice * product.taxRate)}
+                            </span>
+                          </div>
+                          <div className="border-t border-border pt-3">
+                            <div className="flex justify-between items-center">
+                              <span className="text-lg font-bold text-foreground">Prix TTC:</span>
+                              <span className="text-2xl font-bold text-primary">
+                                {product && formatPrice(product.unitPrice * (1 + product.taxRate))}
+                              </span>
+                            </div>
+                          </div>
+                        </>
+                      )}
+                      {!product?.taxRate && (
+                        <div className="border-t border-border pt-3">
+                          <div className="flex justify-between items-center">
+                            <span className="text-lg font-bold text-foreground">Prix TTC:</span>
+                            <span className="text-2xl font-bold text-primary">
+                              {product && formatPrice(product.unitPrice)}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div className="bg-card border border-border rounded-xl p-6">
+                  <h3 className="text-lg font-semibold text-foreground flex items-center gap-2 mb-4">
+                    <FileText className="h-5 w-5 text-primary" />
+                    Description
+                  </h3>
+                  <p className="text-foreground leading-relaxed">{product?.description}</p>
+                </div>
+
+                <div className="bg-card border border-border rounded-xl p-6">
+                  <h3 className="text-lg font-semibold text-foreground flex items-center gap-2 mb-4">
+                    <ChefHat className="h-5 w-5 text-primary" />
+                    Ingrédients
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {product?.ingredients.map((ingredient, index) => (
+                      <Badge key={index} variant="outline" className="text-sm px-3 py-1">
+                        {ingredient}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Notes */}
+              {product?.notes && (
+                <div className="bg-card border border-border rounded-xl p-6">
+                  <h3 className="text-lg font-semibold text-foreground mb-4">Notes</h3>
+                  <p className="text-foreground leading-relaxed italic">{product.notes}</p>
+                </div>
+              )}
+
+              <div className="bg-muted/30 border border-border rounded-xl p-6">
+                <div className="text-sm text-muted-foreground space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4" />
+                    <span>Créé le {product && new Date(product.createdAt).toLocaleString("fr-FR")}</span>
+                    {product?.createdBy && <span>par {product.createdBy}</span>}
+                  </div>
+                  {product?.updatedAt !== product?.createdAt && (
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4" />
+                      <span>Modifié le {product && new Date(product.updatedAt).toLocaleString("fr-FR")}</span>
+                      {product?.updatedBy && <span>par {product.updatedBy}</span>}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : (
+            // Edit/Create Mode - Form
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+                <div className="bg-card border border-border rounded-xl p-6">
+                  <Label className="text-lg font-semibold text-foreground mb-4 block">Image du produit</Label>
+                  <div className="border-2 border-dashed border-muted-foreground/25 rounded-xl p-8 transition-colors hover:border-primary/50">
+                    {imagePreview ? (
+                      <div className="relative max-w-md mx-auto">
+                        <Image
+                          src={imagePreview || "/placeholder.svg"}
+                          alt="Aperçu"
+                          width={300}
+                          height={200}
+                          className="rounded-lg object-cover w-full"
+                        />
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="sm"
+                          className="absolute top-3 right-3 shadow-lg"
+                          onClick={() => {
+                            setImagePreview(null)
+                            setImageFile(null)
+                          }}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="text-center">
+                        <Upload className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                        <p className="text-lg font-medium text-foreground mb-2">
+                          Glissez-déposez une image ou cliquez pour parcourir
+                        </p>
+                        <p className="text-sm text-muted-foreground mb-4">Formats acceptés: JPG, PNG, GIF (max 5MB)</p>
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0]
+                            if (file) handleImageUpload(file)
+                          }}
+                          className="max-w-xs mx-auto"
+                        />
                       </div>
                     )}
+                    {imageError && <p className="text-sm text-destructive mt-4 text-center">{imageError}</p>}
                   </div>
                 </div>
 
-                <div>
-                  <Label className="text-sm font-medium text-muted-foreground">Catégorie</Label>
-                  <Badge variant="secondary" className="capitalize">
-                    {product?.category || "Général"}
-                  </Badge>
-                </div>
-              </div>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  {/* Basic Information */}
+                  <div className="bg-card border border-border rounded-xl p-6 space-y-6">
+                    <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                      <Package className="h-5 w-5 text-primary" />
+                      Informations générales
+                    </h3>
 
-              <div className="space-y-4">
-                <div>
-                  <Label className="text-sm font-medium text-muted-foreground">Statut</Label>
-                  <div className="flex gap-2">
-                    <Badge variant={product?.active ? "default" : "destructive"}>
-                      {product?.active ? "Actif" : "Inactif"}
-                    </Badge>
-                    <Badge variant={product?.isAvailable ? "default" : "outline"}>
-                      {product?.isAvailable ? "Disponible" : "Non disponible"}
-                    </Badge>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Description */}
-            <div>
-              <Label className="text-sm font-medium text-muted-foreground">Description</Label>
-              <p className="text-sm mt-1">{product?.description}</p>
-            </div>
-
-            {/* Ingredients */}
-            <div>
-              <Label className="text-sm font-medium text-muted-foreground">Ingrédients</Label>
-              <div className="flex flex-wrap gap-2 mt-2">
-                {product?.ingredients.map((ingredient, index) => (
-                  <Badge key={index} variant="outline">
-                    {ingredient}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-
-            {/* Notes */}
-            {product?.notes && (
-              <div>
-                <Label className="text-sm font-medium text-muted-foreground">Notes</Label>
-                <p className="text-sm mt-1 italic">{product.notes}</p>
-              </div>
-            )}
-
-            {/* Creation/Update Info */}
-            <div className="text-xs text-muted-foreground space-y-1 pt-4 border-t">
-              <p>Créé le {product && new Date(product.createdAt).toLocaleString("fr-FR")}</p>
-              {product?.createdBy && <p>par {product.createdBy}</p>}
-              {product?.updatedAt !== product?.createdAt && (
-                <>
-                  <p>Modifié le {product && new Date(product.updatedAt).toLocaleString("fr-FR")}</p>
-                  {product?.updatedBy && <p>par {product.updatedBy}</p>}
-                </>
-              )}
-            </div>
-          </div>
-        ) : (
-          // Edit/Create Mode - Form
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              {/* Image Upload */}
-              <div className="space-y-2">
-                <Label>Image du produit</Label>
-                <div className="border-2 border-dashed border-muted rounded-lg p-4">
-                  {imagePreview ? (
-                    <div className="relative">
-                      <Image
-                        src={imagePreview || "/placeholder.svg"}
-                        alt="Aperçu"
-                        width={200}
-                        height={150}
-                        className="rounded-lg object-cover"
-                      />
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="sm"
-                        className="absolute top-2 right-2"
-                        onClick={() => {
-                          setImagePreview(null)
-                          setImageFile(null)
-                        }}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="text-center">
-                      <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                      <p className="text-sm text-muted-foreground mb-2">
-                        Glissez-déposez une image ou cliquez pour parcourir
-                      </p>
-                      <Input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0]
-                          if (file) handleImageUpload(file)
-                        }}
-                        className="max-w-xs"
-                      />
-                    </div>
-                  )}
-                  {imageError && <p className="text-sm text-destructive mt-2">{imageError}</p>}
-                </div>
-              </div>
-
-              {/* Basic Information */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Nom du produit *</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Ex: Baguette tradition" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* Updated Laboratory Field with Select */}
-                <FormField
-                  control={form.control}
-                  name="laboratory"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Laboratoire *</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue
-                              placeholder={
-                                laboratoriesLoading
-                                  ? "Chargement..."
-                                  : laboratoriesError
-                                    ? "Erreur de chargement"
-                                    : "Sélectionnez un laboratoire"
-                              }
-                            >
-                              {field.value && laboratories.length > 0 && (
-                                <div className="flex items-center gap-2">
-                                  <Building2 className="h-4 w-4" />
-                                  <span>{getLaboratoryName(field.value)}</span>
-                                </div>
-                              )}
-                            </SelectValue>
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {laboratoriesLoading ? (
-                            <div className="flex items-center justify-center py-2">
-                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                              <span className="text-sm">Chargement...</span>
-                            </div>
-                          ) : laboratoriesError ? (
-                            <div className="flex flex-col items-center justify-center py-4 px-2">
-                              <span className="text-sm text-destructive mb-2">{laboratoriesError}</span>
-                              <Button type="button" variant="outline" size="sm" onClick={fetchLaboratories}>
-                                Réessayer
-                              </Button>
-                            </div>
-                          ) : laboratories.length === 0 ? (
-                            <div className="text-center py-4 px-2">
-                              <span className="text-sm text-muted-foreground">Aucun laboratoire actif trouvé</span>
-                            </div>
-                          ) : (
-                            laboratories.map((lab) => (
-                              <SelectItem key={lab.labName} value={lab.labName}>
-                                <div className="flex items-center gap-2">
-                                  <Building2 className="h-4 w-4" />
-                                  <div className="flex flex-col">
-                                    <span className="font-medium">{lab.labName}</span>
-                                    {lab.headChef && (
-                                      <span className="text-xs text-muted-foreground">Chef: {lab.headChef}</span>
-                                    )}
-                                  </div>
-                                </div>
-                              </SelectItem>
-                            ))
-                          )}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                      {laboratoriesError && (
-                        <p className="text-xs text-muted-foreground">
-                          Impossible de charger les laboratoires. Vérifiez votre connexion.
-                        </p>
+                    <FormField
+                      control={form.control}
+                      name="name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-base font-medium">Nom du produit *</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Ex: Baguette tradition" className="h-12 text-base" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
                       )}
-                    </FormItem>
-                  )}
-                />
+                    />
 
-                <FormField
-                  control={form.control}
-                  name="unitPrice"
-                  render={({ field }) => {
-                    const watchedPrice = form.watch("unitPrice");
-                    const watchedTaxRate = form.watch("taxRate") || 0.06;
-                    const priceTTC = watchedPrice * (1 + watchedTaxRate);
-                    const taxAmount = watchedPrice * watchedTaxRate;
-                    
-                    return (
-                      <FormItem>
-                        <FormLabel>Prix unitaire HT (€) *</FormLabel>
-                        <FormControl>
-                          <div className="space-y-2">
+                    <FormField
+                      control={form.control}
+                      name="laboratory"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-base font-medium">Laboratoire *</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger className="h-12">
+                                <SelectValue
+                                  placeholder={
+                                    laboratoriesLoading
+                                      ? "Chargement..."
+                                      : laboratoriesError
+                                        ? "Erreur de chargement"
+                                        : "Sélectionnez un laboratoire"
+                                  }
+                                >
+                                  {field.value && laboratories.length > 0 && (
+                                    <div className="flex items-center gap-2">
+                                      <Building2 className="h-4 w-4" />
+                                      <span>{getLaboratoryName(field.value)}</span>
+                                    </div>
+                                  )}
+                                </SelectValue>
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {laboratoriesLoading ? (
+                                <div className="flex items-center justify-center py-2">
+                                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                  <span className="text-sm">Chargement...</span>
+                                </div>
+                              ) : laboratoriesError ? (
+                                <div className="flex flex-col items-center justify-center py-4 px-2">
+                                  <span className="text-sm text-destructive mb-2">{laboratoriesError}</span>
+                                  <Button type="button" variant="outline" size="sm" onClick={fetchLaboratories}>
+                                    Réessayer
+                                  </Button>
+                                </div>
+                              ) : laboratories.length === 0 ? (
+                                <div className="text-center py-4 px-2">
+                                  <span className="text-sm text-muted-foreground">Aucun laboratoire actif trouvé</span>
+                                </div>
+                              ) : (
+                                laboratories.map((lab) => (
+                                  <SelectItem key={lab.labName} value={lab.labName}>
+                                    <div className="flex items-center gap-2">
+                                      <Building2 className="h-4 w-4" />
+                                      <div className="flex flex-col">
+                                        <span className="font-medium">{lab.labName}</span>
+                                        {lab.headChef && (
+                                          <span className="text-xs text-muted-foreground">Chef: {lab.headChef}</span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </SelectItem>
+                                ))
+                              )}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="category"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-base font-medium">Catégorie</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger className="h-12">
+                                <SelectValue placeholder="Sélectionner..." />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {categories.map((category) => (
+                                <SelectItem key={category.value} value={category.value}>
+                                  {category.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  {/* Pricing Information */}
+                  <div className="bg-gradient-to-br from-primary/5 to-accent/5 border border-primary/20 rounded-xl p-6 space-y-6">
+                    <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                      <Euro className="h-5 w-5 text-primary" />
+                      Informations de prix
+                    </h3>
+
+                    <FormField
+                      control={form.control}
+                      name="unitPrice"
+                      render={({ field }) => {
+                        const watchedPrice = form.watch("unitPrice")
+                        const watchedTaxRate = form.watch("taxRate") || 0.06
+                        const priceTTC = watchedPrice * (1 + watchedTaxRate)
+                        const taxAmount = watchedPrice * watchedTaxRate
+
+                        return (
+                          <FormItem>
+                            <FormLabel className="text-base font-medium">Prix unitaire HT (€) *</FormLabel>
+                            <FormControl>
+                              <div className="space-y-4">
+                                <div className="relative">
+                                  <Euro className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                                  <Input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    placeholder="0.00"
+                                    className="pl-12 h-12 text-base"
+                                    {...field}
+                                    onChange={(e) => field.onChange(Number.parseFloat(e.target.value) || 0)}
+                                  />
+                                </div>
+                                {watchedPrice > 0 && (
+                                  <div className="bg-background/50 border border-border rounded-lg p-4 space-y-3">
+                                    <div className="flex justify-between text-sm">
+                                      <span>Prix HT:</span>
+                                      <span className="font-medium">{watchedPrice.toFixed(2)} €</span>
+                                    </div>
+                                    <div className="flex justify-between text-sm">
+                                      <span>TVA ({(watchedTaxRate * 100).toFixed(0)}%):</span>
+                                      <span className="font-medium">{taxAmount.toFixed(2)} €</span>
+                                    </div>
+                                    <div className="flex justify-between border-t border-border pt-2">
+                                      <span className="font-semibold">Prix TTC:</span>
+                                      <span className="font-bold text-primary text-lg">{priceTTC.toFixed(2)} €</span>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )
+                      }}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="taxRate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-base font-medium">Taux de TVA (%)</FormLabel>
+                          <FormControl>
                             <div className="relative">
-                              <Euro className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                               <Input
                                 type="number"
                                 step="0.01"
                                 min="0"
-                                placeholder="0.00"
-                                className="pl-10"
+                                max="100"
+                                placeholder="6.00"
+                                className="pr-12 h-12 text-base"
                                 {...field}
-                                onChange={(e) => field.onChange(Number.parseFloat(e.target.value) || 0)}
+                                value={field.value ? (field.value * 100).toFixed(2) : ""}
+                                onChange={(e) => field.onChange(Number.parseFloat(e.target.value) / 100 || 0.06)}
                               />
+                              <Percent className="absolute right-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                             </div>
-                            {watchedPrice > 0 && (
-                              <div className="text-sm text-muted-foreground space-y-1 p-2 bg-muted/50 rounded">
-                                <div className="flex justify-between">
-                                  <span>Prix HT:</span>
-                                  <span className="font-medium">{watchedPrice.toFixed(2)} €</span>
-                                </div>
-                                <div className="flex justify-between">
-                                  <span>TVA ({(watchedTaxRate * 100).toFixed(0)}%):</span>
-                                  <span className="font-medium">{taxAmount.toFixed(2)} €</span>
-                                </div>
-                                <div className="flex justify-between border-t pt-1">
-                                  <span className="font-semibold">Prix TTC:</span>
-                                  <span className="font-semibold text-primary">{priceTTC.toFixed(2)} €</span>
-                                </div>
-                              </div>
-                            )}
-                          </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
+
+                {/* Description and Ingredients */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  <div className="bg-card border border-border rounded-xl p-6">
+                    <FormField
+                      control={form.control}
+                      name="description"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-lg font-semibold text-foreground flex items-center gap-2 mb-4">
+                            <FileText className="h-5 w-5 text-primary" />
+                            Description *
+                          </FormLabel>
+                          <FormControl>
+                            <Textarea
+                              placeholder="Décrivez votre produit..."
+                              className="min-h-[120px] text-base resize-none"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="bg-card border border-border rounded-xl p-6">
+                    <FormField
+                      control={form.control}
+                      name="ingredients"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-lg font-semibold text-foreground flex items-center gap-2 mb-4">
+                            <ChefHat className="h-5 w-5 text-primary" />
+                            Ingrédients *
+                          </FormLabel>
+                          <FormControl>
+                            <Textarea
+                              placeholder="Ex: Farine de blé, eau, levure, sel (séparés par des virgules)"
+                              className="min-h-[120px] text-base resize-none"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
+
+                {/* Notes */}
+                <div className="bg-card border border-border rounded-xl p-6">
+                  <FormField
+                    control={form.control}
+                    name="notes"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-lg font-semibold text-foreground mb-4 block">
+                          Notes (optionnel)
+                        </FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Notes supplémentaires..."
+                            className="min-h-[100px] text-base resize-none"
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
-                    );
-                  }}
-                />
+                    )}
+                  />
+                </div>
 
-                <FormField
-                  control={form.control}
-                  name="taxRate"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Taux de TVA (%)</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            max="100"
-                            placeholder="6.00"
-                            {...field}
-                            value={field.value ? (field.value * 100).toFixed(2) : ''}
-                            onChange={(e) => field.onChange(Number.parseFloat(e.target.value) / 100 || 0.06)}
-                          />
-                          <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground">%</span>
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+                <div className="bg-card border border-border rounded-xl p-6">
+                  <h3 className="text-lg font-semibold text-foreground mb-6">Statut du produit</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <FormField
+                      control={form.control}
+                      name="active"
+                      render={({ field }) => (
+                        <FormItem className="flex items-center justify-between p-4 bg-muted/30 rounded-lg">
+                          <div className="space-y-1">
+                            <FormLabel className="text-base font-medium">Produit actif</FormLabel>
+                            <p className="text-sm text-muted-foreground">Le produit apparaît dans le catalogue</p>
+                          </div>
+                          <FormControl>
+                            <Switch checked={field.value} onCheckedChange={field.onChange} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
 
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Description *</FormLabel>
-                    <FormControl>
-                      <Textarea placeholder="Décrivez votre produit..." className="min-h-[100px]" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                    <FormField
+                      control={form.control}
+                      name="isAvailable"
+                      render={({ field }) => (
+                        <FormItem className="flex items-center justify-between p-4 bg-muted/30 rounded-lg">
+                          <div className="space-y-1">
+                            <FormLabel className="text-base font-medium">Disponible à la vente</FormLabel>
+                            <p className="text-sm text-muted-foreground">Le produit peut être commandé</p>
+                          </div>
+                          <FormControl>
+                            <Switch checked={field.value} onCheckedChange={field.onChange} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
+              </form>
+            </Form>
+          )}
+        </div>
 
-              <FormField
-                control={form.control}
-                name="ingredients"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Ingrédients *</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Ex: Farine de blé, eau, levure, sel (séparés par des virgules)"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {/* Additional Information */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="category"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Catégorie</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Sélectionner..." />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {categories.map((category) => (
-                            <SelectItem key={category.value} value={category.value}>
-                              {category.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                
-              </div>
-
-              <FormField
-                control={form.control}
-                name="notes"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Notes (optionnel)</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Notes supplémentaires..."
-                        className="min-h-[100px]"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {/* Status switches */}
-              <div className="flex flex-col sm:flex-row gap-6 p-4 bg-muted/50 rounded-lg">
-                <FormField
-                  control={form.control}
-                  name="active"
-                  render={({ field }) => (
-                    <FormItem className="flex items-center space-x-2 space-y-0">
-                      <FormControl>
-                        <Switch checked={field.value} onCheckedChange={field.onChange} />
-                      </FormControl>
-                      <FormLabel className="font-normal">Produit actif</FormLabel>
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="isAvailable"
-                  render={({ field }) => (
-                    <FormItem className="flex items-center space-x-2 space-y-0">
-                      <FormControl>
-                        <Switch checked={field.value} onCheckedChange={field.onChange} />
-                      </FormControl>
-                      <FormLabel className="font-normal">Disponible à la vente</FormLabel>
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={onClose}>
-                  Annuler
-                </Button>
-                <Button type="submit" disabled={isLoading}>
-                  {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {mode === "create" ? "Créer" : "Sauvegarder"}
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
+        {mode !== "view" && (
+          <DialogFooter className="pt-6 border-t border-border">
+            <div className="flex gap-3 w-full sm:w-auto">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onClose}
+                className="flex-1 sm:flex-none h-12 text-base bg-transparent"
+              >
+                Annuler
+              </Button>
+              <Button
+                type="submit"
+                disabled={isLoading}
+                onClick={form.handleSubmit(onSubmit)}
+                className="flex-1 sm:flex-none h-12 text-base font-semibold"
+              >
+                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {mode === "create" ? "Créer le produit" : "Sauvegarder"}
+              </Button>
+            </div>
+          </DialogFooter>
         )}
       </DialogContent>
     </Dialog>
