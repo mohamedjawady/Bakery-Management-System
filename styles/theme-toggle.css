@@ -8,37 +8,16 @@
   overflow: hidden;
 }
 
-.theme-toggle-button .sun-icon,
-.theme-toggle-button .moon-icon {
-  position: absolute;
-  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), 
-              opacity 0.3s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+/* Icon centering when a single icon is rendered */
+.theme-toggle-button svg { 
+  height: 1.25rem; 
+  width: 1.25rem; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
 }
 
-/* Light theme (default) - show moon icon */
-.theme-toggle-button .sun-icon {
-  transform: rotate(-90deg) scale(0);
-  opacity: 0;
-}
-
-.theme-toggle-button .moon-icon {
-  transform: rotate(0deg) scale(1);
-  opacity: 1;
-}
-
-/* Dark theme - show sun icon */
-.dark .theme-toggle-button .sun-icon {
-  transform: rotate(0deg) scale(1);
-  opacity: 1;
-}
-
-.dark .theme-toggle-button .moon-icon {
-  transform: rotate(90deg) scale(0);
-  opacity: 0;
-}
+/* Light/Dark specific icon animation no longer needed (single icon rendered) */
 
 /* Button hover effect with better transitions */
 .theme-toggle-button:hover {
@@ -80,19 +59,7 @@
   transform: rotate(15deg) scale(1.1);
 }
 
-/* Prevent icon overflow */
-.theme-toggle-button .sun-icon,
-.theme-toggle-button .moon-icon {
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
-}
-
-/* For standalone theme toggle component */
-.theme-toggle-button.h-8.w-8 .sun-icon,
-.theme-toggle-button.h-8.w-8 .moon-icon {
-  height: 1.2rem;
-  width: 1.2rem;
-}
+/* (Legacy dual-icon overflow rules removed) */
 
 /* Focus states for accessibility */
 .theme-toggle-button:focus-visible {

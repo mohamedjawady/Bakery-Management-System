@@ -57,12 +57,14 @@ export function ThemeToggle({
       size="icon"
       className={`h-8 w-8 rounded-full theme-toggle-button ${className}`}
       onClick={toggleTheme}
-      aria-label="Toggle theme"
+      aria-label={theme === "dark" ? "Passer en mode clair" : "Passer en mode sombre"}
     >
-      <div className="relative h-4 w-4">
-        <Sun className="h-4 w-4 sun-icon" />
-        <Moon className="h-4 w-4 moon-icon" />
-      </div>
+      {theme === "dark" ? (
+        <Sun className="h-5 w-5 transition-transform duration-300" />
+      ) : (
+        <Moon className="h-5 w-5 transition-transform duration-300" />
+      )}
+      <span className="sr-only">{theme === "dark" ? "Passer en mode clair" : "Passer en mode sombre"}</span>
     </Button>
   )
 
