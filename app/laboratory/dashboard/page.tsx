@@ -48,6 +48,7 @@ export default function LaboratoryDashboard() {
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [userLabName, setUserLabName] = useState<string | null>(null)
+  const [labData, setLabData] = useState<any>(null)
 
   const fetchOrders = async () => {
     setLoading(true)
@@ -66,20 +67,64 @@ export default function LaboratoryDashboard() {
     }
   }
 
-  useEffect(() => {
-    // Retrieve user data from local storage
-    const userDataString = localStorage.getItem("user")
-    if (userDataString) {
-      try {
-        const userData = JSON.parse(userDataString)
-        if (userData && userData.labName) {
-          setUserLabName(userData.labName)
+  const fetchLaboratoryInfo = async () => {
+    try {
+      const userInfo = localStorage.getItem('userInfo');
+      if (!userInfo) {
+        console.error('No userInfo found in localStorage');
+        return;
+      }
+      const { token } = JSON.parse(userInfo);
+
+      const response = await fetch('http://localhost:5000/api/laboratory-info/my-lab', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch laboratory info');
+      }
+      
+      const data = await response.json();
+      console.log('Laboratory API Response:', data);
+      
+      // Handle both array and single object responses
+      let laboratoryData;
+      if (Array.isArray(data)) {
+        const activeLab = data.find(lab => lab.isActive) || data[0];
+        laboratoryData = activeLab;
+      } else {
+        laboratoryData = data;
+      }
+      
+      if (laboratoryData) {
+        setLabData(laboratoryData);
+        setUserLabName(laboratoryData.labName);
+        console.log('Set lab name to:', laboratoryData.labName);
+      }
+    } catch (error) {
+      console.error('Error fetching laboratory info:', error);
+      // Fallback to localStorage user data if API fails
+      const userDataString = localStorage.getItem("user")
+      if (userDataString) {
+        try {
+          const userData = JSON.parse(userDataString)
+          if (userData && userData.labName) {
+            setUserLabName(userData.labName)
+          }
+        } catch (e) {
+          console.error("Failed to parse user data from local storage", e)
         }
-      } catch (e) {
-        console.error("Failed to parse user data from local storage", e)
       }
     }
-    fetchOrders()
+  }
+
+  useEffect(() => {
+    // Fetch laboratory info first, then orders
+    fetchLaboratoryInfo().then(() => {
+      fetchOrders()
+    })
   }, [])
 
   const updateOrderStatus = async (orderId: string, newStatus: Order["status"]) => {
@@ -219,7 +264,7 @@ export default function LaboratoryDashboard() {
                     <div key={order._id} className="p-4">
                       <div className="flex justify-between items-start mb-2">
                         <div>
-                          <h3 className="font-medium">Commande #{order.orderId}</h3>
+                          <h3 className="font-medium">Commande #{order.orderReferenceId}</h3>
                           <p className="text-sm text-muted-foreground">{order.bakeryName}</p>
                         </div>
                         <div className="flex items-center text-sm text-muted-foreground">
@@ -272,7 +317,7 @@ export default function LaboratoryDashboard() {
                     <div key={order._id} className="p-4">
                       <div className="flex justify-between items-start mb-2">
                         <div>
-                          <h3 className="font-medium">Commande #{order.orderId}</h3>
+                          <h3 className="font-medium">Commande #{order.orderReferenceId}</h3>
                           <p className="text-sm text-muted-foreground">{order.bakeryName}</p>
                         </div>
                         <div className="flex items-center text-sm text-muted-foreground">
@@ -326,7 +371,7 @@ export default function LaboratoryDashboard() {
                     <div key={order._id} className="p-4">
                       <div className="flex justify-between items-start mb-2">
                         <div>
-                          <h3 className="font-medium">Commande #{order.orderId}</h3>
+                          <h3 className="font-medium">Commande #{order.orderReferenceId}</h3>
                           <p className="text-sm text-muted-foreground">{order.bakeryName}</p>
                         </div>
                         <div className="flex items-center text-sm text-muted-foreground">

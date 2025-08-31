@@ -1,7 +1,5 @@
 "use client"
 
-import type React from "react"
-
 import { CardTitle } from "@/components/ui/card"
 import { useState, useEffect } from "react"
 import { DashboardLayout } from "@/components/layout/dashboard-layout"
@@ -35,6 +33,7 @@ import {
   Building2,
   Package,
   ArrowLeft,
+  CheckCircle,
   ShoppingBag,
 } from "lucide-react"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -60,8 +59,7 @@ interface OrderProduct {
   unitPriceTTC: number // From backend, frontend will use `product.unitPrice` for this
   taxRate?: number // From backend
   quantity: number
-  orderTotalHT:number
-  totalPriceHT:number
+  totalPriceHT?: number // From backend
   taxAmount?: number // From backend
   totalPriceTTC: number // From backend, frontend will use `product.unitPrice * quantity` for this
   totalPrice: number // For backward compatibility, same as totalPriceTTC. Frontend will use this.
@@ -81,9 +79,11 @@ interface Order {
   actualDeliveryDate: string | null
   status: "PENDING" | "IN_PROGRESS" | "READY_FOR_DELIVERY" | "DISPATCHED" | "DELIVERING" | "DELIVERED" | "CANCELLED"
   notes: string
-  totalPriceHT:number
   address: string
   products: OrderProduct[] // Using the updated OrderProduct interface
+  orderTotalHT?: number // From backend
+  orderTaxAmount?: number // From backend
+  orderTotalTTC?: number // From backend
   createdAt?: string
   updatedAt?: string
   isDispatched?: boolean
@@ -273,25 +273,25 @@ export default function BakeryOrdersPage() {
   const fetchDeliveryUsers = async () => {
     try {
       setIsLoadingUsers(true)
-
+      
       // Get token from localStorage
       const userInfo = localStorage.getItem("userInfo")
       const token = userInfo ? JSON.parse(userInfo).token : null
-
+      
       if (!token) {
         throw new Error("No authentication token found")
       }
-
-      const response = await fetch("http://localhost:5000/api/users/delivery", {
+      
+      const response = await fetch("/api/users/delivery", {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       })
-
+      
       if (!response.ok) {
         throw new Error(`Failed to fetch delivery users: ${response.status}`)
       }
-
+      
       const deliveryUsers = await response.json()
       setDeliveryUsersFromAPI(deliveryUsers)
     } catch (error) {
@@ -309,7 +309,18 @@ export default function BakeryOrdersPage() {
   const fetchLaboratories = async () => {
     try {
       setIsLoadingLabs(true)
-      const response = await fetch("http://localhost:5000/api/laboratory-info")
+      
+      // Get token from localStorage
+      const userInfo = localStorage.getItem("userInfo")
+      const token = userInfo ? JSON.parse(userInfo).token : null
+      
+      const response = await fetch("http://localhost:5000/api/laboratory-info", {
+        headers: {
+          "Content-Type": "application/json",
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+      })
+      
       if (!response.ok) {
         throw new Error("Failed to fetch laboratories")
       }
@@ -343,7 +354,7 @@ export default function BakeryOrdersPage() {
           if (user.bakeryName) {
             setBakeryName(user.bakeryName)
           }
-
+          
           // Get token for API call
           const token = user.token
           if (token) {
@@ -353,7 +364,7 @@ export default function BakeryOrdersPage() {
                 Authorization: `Bearer ${token}`,
               },
             })
-
+            
             if (response.ok) {
               const bakeryData = await response.json()
               if (bakeryData) {
@@ -500,29 +511,26 @@ export default function BakeryOrdersPage() {
 
     const existingItemIndex = orderProducts.findIndex((item) => item.productName === product.name)
 
+    // FIX: Updated to align with backend OrderProduct structure
     if (existingItemIndex >= 0) {
       const currentQuantity = orderProducts[existingItemIndex].quantity
       const newQuantity = Math.min(999, currentQuantity + initialQuantity)
       updateItemQuantity(existingItemIndex, newQuantity)
     } else {
       const validQuantity = Math.min(999, Math.max(1, initialQuantity))
-      const unitPriceHT = product.unitPrice // Now treating unitPrice as HT (without tax)
-      const taxRate = product.taxRate || 0.06 // Use product's tax rate or fallback to 20%
-      const unitPriceTTC = unitPriceHT * (1 + taxRate) // Calculate TTC by adding tax
-
       setOrderProducts([
         ...orderProducts,
         {
           productName: product.name,
-          laboratory: product.laboratory || "Unknown",
+          laboratory: product.laboratory || "Unknown", // Ensure laboratory is always a string
           quantity: validQuantity,
-          unitPriceHT: unitPriceHT,
-          unitPriceTTC: unitPriceTTC,
-          taxRate: taxRate,
-          totalPriceHT: unitPriceHT * validQuantity,
-          taxAmount: (unitPriceTTC - unitPriceHT) * validQuantity,
-          totalPriceTTC: unitPriceTTC * validQuantity,
-          totalPrice: unitPriceTTC * validQuantity, // For backward compatibility
+          unitPriceHT: product.unitPrice, // This is HT from backend
+          unitPriceTTC: product.unitPriceTTC || (product.unitPrice * (1 + (product.taxRate || TAX_RATE))), // Use backend TTC or calculate
+          totalPriceHT: product.unitPrice * validQuantity, // Total HT
+          totalPriceTTC: (product.unitPriceTTC || (product.unitPrice * (1 + (product.taxRate || TAX_RATE)))) * validQuantity, // Total TTC
+          totalPrice: (product.unitPriceTTC || (product.unitPrice * (1 + (product.taxRate || TAX_RATE)))) * validQuantity, // For backward compatibility (TTC)
+          taxRate: product.taxRate || TAX_RATE,
+          // Other fields (productRef, taxAmount) will be filled by backend
         },
       ])
       toast({
@@ -541,11 +549,19 @@ export default function BakeryOrdersPage() {
 
     const updatedItems = [...orderProducts]
     updatedItems[index].quantity = validQuantity
-    // FIX: Use totalPriceTTC for calculation if available, fallback to totalPrice
-    updatedItems[index].totalPriceTTC =
-      (updatedItems[index].unitPriceTTC || updatedItems[index].totalPrice / updatedItems[index].quantity) *
-      validQuantity
-    updatedItems[index].totalPrice = updatedItems[index].totalPriceTTC // Keep totalPrice consistent
+    // Recalculate prices based on unit prices
+    if (updatedItems[index].unitPriceHT) {
+      updatedItems[index].totalPriceHT = updatedItems[index].unitPriceHT! * validQuantity
+    }
+    if (updatedItems[index].unitPriceTTC) {
+      updatedItems[index].totalPriceTTC = updatedItems[index].unitPriceTTC! * validQuantity
+      updatedItems[index].totalPrice = updatedItems[index].totalPriceTTC // Keep totalPrice consistent with TTC
+    } else {
+      // Fallback calculation if unitPriceTTC is not available
+      const unitPrice = updatedItems[index].totalPrice / updatedItems[index].quantity
+      updatedItems[index].totalPrice = unitPrice * validQuantity
+      updatedItems[index].totalPriceTTC = updatedItems[index].totalPrice
+    }
     setOrderProducts(updatedItems)
   }
 
@@ -720,6 +736,9 @@ export default function BakeryOrdersPage() {
     return format(date, "dd/MM/yyyy HH:mm", { locale: fr })
   }
 
+  // Standard French VAT rate for bakery products
+  const TAX_RATE = 0.06 // 6%
+
   const formatPrice = (price: number): string => {
     return new Intl.NumberFormat("fr-FR", {
       style: "currency",
@@ -727,18 +746,36 @@ export default function BakeryOrdersPage() {
     }).format(price)
   }
 
-  // Helper function to calculate HT price from TTC price with dynamic tax rate
-  const calculateHTPriceFromTTC = (ttcPrice: number, taxRate = 0.06): number => {
-    return ttcPrice / (1 + taxRate)
+  // Helper function to calculate HT price from TTC price
+  const calculateHTPriceFromTTC = (ttcPrice: number): number => {
+    return ttcPrice / (1 + TAX_RATE)
   }
 
-  // Helper function to format price with both HT and TTC using dynamic tax rate
-  const formatPriceWithTax = (htPrice: number, taxRate = 0.06, showBothPrices = true): React.ReactNode => {
+  // Helper function to format price with both HT and TTC
+  const formatPriceWithTax = (product: Product, showBothPrices: boolean = true): React.ReactNode => {
     if (!showBothPrices) {
-      return formatPrice(htPrice * (1 + taxRate))
+      return formatPrice(product.unitPriceTTC || product.unitPrice)
     }
+    
+    // Use backend calculated values
+    const htPrice = product.unitPrice // This is HT from backend
+    const ttcPrice = product.unitPriceTTC || (product.unitPrice * (1 + (product.taxRate || TAX_RATE)))
+    
+    return (
+      <div className="flex flex-col items-end text-sm">
+        <div className="text-muted-foreground">{formatPrice(htPrice)} HT</div>
+        <div className="font-bold">{formatPrice(ttcPrice)} TTC</div>
+      </div>
+    )
+  }
 
-    const ttcPrice = htPrice * (1 + taxRate)
+  // Helper function to format calculated total prices (TTC)
+  const formatTotalPriceWithTax = (ttcPrice: number, showBothPrices: boolean = true): React.ReactNode => {
+    if (!showBothPrices) {
+      return formatPrice(ttcPrice)
+    }
+    
+    const htPrice = calculateHTPriceFromTTC(ttcPrice)
     return (
       <div className="flex flex-col items-end text-sm">
         <div className="text-muted-foreground">{formatPrice(htPrice)} HT</div>
@@ -786,7 +823,9 @@ export default function BakeryOrdersPage() {
     return (
       <Card
         className={`transition-all duration-200 hover:shadow-md ${
-          isSelected ? "border-2 border-primary bg-primary/5" : "border hover:border-primary/30"
+          isSelected
+            ? "border-2 border-primary bg-primary/5"
+            : "border hover:border-primary/30"
         }`}
       >
         <CardContent className="p-4">
@@ -805,7 +844,7 @@ export default function BakeryOrdersPage() {
                 )}
               </div>
               <div className="text-right ml-3">
-                {formatPriceWithTax(product.unitPrice, product.taxRate)}
+                {formatPriceWithTax(product)}
                 {isSelected && (
                   <Badge variant="default" className="bg-green-500 text-xs mt-1">
                     Dans le panier
@@ -824,7 +863,7 @@ export default function BakeryOrdersPage() {
                   <span className="font-medium text-sm">Quantité:</span>
                   <span className="text-lg font-bold text-primary">{quantity}</span>
                 </div>
-
+                
                 <div className="flex items-center justify-center gap-2">
                   <Button
                     variant="outline"
@@ -884,9 +923,7 @@ export default function BakeryOrdersPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() =>
-                    removeItemFromOrder(orderProducts.findIndex((item) => item.productName === product.name))
-                  }
+                  onClick={() => removeItemFromOrder(orderProducts.findIndex((item) => item.productName === product.name))}
                   className="w-full text-destructive hover:text-destructive"
                 >
                   <Trash className="h-4 w-4 mr-1" />
@@ -909,7 +946,7 @@ export default function BakeryOrdersPage() {
                     </Button>
                   ))}
                 </div>
-
+                
                 <div className="flex items-center gap-2">
                   <Input
                     type="number"
@@ -1059,7 +1096,7 @@ export default function BakeryOrdersPage() {
                 variant="outline"
                 size="sm"
                 onClick={deselectAllProducts}
-                className="text-destructive hover:text-destructive bg-transparent"
+                className="text-destructive hover:text-destructive"
               >
                 <Trash className="h-4 w-4 mr-1" />
                 Vider le panier
@@ -1123,8 +1160,10 @@ export default function BakeryOrdersPage() {
                     </div>
                   </div>
                   <div className="text-right">
-                    {formatPriceWithTax(item.unitPriceHT, item.taxRate, false)}
-                    <div className="text-xs text-muted-foreground mt-1">{formatPrice(item.unitPriceHT)} HT</div>
+                    {formatTotalPriceWithTax(item.totalPrice, false)}
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {formatPrice(calculateHTPriceFromTTC(item.totalPrice))} HT
+                    </div>
                   </div>
                 </div>
               ))}
@@ -1132,26 +1171,15 @@ export default function BakeryOrdersPage() {
             <div className="space-y-1 pt-2 border-t">
               <div className="flex justify-between text-sm">
                 <span>Sous-total HT:</span>
-                <span>
-                  {formatPrice(orderProducts.reduce((total, item) => total + item.unitPriceHT * item.quantity, 0))}
-                </span>
+                <span>{formatPrice(calculateHTPriceFromTTC(calculateTotalPrice()))}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span>TVA (6%):</span>
-                <span>
-                  {formatPrice(
-                    orderProducts.reduce(
-                      (total, item) => total + (item.unitPriceTTC - item.unitPriceHT) * item.quantity,
-                      0,
-                    ),
-                  )}
-                </span>
+                <span>{formatPrice(calculateTotalPrice() - calculateHTPriceFromTTC(calculateTotalPrice()))}</span>
               </div>
               <div className="flex justify-between text-lg font-bold">
                 <span>Total TTC:</span>
-                <span className="text-primary">
-                  {formatPrice(orderProducts.reduce((total, item) => total + item.unitPriceTTC * item.quantity, 0))}
-                </span>
+                <span className="text-primary">{formatPrice(calculateTotalPrice())}</span>
               </div>
             </div>
           </CardContent>
@@ -1247,9 +1275,11 @@ export default function BakeryOrdersPage() {
               <div key={index} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg border">
                 <div className="flex-1">
                   <div className="font-medium text-sm">{product.productName}</div>
-                  <div className="text-xs text-muted-foreground">{formatPrice(product.unitPriceTTC)} par unité</div>
+                  <div className="text-xs text-muted-foreground">
+                    {formatPrice(product.unitPriceTTC)} par unité
+                  </div>
                 </div>
-
+                
                 {/* Quantity controls */}
                 <div className="flex items-center gap-3">
                   <div className="flex items-center gap-2">
@@ -1283,12 +1313,14 @@ export default function BakeryOrdersPage() {
                       <Plus className="h-4 w-4" />
                     </Button>
                   </div>
-
+                  
                   <div className="text-right min-w-[100px]">
-                    {formatPriceWithTax(product.unitPriceHT, product.taxRate, false)}
-                    <div className="text-xs text-muted-foreground mt-1">{formatPrice(product.unitPriceHT)} HT</div>
+                    {formatTotalPriceWithTax(product.totalPrice, false)}
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {formatPrice(calculateHTPriceFromTTC(product.totalPrice))} HT
+                    </div>
                   </div>
-
+                  
                   <Button
                     variant="ghost"
                     size="sm"
@@ -1304,26 +1336,15 @@ export default function BakeryOrdersPage() {
           <div className="space-y-2 pt-3 border-t">
             <div className="flex items-center justify-between text-sm">
               <span>Sous-total HT ({orderProducts.reduce((total, item) => total + item.quantity, 0)} articles):</span>
-              <span>
-                {formatPrice(orderProducts.reduce((total, item) => total + item.unitPriceHT * item.quantity, 0))}
-              </span>
+              <span>{formatPrice(calculateHTPriceFromTTC(calculateTotalPrice()))}</span>
             </div>
             <div className="flex items-center justify-between text-sm">
               <span>TVA (6%):</span>
-              <span>
-                {formatPrice(
-                  orderProducts.reduce(
-                    (total, item) => total + (item.unitPriceTTC - item.unitPriceHT) * item.quantity,
-                    0,
-                  ),
-                )}
-              </span>
+              <span>{formatPrice(calculateTotalPrice() - calculateHTPriceFromTTC(calculateTotalPrice()))}</span>
             </div>
             <div className="flex items-center justify-between font-bold text-lg">
               <span>Total TTC:</span>
-              <span className="text-primary">
-                {formatPrice(orderProducts.reduce((total, item) => total + item.unitPriceTTC * item.quantity, 0))}
-              </span>
+              <span className="text-primary">{formatPrice(calculateTotalPrice())}</span>
             </div>
           </div>
         </CardContent>
@@ -1351,14 +1372,12 @@ export default function BakeryOrdersPage() {
     )
   }
 
-
   const OrderCard = ({ order }: { order: Order }) => {
     // FIX: Ensure order.products is an array before calling reduce
     const products = order.products || []
     const totalPrice = products.reduce((total, product) => total + product.totalPrice, 0)
     const totalQuantity = products.reduce((total, product) => total + product.quantity, 0)
-    console.log('products',products)
-    const tx = products.reduce((total, product) => total + (product.totalPriceHT || 0), 0)
+
     return (
       <Card className="border-2 hover:shadow-md transition-shadow duration-200">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -1392,11 +1411,11 @@ export default function BakeryOrdersPage() {
             <div className="space-y-1">
               <div className="flex justify-between text-sm">
                 <span>Total HT:</span>
-                <span>{tx}</span>
+                <span>{formatPrice(calculateHTPriceFromTTC(totalPrice))}</span>
               </div>
               <div className="flex justify-between font-bold text-primary">
                 <span>Total TTC:</span>
-                <span>{totalPrice}</span>
+                <span>{formatPrice(totalPrice)}</span>
               </div>
             </div>
           </div>
@@ -1490,7 +1509,11 @@ export default function BakeryOrdersPage() {
                     Annuler
                   </Button>
                   {currentStep === "products" && orderProducts.length > 0 && (
-                    <Button onClick={() => setCurrentStep("details")} className="w-full sm:w-auto" size="lg">
+                    <Button
+                      onClick={() => setCurrentStep("details")}
+                      className="w-full sm:w-auto"
+                      size="lg"
+                    >
                       <ShoppingCart className="h-4 w-4 mr-2" />
                       Continuer la commande
                     </Button>
@@ -1678,13 +1701,13 @@ export default function BakeryOrdersPage() {
                           <div className="flex-1">
                             <div className="font-medium text-sm">{product.productName}</div>
                             <div className="text-xs text-muted-foreground">
-                              {formatPrice(product.unitPriceTTC)} × {product.quantity}
+                              {formatPrice(product.unitPriceTTC || 0)} × {product.quantity}
                             </div>
                           </div>
                           <div className="text-right">
-                            {formatPriceWithTax(product.unitPriceHT, product.taxRate, false)}
+                            <div className="font-bold">{formatPrice(product.totalPriceTTC || product.totalPrice || 0)}</div>
                             <div className="text-xs text-muted-foreground mt-1">
-                              {formatPrice(product.unitPriceHT)} HT
+                              {formatPrice(product.totalPriceHT || 0)} HT
                             </div>
                           </div>
                         </div>
@@ -1695,10 +1718,8 @@ export default function BakeryOrdersPage() {
                         <span>Sous-total HT:</span>
                         <span>
                           {formatPrice(
-                            (viewingOrder.products || []).reduce(
-                              (total, product) => total + product.unitPriceHT * product.quantity,
-                              0,
-                            ),
+                            viewingOrder.orderTotalHT || 
+                            (viewingOrder.products || []).reduce((total, product) => total + (product.totalPriceHT || 0), 0)
                           )}
                         </span>
                       </div>
@@ -1706,11 +1727,8 @@ export default function BakeryOrdersPage() {
                         <span>TVA (6%):</span>
                         <span>
                           {formatPrice(
-                            (viewingOrder.products || []).reduce(
-                              (total, product) =>
-                                total + (product.unitPriceTTC - product.unitPriceHT) * product.quantity,
-                              0,
-                            ),
+                            viewingOrder.orderTaxAmount || 
+                            ((viewingOrder.products || []).reduce((total, product) => total + (product.taxAmount || 0), 0))
                           )}
                         </span>
                       </div>
@@ -1718,10 +1736,8 @@ export default function BakeryOrdersPage() {
                         <span>Total TTC:</span>
                         <span className="text-primary">
                           {formatPrice(
-                            (viewingOrder.products || []).reduce(
-                              (total, product) => total + product.unitPriceTTC * product.quantity,
-                              0,
-                            ),
+                            viewingOrder.orderTotalTTC || 
+                            (viewingOrder.products || []).reduce((total, product) => total + (product.totalPriceTTC || product.totalPrice || 0), 0)
                           )}
                         </span>
                       </div>

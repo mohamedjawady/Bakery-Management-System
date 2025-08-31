@@ -95,7 +95,7 @@ export default function BakeryDashboard() {
   }
 
   // Standard French VAT rate for bakery products
-  const TAX_RATE = 0.06 // 20%
+  const TAX_RATE = 0.06 // 6%
 
   const formatPrice = (price: number): string => {
     return new Intl.NumberFormat("fr-FR", {
@@ -749,7 +749,7 @@ export default function BakeryDashboard() {
                       </span>
                     </div>
                     <div className="flex justify-between items-center text-sm">
-                      <span>TVA (6%):</span>
+                      <span>TVA (06%):</span>
                       <span>
                         {formatPrice(
                           (viewingOrder.products || []).reduce((total, product) => total + product.totalPrice, 0) -

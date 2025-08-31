@@ -41,7 +41,6 @@ interface UserData {
   email: string
   isActive: boolean
   labName: string
-  lastName: string
   role: string
   token: string
 }
@@ -165,10 +164,59 @@ export default function LaboratoryProductionPage() {
   const [error, setError] = useState<string | null>(null)
   const [isUpdating, setIsUpdating] = useState(false)
   const [userData, setUserData] = useState<UserData | null>(null)
+  const [userLabName, setUserLabName] = useState<string | null>(null)
+
+  const fetchLaboratoryInfo = async () => {
+    try {
+      const userInfo = localStorage.getItem('userInfo');
+      if (!userInfo) {
+        console.error('No userInfo found in localStorage');
+        return;
+      }
+      const { token } = JSON.parse(userInfo);
+
+      const response = await fetch('http://localhost:5000/api/laboratory-info/my-lab', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch laboratory info');
+      }
+      
+      const data = await response.json();
+      console.log('Laboratory API Response:', data);
+      
+      // Handle both array and single object responses
+      let laboratoryData;
+      if (Array.isArray(data)) {
+        const activeLab = data.find(lab => lab.isActive) || data[0];
+        laboratoryData = activeLab;
+      } else {
+        laboratoryData = data;
+      }
+      
+      if (laboratoryData) {
+        setUserLabName(laboratoryData.labName);
+        console.log('Set lab name to:', laboratoryData.labName);
+        return laboratoryData.labName;
+      }
+    } catch (error) {
+      console.error('Error fetching laboratory info:', error);
+      // Fallback to localStorage user data if API fails
+      const user = getUserFromStorage();
+      if (user && user.labName) {
+        setUserLabName(user.labName);
+        return user.labName;
+      }
+    }
+    return null;
+  }
 
   const getUserFromStorage = (): UserData | null => {
     try {
-      const userStr = localStorage.getItem("userInfo")
+      const userStr = localStorage.getItem("user")
       if (!userStr) return null
       return JSON.parse(userStr) as UserData
     } catch (err) {
@@ -181,7 +229,7 @@ export default function LaboratoryProductionPage() {
     return orders.filter((order) => order.products.some((product) => product.laboratory === labName))
   }
 
-  const fetchOrders = async () => {
+  const fetchOrders = async (labName?: string) => {
     try {
       setLoading(true)
       setError(null)
@@ -200,10 +248,11 @@ export default function LaboratoryProductionPage() {
 
       const data = await response.json()
 
-      // Filter orders based on user's lab name
-      const user = getUserFromStorage()
-      if (user && user.labName) {
-        const filteredOrders = filterOrdersByLab(data, user.labName)
+      // Use provided labName or the state value
+      const currentLabName = labName || userLabName;
+      
+      if (currentLabName) {
+        const filteredOrders = filterOrdersByLab(data, currentLabName)
         setOrders(filteredOrders)
       } else {
         setOrders(data)
@@ -215,6 +264,10 @@ export default function LaboratoryProductionPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleRefreshOrders = () => {
+    fetchOrders()
   }
 
   const testApiConnection = async () => {
@@ -297,20 +350,18 @@ export default function LaboratoryProductionPage() {
   }
 
   useEffect(() => {
-    // Get user data from localStorage
-    const user = getUserFromStorage()
-    setUserData(user)
-
-    if (!user || !user.labName) {
-      setError("Utilisateur non connecté ou données manquantes")
-      setLoading(false)
-      return
-    }
-
-    // Test API connection first
-    testApiConnection().then((success) => {
-      if (success) {
-        fetchOrders()
+    // Get laboratory info first, then fetch orders
+    fetchLaboratoryInfo().then((labName) => {
+      if (labName) {
+        // Test API connection first
+        testApiConnection().then((success) => {
+          if (success) {
+            fetchOrders(labName)
+          }
+        })
+      } else {
+        setError("Utilisateur non connecté ou données manquantes")
+        setLoading(false)
       }
     })
   }, [])
@@ -335,7 +386,7 @@ export default function LaboratoryProductionPage() {
           <div className="text-center">
             <h2 className="text-xl font-semibold text-destructive mb-2">Erreur</h2>
             <p className="text-muted-foreground mb-4">{error}</p>
-            <Button onClick={fetchOrders} variant="outline">
+            <Button onClick={handleRefreshOrders} variant="outline">
               Réessayer
             </Button>
           </div>
@@ -355,7 +406,7 @@ export default function LaboratoryProductionPage() {
               {userData && <span className="font-medium"> - Laboratoire: {userData.labName}</span>}
             </p>
           </div>
-          <Button onClick={fetchOrders} variant="outline" size="sm">
+          <Button onClick={handleRefreshOrders} variant="outline" size="sm">
             Actualiser
           </Button>
         </div>

@@ -97,7 +97,7 @@ export default function ProfilePage() {
           return;
         }
 
-        const response = await fetch("/api/bakery-info", {
+        const response = await fetch("http://localhost:5000", {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -158,7 +158,7 @@ export default function ProfilePage() {
         return;
       }
 
-      const response = await fetch(`/api/bakery-info`, { 
+      const response = await fetch(`http://localhost:5000/api/bakery-info`, { 
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -233,7 +233,7 @@ export default function ProfilePage() {
         return;
       }
       
-      const response = await fetch('/api/users/change-password', {
+      const response = await fetch('http://localhost:5000/api/users/change-password', {
         method: 'PUT',
         headers: { 
           'Content-Type': 'application/json',
