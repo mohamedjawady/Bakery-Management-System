@@ -115,14 +115,7 @@ export default function SettingsPage() {
                     onChange={(e) => setSettings({ ...settings, address: e.target.value })}
                   />
                 </div>
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="darkMode"
-                    checked={settings.darkMode}
-                    onCheckedChange={(checked) => setSettings({ ...settings, darkMode: checked })}
-                  />
-                  <Label htmlFor="darkMode">Mode sombre</Label>
-                </div>
+              
               </CardContent>
             </Card>
           </TabsContent>

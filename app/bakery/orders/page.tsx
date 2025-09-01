@@ -1747,7 +1747,7 @@ export default function BakeryOrdersPage() {
               </ScrollArea>
             )}
             <DialogFooter className="flex flex-col sm:flex-row gap-2">
-              <div className="flex flex-col sm:flex-row gap-2 flex-1">
+              {/* <div className="flex flex-col sm:flex-row gap-2 flex-1">
                 <Label htmlFor="status-update" className="text-sm font-medium mt-2 sm:mt-0 sm:mr-2">
                   Mettre à jour le statut:
                 </Label>
@@ -1769,7 +1769,7 @@ export default function BakeryOrdersPage() {
                     <SelectItem value="CANCELLED">Annulé</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
+              </div> */}
               <Button onClick={() => setIsViewDialogOpen(false)} className="w-full sm:w-auto">
                 Fermer
               </Button>
