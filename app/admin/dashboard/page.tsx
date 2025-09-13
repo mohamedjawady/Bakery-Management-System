@@ -398,7 +398,7 @@ export default function AdminDashboard() {
               </Card>
             </div>
           </TabsContent>          <TabsContent value="analytics" className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">              <Card className="col-span-4">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">              <Card className="col-span-7">
                 <CardHeader>
                   <CardTitle>Performance des produits</CardTitle>
                   <CardDescription>Ventes par produit</CardDescription>
@@ -407,7 +407,7 @@ export default function AdminDashboard() {
                   <ProductsChart data={productData} />
                 </CardContent>
               </Card>
-              <Card className="col-span-3">
+              {/* <Card className="col-span-3">
                 <CardHeader>
                   <CardTitle>Répartition des ventes</CardTitle>
                   <CardDescription>Part du chiffre d'affaires par boulangerie</CardDescription>
@@ -415,8 +415,8 @@ export default function AdminDashboard() {
                 <CardContent>
                   <BakeriesComparisonChart data={bakeryData} />
                 </CardContent>
-              </Card>
-              <Card className="col-span-7">
+              </Card> */}
+              {/* <Card className="col-span-7">
                 <CardHeader>
                   <CardTitle>Indicateurs de Performance</CardTitle>
                   <CardDescription>Évolution des KPIs principaux</CardDescription>
@@ -435,7 +435,7 @@ export default function AdminDashboard() {
                     ))}
                   </div>
                 </CardContent>
-              </Card>
+              </Card> */}
             </div>
           </TabsContent>          <TabsContent value="reports" className="space-y-4">
             <div className="grid gap-4 md:grid-cols-7">

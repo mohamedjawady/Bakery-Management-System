@@ -1131,7 +1131,7 @@ export default function BakeryOrdersPage() {
 
       {/* Shopping Cart Summary - Non-blocking */}
       {orderProducts.length > 0 && (
-        <Card className="border-primary bg-primary/5">
+        <Card className="border-primary">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2 text-lg">
@@ -1152,7 +1152,7 @@ export default function BakeryOrdersPage() {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               {orderProducts.map((item, index) => (
-                <div key={index} className="flex items-center justify-between p-2 bg-white rounded border">
+                <div key={index} className="flex items-center justify-between p-2 rounded border">
                   <div className="flex-1">
                     <div className="font-medium text-sm">{item.productName}</div>
                     <div className="text-xs text-muted-foreground">

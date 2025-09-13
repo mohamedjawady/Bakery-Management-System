@@ -359,7 +359,7 @@ export default function BakeryDashboard() {
             </Button>
           </div>
         </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-2">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Commandes du jour</CardTitle>
@@ -384,7 +384,7 @@ export default function BakeryDashboard() {
               <p className="text-xs text-muted-foreground">Vendu 128 fois cette semaine</p>
             </CardContent>
           </Card>
-          <Card>
+          {/* <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Prochaine livraison</CardTitle>
               <Clock className="h-4 w-4 text-muted-foreground" />
@@ -407,7 +407,7 @@ export default function BakeryDashboard() {
                 <div className="text-2xl font-bold">Aucune</div>
               )}
             </CardContent>
-          </Card>
+          </Card> */}
         </div>
         <Tabs defaultValue="pending" className="space-y-4">
           <TabsList>
@@ -772,7 +772,7 @@ export default function BakeryDashboard() {
               </div>
             </ScrollArea>
           )}
-          <DialogFooter className="flex flex-col sm:flex-row gap-2">
+          {/* <DialogFooter className="flex flex-col sm:flex-row gap-2">
             <div className="flex flex-col sm:flex-row gap-2 flex-1">
               <Label htmlFor="status-update" className="text-sm font-medium mt-2 sm:mt-0 sm:mr-2">
                 Mettre à jour le statut:
@@ -799,7 +799,7 @@ export default function BakeryDashboard() {
             <Button onClick={() => setIsViewDialogOpen(false)} className="w-full sm:w-auto">
               Fermer
             </Button>
-          </DialogFooter>
+          </DialogFooter> */}
         </DialogContent>
       </Dialog>
     </DashboardLayout>
