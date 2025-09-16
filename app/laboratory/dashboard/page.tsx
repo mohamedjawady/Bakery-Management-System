@@ -332,9 +332,9 @@ export default function LaboratoryDashboard() {
                               <span>
                                 {product.productName} (x{product.quantity})
                               </span>
-                              <span>{Math.floor(Math.random() * 100)}%</span> {/* Mock progress */}
+                              
                             </div>
-                            <Progress value={Math.floor(Math.random() * 100)} className="h-2" /> {/* Mock progress */}
+                            
                           </div>
                         ))}
                       </div>
