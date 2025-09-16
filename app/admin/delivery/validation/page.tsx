@@ -545,9 +545,6 @@ export default function ConflictResolutionPage() {
                                               <SelectValue placeholder="Choisir une résolution" />
                                             </SelectTrigger>
                                             <SelectContent>
-                                              <SelectItem value="ACCEPT_AS_IS">Accepter tel quel</SelectItem>
-                                              <SelectItem value="PARTIAL_REFUND">Remboursement partiel</SelectItem>
-                                              <SelectItem value="FULL_REFUND">Remboursement total</SelectItem>
                                               <SelectItem value="REPLACE_ORDER">Remplacer la commande</SelectItem>
                                               <SelectItem value="UPDATE_ORDER">Corriger la quantité</SelectItem>
                                               <SelectItem value="REJECT">Rejeter</SelectItem>
