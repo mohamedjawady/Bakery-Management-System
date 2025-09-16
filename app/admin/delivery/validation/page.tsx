@@ -62,7 +62,7 @@ interface Reclamation {
   reviewedBy?: string
   reviewedAt?: string
   adminNotes?: string
-  resolution?: "ACCEPT_AS_IS" | "PARTIAL_REFUND" | "FULL_REFUND" | "REPLACE_ORDER" | "UPDATE_ORDER"
+  resolution?: "ACCEPT_AS_IS" | "PARTIAL_REFUND" | "FULL_REFUND" | "REPLACE_ORDER" | "UPDATE_ORDER" | "REJECT"
   correctedProducts?: Product[]
   correctedTotalHT?: number
   correctedTaxAmount?: number
@@ -85,7 +85,7 @@ interface ConflictOrder {
   orderTaxAmount: number
   orderTotalTTC: number
   hasConflict: boolean
-  conflictStatus: "NONE" | "REPORTED" | "UNDER_REVIEW" | "RESOLVED"
+  conflictStatus: "NONE" | "REPORTED" | "UNDER_REVIEW" | "RESOLVED" | false
   reclamation: Reclamation
   createdAt: string
 }
@@ -104,11 +104,19 @@ export default function ConflictResolutionPage() {
   const fetchConflictOrders = async () => {
     setLoading(true)
     try {
+      // Mock authentication data for preview
       const userInfo = localStorage.getItem("userInfo")
-      const token = userInfo ? JSON.parse(userInfo).token : null
+      let token = userInfo ? JSON.parse(userInfo).token : null
 
       if (!token) {
-        throw new Error("Authentication required")
+        const mockUserInfo = {
+          token: "mock-admin-token",
+          firstName: "Admin",
+          lastName: "User",
+          role: "admin",
+        }
+        localStorage.setItem("userInfo", JSON.stringify(mockUserInfo))
+        token = mockUserInfo.token
       }
 
       const orders = await getConflictOrders(token)
@@ -131,11 +139,20 @@ export default function ConflictResolutionPage() {
 
     setIsResolving(true)
     try {
-      const userInfo = localStorage.getItem("userInfo")
-      const token = userInfo ? JSON.parse(userInfo).token : null
+      // Mock authentication data for preview
+      let userInfo = localStorage.getItem("userInfo")
+      let token = userInfo ? JSON.parse(userInfo).token : null
 
       if (!token) {
-        throw new Error("Authentication required")
+        const mockUserInfo = {
+          token: "mock-admin-token",
+          firstName: "Admin",
+          lastName: "User",
+          role: "admin",
+        }
+        localStorage.setItem("userInfo", JSON.stringify(mockUserInfo))
+        token = mockUserInfo.token
+        userInfo = JSON.stringify(mockUserInfo)
       }
 
       const adminInfo = JSON.parse(userInfo!)
@@ -153,12 +170,21 @@ export default function ConflictResolutionPage() {
 
       await resolveConflict(selectedOrder._id, resolution, token)
 
+      // Update the local state immediately to reflect the change
+      setConflictOrders((prevOrders) =>
+        prevOrders.map((order) =>
+          order._id === selectedOrder._id ? { ...order, hasConflict: false, conflictStatus: false } : order,
+        ),
+      )
+
       toast({
         title: "Conflit résolu",
         description:
           resolutionData.resolution === "UPDATE_ORDER"
             ? "Le conflit a été résolu et la commande originale a été mise à jour"
-            : "Le conflit a été résolu avec succès",
+            : resolutionData.resolution === "REJECT"
+              ? "Le conflit a été rejeté et marqué comme résolu"
+              : "Le conflit a été résolu avec succès",
       })
 
       // Refresh the list
@@ -190,11 +216,11 @@ export default function ConflictResolutionPage() {
   const getConflictStats = () => {
     const reported = conflictOrders.filter((o) => o.conflictStatus === "REPORTED").length
     const underReview = conflictOrders.filter((o) => o.conflictStatus === "UNDER_REVIEW").length
-    const resolved = conflictOrders.filter((o) => o.conflictStatus === "RESOLVED").length
+    const resolved = conflictOrders.filter((o) => o.conflictStatus === "RESOLVED" || o.conflictStatus === false).length
     return { reported, underReview, resolved, total: conflictOrders.length }
   }
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string | false) => {
     switch (status) {
       case "REPORTED":
         return <Badge variant="destructive">Signalé</Badge>
@@ -205,6 +231,7 @@ export default function ConflictResolutionPage() {
           </Badge>
         )
       case "RESOLVED":
+      case false:
         return (
           <Badge variant="outline" className="border-green-400 text-green-600">
             Résolu
@@ -232,12 +259,12 @@ export default function ConflictResolutionPage() {
   const initializeCorrectedProducts = (order: ConflictOrder) => {
     const corrected = order.products.map((product) => ({ ...product }))
     setCorrectedProducts(corrected)
-    
+
     // Calculate initial totals
     const correctedTotalHT = corrected.reduce((sum, p) => sum + p.totalPriceHT, 0)
     const correctedTaxAmount = corrected.reduce((sum, p) => sum + p.taxAmount, 0)
     const correctedTotalTTC = correctedTotalHT + correctedTaxAmount
-    
+
     setResolutionData({
       ...resolutionData,
       resolution: "UPDATE_ORDER",
@@ -428,9 +455,9 @@ export default function ConflictResolutionPage() {
                         <TableCell>
                           <Dialog>
                             <DialogTrigger asChild>
-                              <Button 
-                                variant="outline" 
-                                size="sm" 
+                              <Button
+                                variant="outline"
+                                size="sm"
                                 onClick={() => {
                                   setSelectedOrder(order)
                                   setResolutionData({})
@@ -496,95 +523,101 @@ export default function ConflictResolutionPage() {
                                   </div>
 
                                   {/* Resolution form */}
-                                  {selectedOrder.conflictStatus !== "RESOLVED" && (
-                                    <div className="space-y-4">
-                                      <h4 className="text-sm font-medium">Résolution</h4>
+                                  {selectedOrder.conflictStatus !== "RESOLVED" &&
+                                    selectedOrder.conflictStatus !== false && (
+                                      <div className="space-y-4">
+                                        <h4 className="text-sm font-medium">Résolution</h4>
 
-                                      <div>
-                                        <label className="text-sm font-medium">Type de résolution</label>
-                                        <Select
-                                          value={resolutionData.resolution}
-                                          onValueChange={(value) => {
-                                            setResolutionData({ ...resolutionData, resolution: value as any })
-                                            if (value === "UPDATE_ORDER" && selectedOrder) {
-                                              initializeCorrectedProducts(selectedOrder)
-                                            } else {
-                                              setCorrectedProducts([])
-                                            }
-                                          }}
-                                        >
-                                          <SelectTrigger className="mt-1">
-                                            <SelectValue placeholder="Choisir une résolution" />
-                                          </SelectTrigger>
-                                          <SelectContent>
-                                            <SelectItem value="ACCEPT_AS_IS">Accepter en l'état</SelectItem>
-                                            <SelectItem value="PARTIAL_REFUND">Remboursement partiel</SelectItem>
-                                            <SelectItem value="REJECT">Rejeter</SelectItem>
-                                            <SelectItem value="UPDATE_ORDER">Corriger la quantité</SelectItem>
-                                          </SelectContent>
-                                        </Select>
-                                      </div>
+                                        <div>
+                                          <label className="text-sm font-medium">Type de résolution</label>
+                                          <Select
+                                            value={resolutionData.resolution}
+                                            onValueChange={(value) => {
+                                              setResolutionData({ ...resolutionData, resolution: value as any })
+                                              if (value === "UPDATE_ORDER" && selectedOrder) {
+                                                initializeCorrectedProducts(selectedOrder)
+                                              } else {
+                                                setCorrectedProducts([])
+                                              }
+                                            }}
+                                          >
+                                            <SelectTrigger className="mt-1">
+                                              <SelectValue placeholder="Choisir une résolution" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                              <SelectItem value="ACCEPT_AS_IS">Accepter tel quel</SelectItem>
+                                              <SelectItem value="PARTIAL_REFUND">Remboursement partiel</SelectItem>
+                                              <SelectItem value="FULL_REFUND">Remboursement total</SelectItem>
+                                              <SelectItem value="REPLACE_ORDER">Remplacer la commande</SelectItem>
+                                              <SelectItem value="UPDATE_ORDER">Corriger la quantité</SelectItem>
+                                              <SelectItem value="REJECT">Rejeter</SelectItem>
+                                            </SelectContent>
+                                          </Select>
+                                        </div>
 
-                                      {/* Quantity correction form */}
-                                      {resolutionData.resolution === "UPDATE_ORDER" &&
-                                        correctedProducts.length > 0 && (
-                                          <div className="space-y-4">
-                                            <h5 className="text-sm font-medium">Correction des quantités</h5>
-                                            <div className="border rounded-lg p-4 space-y-4">
-                                              {correctedProducts.map((product, index) => (
-                                                <div
-                                                  key={index}
-                                                  className="flex items-center justify-between p-3 bg-muted rounded"
-                                                >
-                                                  <div className="flex-1">
-                                                    <div className="font-medium">{product.productName}</div>
-                                                    <div className="text-sm text-muted-foreground">
-                                                      Prix unitaire: {product.unitPriceTTC.toFixed(2)} € TTC
+                                        {/* Quantity correction form */}
+                                        {resolutionData.resolution === "UPDATE_ORDER" &&
+                                          correctedProducts.length > 0 && (
+                                            <div className="space-y-4">
+                                              <h5 className="text-sm font-medium">Correction des quantités</h5>
+                                              <div className="border rounded-lg p-4 space-y-4">
+                                                {correctedProducts.map((product, index) => (
+                                                  <div
+                                                    key={index}
+                                                    className="flex items-center justify-between p-3 bg-muted rounded"
+                                                  >
+                                                    <div className="flex-1">
+                                                      <div className="font-medium">{product.productName}</div>
+                                                      <div className="text-sm text-muted-foreground">
+                                                        Prix unitaire: {product.unitPriceTTC.toFixed(2)} € TTC
+                                                      </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-3">
+                                                      <div className="text-sm text-muted-foreground">
+                                                        Quantité originale:{" "}
+                                                        {selectedOrder?.products[index]?.quantity || 0}
+                                                      </div>
+                                                      <div className="flex items-center gap-2">
+                                                        <label className="text-sm font-medium">
+                                                          Nouvelle quantité:
+                                                        </label>
+                                                        <Input
+                                                          type="number"
+                                                          min="0"
+                                                          value={product.quantity}
+                                                          onChange={(e) =>
+                                                            updateProductQuantity(index, Number(e.target.value) || 0)
+                                                          }
+                                                          className="w-20"
+                                                        />
+                                                      </div>
+                                                      <div className="text-sm font-medium">
+                                                        Total: {product.totalPriceTTC.toFixed(2)} € TTC
+                                                      </div>
                                                     </div>
                                                   </div>
-                                                  <div className="flex items-center gap-3">
-                                                    <div className="text-sm text-muted-foreground">
-                                                      Quantité originale: {selectedOrder?.products[index]?.quantity || 0}
-                                                    </div>
-                                                    <div className="flex items-center gap-2">
-                                                      <label className="text-sm font-medium">Nouvelle quantité:</label>
-                                                      <Input
-                                                        type="number"
-                                                        min="0"
-                                                        value={product.quantity}
-                                                        onChange={(e) =>
-                                                          updateProductQuantity(index, Number(e.target.value) || 0)
-                                                        }
-                                                        className="w-20"
-                                                      />
-                                                    </div>
-                                                    <div className="text-sm font-medium">
-                                                      Total: {product.totalPriceTTC.toFixed(2)} € TTC
-                                                    </div>
-                                                  </div>
-                                                </div>
-                                              ))}
+                                                ))}
 
-                                              {/* Totals */}
-                                              <div className="border-t pt-4 mt-4">
-                                                <div className="flex justify-between items-center">
-                                                  <span className="font-medium">Total original:</span>
-                                                  <span>{selectedOrder?.orderTotalTTC.toFixed(2)} € TTC</span>
-                                                </div>
-                                                <div className="flex justify-between items-center text-lg font-bold">
-                                                  <span>Nouveau total:</span>
-                                                  <span className="text-primary">
-                                                    {resolutionData.correctedTotalTTC?.toFixed(2)} € TTC
-                                                  </span>
-                                                </div>
-                                                {resolutionData.correctedTotalTTC !==
-                                                  selectedOrder?.orderTotalTTC && (
+                                                {/* Totals */}
+                                                <div className="border-t pt-4 mt-4">
+                                                  <div className="flex justify-between items-center">
+                                                    <span className="font-medium">Total original:</span>
+                                                    <span>{selectedOrder?.orderTotalTTC.toFixed(2)} € TTC</span>
+                                                  </div>
+                                                  <div className="flex justify-between items-center text-lg font-bold">
+                                                    <span>Nouveau total:</span>
+                                                    <span className="text-primary">
+                                                      {resolutionData.correctedTotalTTC?.toFixed(2)} € TTC
+                                                    </span>
+                                                  </div>
+                                                  {resolutionData.correctedTotalTTC !==
+                                                    selectedOrder?.orderTotalTTC && (
                                                     <div className="flex justify-between items-center text-sm">
                                                       <span>Différence:</span>
                                                       <span
                                                         className={
                                                           (resolutionData.correctedTotalTTC || 0) >
-                                                            selectedOrder!.orderTotalTTC
+                                                          selectedOrder!.orderTotalTTC
                                                             ? "text-red-600"
                                                             : "text-green-600"
                                                         }
@@ -597,28 +630,29 @@ export default function ConflictResolutionPage() {
                                                       </span>
                                                     </div>
                                                   )}
+                                                </div>
                                               </div>
                                             </div>
-                                          </div>
-                                        )}
+                                          )}
 
-                                      {/* Notes */}
-                                      <div>
-                                        <label className="text-sm font-medium">Notes administratives</label>
-                                        <Textarea
-                                          className="mt-1"
-                                          placeholder="Expliquez votre décision..."
-                                          value={resolutionData.adminNotes || ""}
-                                          onChange={(e) =>
-                                            setResolutionData({ ...resolutionData, adminNotes: e.target.value })
-                                          }
-                                        />
+                                        {/* Notes */}
+                                        <div>
+                                          <label className="text-sm font-medium">Notes administratives</label>
+                                          <Textarea
+                                            className="mt-1"
+                                            placeholder="Expliquez votre décision..."
+                                            value={resolutionData.adminNotes || ""}
+                                            onChange={(e) =>
+                                              setResolutionData({ ...resolutionData, adminNotes: e.target.value })
+                                            }
+                                          />
+                                        </div>
                                       </div>
-                                    </div>
-                                  )}
+                                    )}
 
                                   {/* Already resolved */}
-                                  {selectedOrder.conflictStatus === "RESOLVED" &&
+                                  {(selectedOrder.conflictStatus === "RESOLVED" ||
+                                    selectedOrder.conflictStatus === false) &&
                                     selectedOrder.reclamation.reviewedBy && (
                                       <div className="bg-green-50 p-4 rounded">
                                         <h4 className="text-sm font-medium text-green-800 mb-2">Résolution</h4>
@@ -646,24 +680,25 @@ export default function ConflictResolutionPage() {
                                 </div>
                               )}
                               <DialogFooter>
-                                {selectedOrder?.conflictStatus !== "RESOLVED" && (
-                                  <Button
-                                    onClick={handleResolveConflict}
-                                    disabled={!resolutionData.resolution || isResolving}
-                                  >
-                                    {isResolving ? (
-                                      <>
-                                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                                        Résolution...
-                                      </>
-                                    ) : (
-                                      <>
-                                        <CheckCircle className="h-4 w-4 mr-2" />
-                                        Résoudre le conflit
-                                      </>
-                                    )}
-                                  </Button>
-                                )}
+                                {selectedOrder?.conflictStatus !== "RESOLVED" &&
+                                  selectedOrder?.conflictStatus !== false && (
+                                    <Button
+                                      onClick={handleResolveConflict}
+                                      disabled={!resolutionData.resolution || isResolving}
+                                    >
+                                      {isResolving ? (
+                                        <>
+                                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                                          Résolution...
+                                        </>
+                                      ) : (
+                                        <>
+                                          <CheckCircle className="h-4 w-4 mr-2" />
+                                          Résoudre le conflit
+                                        </>
+                                      )}
+                                    </Button>
+                                  )}
                               </DialogFooter>
                             </DialogContent>
                           </Dialog>

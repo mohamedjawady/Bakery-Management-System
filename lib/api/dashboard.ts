@@ -1,309 +1,265 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"
 
-// Helper function to get auth headers
-const getAuthHeaders = () => {
-  // Check if we're in the browser environment
-  if (typeof window === 'undefined') {
-    console.log('getAuthHeaders called during SSR - no token available');
-    return {
-      'Content-Type': 'application/json',
-    };
-  }
-  
-  // Get token from userInfo object in localStorage
-  const userInfo = localStorage.getItem('userInfo');
-  let token = null;
-  
+interface DashboardOverview {
+  totalSales: number
+  totalOrders: number
+  totalProducts: number
+  totalBakeries: number
+}
+
+interface SalesChartData {
+  date: string
+  sales: number
+  orders: number
+}
+
+interface ProductPerformance {
+  productName: string
+  sales: number
+  quantity: number
+}
+
+interface BakeryComparison {
+  bakeryName: string
+  sales: number
+  orders: number
+}
+
+interface RecentOrder {
+  id: string
+  bakeryName: string
+  total: number
+  date: string
+  status: string
+}
+
+interface PerformanceIndicator {
+  name: string
+  value: number
+  change: number
+}
+
+interface InvoiceHistoryItem {
+  id: string
+  referenceNumber: string
+  bakeryName: string
+  weekStart: string
+  weekEnd: string
+  totalAmount: number
+  createdAt: string
+  downloadCount: number
+}
+
+interface InvoiceHistoryResponse {
+  invoices: InvoiceHistoryItem[]
+  totalCount: number
+  currentPage: number
+  totalPages: number
+}
+
+const getAuthToken = (): string | null => {
+  if (typeof window === "undefined") return null
+
+  const userInfo = localStorage.getItem("userInfo")
   if (userInfo) {
     try {
-      const parsedUserInfo = JSON.parse(userInfo);
-      token = parsedUserInfo.token;
+      const parsedUserInfo = JSON.parse(userInfo)
+      return parsedUserInfo.token
     } catch (error) {
-      console.error('Error parsing userInfo from localStorage:', error);
+      console.error("Error parsing userInfo from localStorage:", error)
     }
   }
-  
-  console.log('Token from localStorage userInfo:', token ? 'Found' : 'Not found');
-  return {
-    'Content-Type': 'application/json',
-    ...(token && { Authorization: `Bearer ${token}` })
-  };
-};
+  return null
+}
 
-// Helper function to handle API responses
-const handleResponse = async (response: Response) => {
+const handleApiError = async (response: Response): Promise<never> => {
+  let errorMessage = `HTTP error! status: ${response.status}`
+
+  try {
+    const errorData = await response.json()
+    errorMessage = errorData.message || errorMessage
+  } catch {
+    // If response is not JSON, use default error message
+  }
+
+  throw new Error(errorMessage)
+}
+
+const makeAuthenticatedRequest = async <T,>(url: string, options: RequestInit = {}): Promise<T> => {
+  const token = getAuthToken()
+
+  const headers = {
+    "Content-Type": "application/json",
+    ...(token && { Authorization: `Bearer ${token}` }),
+    ...options.headers,
+  }
+
+  const response = await fetch(`${API_BASE_URL}${url}`, {
+    ...options,
+    headers,
+  })
+
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ message: 'Une erreur est survenue' }));
-    throw new Error(errorData.message || 'Une erreur est survenue');
+    await handleApiError(response)
   }
-  return response.json();
-};
 
-// Dashboard Overview
-export const getDashboardOverview = async () => {
-  console.log('Calling getDashboardOverview...');
-  try {
-    const response = await fetch(`${API_BASE_URL}/api/dashboard/overview`, {
-      method: 'GET',
-      headers: getAuthHeaders(),
-    });
-    
-    console.log('Dashboard overview response status:', response.status);
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Dashboard overview error response:', errorText);
-      throw new Error(`HTTP ${response.status}: ${errorText}`);
-    }
-    return response.json();
-  } catch (error) {
-    console.error('Dashboard overview fetch error:', error);
-    throw error;
-  }
-};
+  return response.json()
+}
 
-// Sales Chart Data
-export const getSalesChartData = async () => {
-  console.log('Calling getSalesChartData...');
-  try {
-    const response = await fetch(`${API_BASE_URL}/api/dashboard/sales-chart`, {
-      method: 'GET',
-      headers: getAuthHeaders(),
-    });
-    
-    console.log('Sales chart response status:', response.status);
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Sales chart error response:', errorText);
-      throw new Error(`HTTP ${response.status}: ${errorText}`);
-    }
-    return response.json();
-  } catch (error) {
-    console.error('Sales chart fetch error:', error);
-    throw error;
-  }
-};
+const downloadFile = (blob: Blob, response: Response, defaultFilename: string): void => {
+  const url = window.URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.style.display = "none"
+  a.href = url
 
-// Product Performance Data
-export const getProductPerformance = async () => {
-  console.log('Calling getProductPerformance...');
-  try {
-    const response = await fetch(`${API_BASE_URL}/api/dashboard/product-performance`, {
-      method: 'GET',
-      headers: getAuthHeaders(),
-    });
-    
-    console.log('Product performance response status:', response.status);
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Product performance error response:', errorText);
-      throw new Error(`HTTP ${response.status}: ${errorText}`);
-    }
-    return response.json();
-  } catch (error) {
-    console.error('Product performance fetch error:', error);
-    throw error;
-  }
-};
+  const contentDisposition = response.headers.get("Content-Disposition")
+  const filename = contentDisposition ? contentDisposition.split("filename=")[1]?.replace(/"/g, "") : defaultFilename
 
-// Bakery Comparison Data
-export const getBakeryComparison = async () => {
-  console.log('Calling getBakeryComparison...');
-  try {
-    const response = await fetch(`${API_BASE_URL}/api/dashboard/bakery-comparison`, {
-      method: 'GET',
-      headers: getAuthHeaders(),
-    });
-    
-    console.log('Bakery comparison response status:', response.status);
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Bakery comparison error response:', errorText);
-      throw new Error(`HTTP ${response.status}: ${errorText}`);
-    }
-    return response.json();
-  } catch (error) {
-    console.error('Bakery comparison fetch error:', error);
-    throw error;
-  }
-};
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  window.URL.revokeObjectURL(url)
+  document.body.removeChild(a)
+}
 
-// Recent Orders
-export const getRecentOrders = async () => {
-  console.log('Calling getRecentOrders...');
-  try {
-    const response = await fetch(`${API_BASE_URL}/api/dashboard/recent-orders`, {
-      method: 'GET',
-      headers: getAuthHeaders(),
-    });
-    
-    console.log('Recent orders response status:', response.status);
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Recent orders error response:', errorText);
-      throw new Error(`HTTP ${response.status}: ${errorText}`);
-    }
-    return response.json();
-  } catch (error) {
-    console.error('Recent orders fetch error:', error);
-    throw error;
-  }
-};
+const exportFile = async (endpoint: string, defaultFilename: string, params?: URLSearchParams): Promise<void> => {
+  const token = getAuthToken()
+  const url = params ? `${API_BASE_URL}${endpoint}?${params}` : `${API_BASE_URL}${endpoint}`
 
-// Performance Indicators
-export const getPerformanceIndicators = async () => {
-  console.log('Calling getPerformanceIndicators...');
-  try {
-    const response = await fetch(`${API_BASE_URL}/api/dashboard/performance-indicators`, {
-      method: 'GET',
-      headers: getAuthHeaders(),
-    });
-    
-    console.log('Performance indicators response status:', response.status);
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Performance indicators error response:', errorText);
-      throw new Error(`HTTP ${response.status}: ${errorText}`);
-    }
-    return response.json();
-  } catch (error) {
-    console.error('Performance indicators fetch error:', error);
-    throw error;
-  }
-};
+  const response = await fetch(url, {
+    headers: {
+      ...(token && { Authorization: `Bearer ${token}` }),
+    },
+  })
 
-// Export Sales Report
-export const exportSalesReport = async (startDate?: string, endDate?: string) => {
-  const params = new URLSearchParams();
-  if (startDate) params.append('startDate', startDate);
-  if (endDate) params.append('endDate', endDate);
-  
-  const response = await fetch(`${API_BASE_URL}/api/dashboard/export/sales?${params}`, {
-    method: 'GET',
-    headers: getAuthHeaders(),
-  });
-  
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ message: 'Une erreur est survenue' }));
-    throw new Error(errorData.message || 'Une erreur est survenue');
+    await handleApiError(response)
   }
-  
-  // Handle file download
-  const blob = await response.blob();
-  const url = window.URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.style.display = 'none';
-  a.href = url;
-  
-  // Get filename from Content-Disposition header
-  const contentDisposition = response.headers.get('Content-Disposition');
-  const filename = contentDisposition 
-    ? contentDisposition.split('filename=')[1]?.replace(/"/g, '') 
-    : 'rapport-ventes.csv';
-  
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  window.URL.revokeObjectURL(url);
-  document.body.removeChild(a);
-};
 
-// Export Product Report
-export const exportProductReport = async () => {
-  const response = await fetch(`${API_BASE_URL}/api/dashboard/export/products`, {
-    method: 'GET',
-    headers: getAuthHeaders(),
-  });
-  
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ message: 'Une erreur est survenue' }));
-    throw new Error(errorData.message || 'Une erreur est survenue');
-  }
-  
-  // Handle file download
-  const blob = await response.blob();
-  const url = window.URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.style.display = 'none';
-  a.href = url;
-  
-  // Get filename from Content-Disposition header
-  const contentDisposition = response.headers.get('Content-Disposition');
-  const filename = contentDisposition 
-    ? contentDisposition.split('filename=')[1]?.replace(/"/g, '') 
-    : 'rapport-produits.csv';
-  
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  window.URL.revokeObjectURL(url);
-  document.body.removeChild(a);
-};
+  const blob = await response.blob()
+  downloadFile(blob, response, defaultFilename)
+}
 
-// Export Financial Report
-export const exportFinancialReport = async () => {
-  const response = await fetch(`${API_BASE_URL}/api/dashboard/export/financial`, {
-    method: 'GET',
-    headers: getAuthHeaders(),
-  });
-  
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ message: 'Une erreur est survenue' }));
-    throw new Error(errorData.message || 'Une erreur est survenue');
-  }
-  
-  // Handle file download
-  const blob = await response.blob();
-  const url = window.URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.style.display = 'none';
-  a.href = url;
-  
-  // Get filename from Content-Disposition header
-  const contentDisposition = response.headers.get('Content-Disposition');
-  const filename = contentDisposition 
-    ? contentDisposition.split('filename=')[1]?.replace(/"/g, '') 
-    : 'rapport-financier.csv';
-  
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  window.URL.revokeObjectURL(url);
-  document.body.removeChild(a);
-};
+export const getDashboardOverview = async (): Promise<DashboardOverview> => {
+  return makeAuthenticatedRequest<DashboardOverview>("/dashboard/overview")
+}
 
-// Export Weekly Billing
-export const exportWeeklyBilling = async (startDate: string, endDate: string) => {
+export const getSalesChartData = async (): Promise<SalesChartData[]> => {
+  return makeAuthenticatedRequest<SalesChartData[]>("/dashboard/sales-chart")
+}
+
+export const getProductPerformance = async (): Promise<ProductPerformance[]> => {
+  return makeAuthenticatedRequest<ProductPerformance[]>("/dashboard/product-performance")
+}
+
+export const getBakeryComparison = async (): Promise<BakeryComparison[]> => {
+  return makeAuthenticatedRequest<BakeryComparison[]>("/dashboard/bakery-comparison")
+}
+
+export const getRecentOrders = async (): Promise<RecentOrder[]> => {
+  return makeAuthenticatedRequest<RecentOrder[]>("/dashboard/recent-orders")
+}
+
+export const getPerformanceIndicators = async (): Promise<PerformanceIndicator[]> => {
+  return makeAuthenticatedRequest<PerformanceIndicator[]>("/dashboard/performance-indicators")
+}
+
+export const exportSalesReport = async (startDate?: string, endDate?: string): Promise<void> => {
+  const params = new URLSearchParams()
+  if (startDate) params.append("startDate", startDate)
+  if (endDate) params.append("endDate", endDate)
+
+  await exportFile("/dashboard/export/sales", "rapport-ventes.csv", params)
+}
+
+export const exportProductReport = async (): Promise<void> => {
+  await exportFile("/dashboard/export/products", "rapport-produits.csv")
+}
+
+export const exportFinancialReport = async (): Promise<void> => {
+  await exportFile("/dashboard/export/financial", "rapport-financier.csv")
+}
+
+const generateWeekFilename = (startDate: string, endDate: string): string => {
+  const start = new Date(startDate)
+  const end = new Date(endDate)
+
+  const year = start.getFullYear()
+  const startDay = start.getDate().toString().padStart(2, "0")
+  const startMonth = (start.getMonth() + 1).toString().padStart(2, "0")
+  const endDay = end.getDate().toString().padStart(2, "0")
+  const endMonth = (end.getMonth() + 1).toString().padStart(2, "0")
+
+  return `${year}-${startDay}${startMonth}-${endDay}${endMonth}.xlsx`
+}
+
+export const exportWeeklyBilling = async (startDate: string, endDate: string): Promise<void> => {
   const params = new URLSearchParams({
     startDate,
-    endDate
-  });
-  
-  const response = await fetch(`${API_BASE_URL}/api/dashboard/export/weekly-billing?${params}`, {
-    method: 'GET',
-    headers: getAuthHeaders(),
-  });
-  
+    endDate,
+    includeBakeryInfo: "true",
+  })
+
+  const filename = generateWeekFilename(startDate, endDate)
+  await exportFile("/dashboard/export/weekly-billing", filename, params)
+}
+
+export const regenerateInvoice = async (referenceNumber: string): Promise<void> => {
+  const invoiceDetails = await makeAuthenticatedRequest<{
+    weekStart: string
+    weekEnd: string
+    bakeryName: string
+  }>(`/dashboard/invoices/${referenceNumber}/details`)
+
+  const filename = generateWeekFilename(invoiceDetails.weekStart, invoiceDetails.weekEnd)
+  await exportFile(`/dashboard/invoices/${referenceNumber}/regenerate`, filename)
+}
+
+export const generateNewInvoice = async (
+  startDate: string,
+  endDate: string,
+  bakeryName: string,
+): Promise<{ referenceNumber: string }> => {
+  const response = await fetch(`${API_BASE_URL}/dashboard/invoices/generate`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(getAuthToken() && { Authorization: `Bearer ${getAuthToken()}` }),
+    },
+    body: JSON.stringify({
+      startDate,
+      endDate,
+      bakeryName,
+      includeBakeryInfo: true,
+    }),
+  })
+
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ message: 'Une erreur est survenue' }));
-    throw new Error(errorData.message || 'Une erreur est survenue');
+    await handleApiError(response)
   }
-  
-  // Handle file download
-  const blob = await response.blob();
-  const url = window.URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.style.display = 'none';
-  a.href = url;
-  
-  // Get filename from Content-Disposition header
-  const contentDisposition = response.headers.get('Content-Disposition');
-  const filename = contentDisposition 
-    ? contentDisposition.split('filename=')[1]?.replace(/"/g, '') 
-    : 'facturation-hebdomadaire.xlsx';
-  
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  window.URL.revokeObjectURL(url);
-  document.body.removeChild(a);
-};
+
+  const result = await response.json()
+
+  const filename = generateWeekFilename(startDate, endDate)
+  const blob = await response.blob()
+  downloadFile(blob, response, filename)
+
+  return result
+}
+
+export const getInvoiceHistory = async (
+  page = 1,
+  limit = 20,
+  bakeryName?: string,
+  year?: number,
+): Promise<InvoiceHistoryResponse> => {
+  const params = new URLSearchParams({
+    page: page.toString(),
+    limit: limit.toString(),
+  })
+
+  if (bakeryName) params.append("bakeryName", bakeryName)
+  if (year) params.append("year", year.toString())
+
+  return makeAuthenticatedRequest<InvoiceHistoryResponse>(`/dashboard/invoices?${params}`)
+}

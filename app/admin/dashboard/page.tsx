@@ -7,7 +7,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { ArrowDown, ArrowUp, Banknote, BarChart3, ClipboardList, ShoppingBag, Users, Download, Loader2 } from "lucide-react"
+import {
+  ArrowDown,
+  ArrowUp,
+  Banknote,
+  ClipboardList,
+  ShoppingBag,
+  Users,
+  Download,
+  Loader2,
+  History,
+  RefreshCw,
+} from "lucide-react"
 import { SalesChart, ProductsChart, BakeriesComparisonChart } from "@/components/charts/sales-chart"
 import { useToast } from "@/hooks/use-toast"
 import {
@@ -20,7 +31,9 @@ import {
   exportSalesReport,
   exportProductReport,
   exportFinancialReport,
-  exportWeeklyBilling
+  exportWeeklyBilling,
+  getInvoiceHistory,
+  regenerateInvoice,
 } from "@/lib/api/dashboard"
 
 interface DashboardData {
@@ -79,6 +92,22 @@ interface PerformanceIndicator {
   up: boolean
 }
 
+interface InvoiceReference {
+  _id: string
+  referenceNumber: string
+  year: number
+  weekNumber: number
+  incrementalNumber: number
+  startDate: string
+  endDate: string
+  bakeryName: string
+  totalAmount: number
+  orderCount: number
+  status: "generated" | "downloaded" | "sent"
+  createdAt: string
+  lastDownloaded?: string
+}
+
 export default function AdminDashboard() {
   const [overview, setOverview] = useState<DashboardData | null>(null)
   const [salesData, setSalesData] = useState<SalesData[]>([])
@@ -89,64 +118,60 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true)
   const [exportLoading, setExportLoading] = useState<string | null>(null)
   const [weeklyBillingDates, setWeeklyBillingDates] = useState({
-    startDate: '',
-    endDate: ''
+    startDate: "",
+    endDate: "",
   })
   const [weeklyBillingLoading, setWeeklyBillingLoading] = useState(false)
+  const [invoiceHistory, setInvoiceHistory] = useState<InvoiceReference[]>([])
+  const [invoiceHistoryLoading, setInvoiceHistoryLoading] = useState(false)
+  const [regeneratingInvoice, setRegeneratingInvoice] = useState<string | null>(null)
   const { toast } = useToast()
 
   const fetchDashboardData = async () => {
     // Check if we're in the browser and have a token
-    if (typeof window === 'undefined') {
-      console.log('Window is undefined, skipping API calls')
+    if (typeof window === "undefined") {
+      console.log("Window is undefined, skipping API calls")
       setLoading(false)
       return
     }
 
     // Get token from userInfo object in localStorage
-    const userInfo = localStorage.getItem('userInfo')
+    const userInfo = localStorage.getItem("userInfo")
     let token = null
-    
+
     if (userInfo) {
       try {
         const parsedUserInfo = JSON.parse(userInfo)
         token = parsedUserInfo.token
       } catch (error) {
-        console.error('Error parsing userInfo from localStorage:', error)
+        console.error("Error parsing userInfo from localStorage:", error)
       }
     }
-    
-    console.log('Token check - userInfo exists:', !!userInfo)
-    console.log('Token check - token exists:', !!token)
-    
+
+    console.log("Token check - userInfo exists:", !!userInfo)
+    console.log("Token check - token exists:", !!token)
+
     if (!token) {
-      console.log('No token found in userInfo')
+      console.log("No token found in userInfo")
       setLoading(false)
       return
     }
 
     try {
-      console.log('Starting API calls...')
+      console.log("Starting API calls...")
       setLoading(true)
-      
+
       // Fetch all dashboard data in parallel
-      const [
-        overviewRes,
-        salesRes,
-        productRes,
-        bakeryRes,
-        ordersRes,
-        indicatorsRes
-      ] = await Promise.all([
+      const [overviewRes, salesRes, productRes, bakeryRes, ordersRes, indicatorsRes] = await Promise.all([
         getDashboardOverview(),
         getSalesChartData(),
         getProductPerformance(),
         getBakeryComparison(),
         getRecentOrders(),
-        getPerformanceIndicators()
+        getPerformanceIndicators(),
       ])
 
-      console.log('API calls completed successfully')
+      console.log("API calls completed successfully")
       setOverview(overviewRes.data)
       setSalesData(salesRes.data)
       setProductData(productRes.data)
@@ -154,7 +179,7 @@ export default function AdminDashboard() {
       setRecentOrders(ordersRes.data)
       setPerformanceIndicators(indicatorsRes.data)
     } catch (error) {
-      console.error('Erreur lors du chargement du tableau de bord:', error)
+      console.error("Erreur lors du chargement du tableau de bord:", error)
       toast({
         title: "Erreur",
         description: "Impossible de charger les données du tableau de bord.",
@@ -165,28 +190,45 @@ export default function AdminDashboard() {
     }
   }
 
-  const handleExport = async (type: 'sales' | 'products' | 'financial') => {
+  const fetchInvoiceHistory = async () => {
+    try {
+      setInvoiceHistoryLoading(true)
+      const response = await getInvoiceHistory()
+      setInvoiceHistory(response.data.invoices)
+    } catch (error) {
+      console.error("Erreur lors du chargement de l'historique des factures:", error)
+      toast({
+        title: "Erreur",
+        description: "Impossible de charger l'historique des factures.",
+        variant: "destructive",
+      })
+    } finally {
+      setInvoiceHistoryLoading(false)
+    }
+  }
+
+  const handleExport = async (type: "sales" | "products" | "financial") => {
     try {
       setExportLoading(type)
-      
+
       switch (type) {
-        case 'sales':
+        case "sales":
           await exportSalesReport()
           break
-        case 'products':
+        case "products":
           await exportProductReport()
           break
-        case 'financial':
+        case "financial":
           await exportFinancialReport()
           break
       }
-      
+
       toast({
         title: "Export réussi",
         description: "Le rapport a été téléchargé avec succès.",
       })
     } catch (error) {
-      console.error('Erreur lors de l\'export:', error)
+      console.error("Erreur lors de l'export:", error)
       toast({
         title: "Erreur d'export",
         description: error instanceof Error ? error.message : "Une erreur est survenue lors de l'export.",
@@ -210,13 +252,13 @@ export default function AdminDashboard() {
     try {
       setWeeklyBillingLoading(true)
       await exportWeeklyBilling(weeklyBillingDates.startDate, weeklyBillingDates.endDate)
-      
+
       toast({
         title: "Export réussi",
         description: "La facturation hebdomadaire a été téléchargée avec succès.",
       })
     } catch (error) {
-      console.error('Erreur lors de l\'export de la facturation hebdomadaire:', error)
+      console.error("Erreur lors de l'export de la facturation hebdomadaire:", error)
       toast({
         title: "Erreur d'export",
         description: error instanceof Error ? error.message : "Une erreur est survenue lors de l'export.",
@@ -224,6 +266,27 @@ export default function AdminDashboard() {
       })
     } finally {
       setWeeklyBillingLoading(false)
+    }
+  }
+
+  const handleRegenerateInvoice = async (referenceNumber: string) => {
+    try {
+      setRegeneratingInvoice(referenceNumber)
+      await regenerateInvoice(referenceNumber)
+
+      toast({
+        title: "Facture régénérée",
+        description: "La facture a été téléchargée avec succès.",
+      })
+    } catch (error) {
+      console.error("Erreur lors de la régénération de la facture:", error)
+      toast({
+        title: "Erreur de régénération",
+        description: error instanceof Error ? error.message : "Une erreur est survenue lors de la régénération.",
+        variant: "destructive",
+      })
+    } finally {
+      setRegeneratingInvoice(null)
     }
   }
 
@@ -235,10 +298,10 @@ export default function AdminDashboard() {
     const monday = new Date(now.setDate(diff))
     const sunday = new Date(monday)
     sunday.setDate(monday.getDate() + 6)
-    
+
     return {
-      startDate: monday.toISOString().split('T')[0],
-      endDate: sunday.toISOString().split('T')[0]
+      startDate: monday.toISOString().split("T")[0],
+      endDate: sunday.toISOString().split("T")[0],
     }
   }
 
@@ -250,30 +313,31 @@ export default function AdminDashboard() {
     const monday = new Date(now.setDate(diff))
     const sunday = new Date(monday)
     sunday.setDate(monday.getDate() + 6)
-    
+
     return {
-      startDate: monday.toISOString().split('T')[0],
-      endDate: sunday.toISOString().split('T')[0]
+      startDate: monday.toISOString().split("T")[0],
+      endDate: sunday.toISOString().split("T")[0],
     }
   }
 
   useEffect(() => {
-    console.log('Dashboard useEffect running...')
-    
+    console.log("Dashboard useEffect running...")
+
     // Test basic API connectivity first
     const testApiConnectivity = async () => {
       try {
-        console.log('Testing API connectivity...')
-        const response = await fetch('http://localhost:5000/api/dashboard/test')
+        console.log("Testing API connectivity...")
+        const response = await fetch("http://localhost:5000/api/dashboard/test")
         const data = await response.json()
-        console.log('API test successful:', data)
+        console.log("API test successful:", data)
       } catch (error) {
-        console.error('API test failed:', error)
+        console.error("API test failed:", error)
       }
     }
-    
+
     testApiConnectivity()
     fetchDashboardData()
+    fetchInvoiceHistory()
   }, [])
 
   if (loading) {
@@ -300,9 +364,16 @@ export default function AdminDashboard() {
             <CardContent>
               <div className="text-2xl font-bold">{overview?.revenue.formatted || "€0.00"}</div>
               <p className="text-xs text-muted-foreground">
-                <span className={`flex items-center ${(overview?.revenue.change || 0) >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                  {(overview?.revenue.change || 0) >= 0 ? <ArrowUp className="mr-1 h-4 w-4" /> : <ArrowDown className="mr-1 h-4 w-4" />}
-                  {(overview?.revenue.change || 0) >= 0 ? '+' : ''}{(overview?.revenue.change || 0).toFixed(1)}%
+                <span
+                  className={`flex items-center ${(overview?.revenue.change || 0) >= 0 ? "text-emerald-500" : "text-rose-500"}`}
+                >
+                  {(overview?.revenue.change || 0) >= 0 ? (
+                    <ArrowUp className="mr-1 h-4 w-4" />
+                  ) : (
+                    <ArrowDown className="mr-1 h-4 w-4" />
+                  )}
+                  {(overview?.revenue.change || 0) >= 0 ? "+" : ""}
+                  {(overview?.revenue.change || 0).toFixed(1)}%
                 </span>{" "}
                 par rapport au mois dernier
               </p>
@@ -316,9 +387,16 @@ export default function AdminDashboard() {
             <CardContent>
               <div className="text-2xl font-bold">{overview?.orders.current || 0}</div>
               <p className="text-xs text-muted-foreground">
-                <span className={`flex items-center ${(overview?.orders.change || 0) >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                  {(overview?.orders.change || 0) >= 0 ? <ArrowUp className="mr-1 h-4 w-4" /> : <ArrowDown className="mr-1 h-4 w-4" />}
-                  {(overview?.orders.change || 0) >= 0 ? '+' : ''}{(overview?.orders.change || 0).toFixed(1)}%
+                <span
+                  className={`flex items-center ${(overview?.orders.change || 0) >= 0 ? "text-emerald-500" : "text-rose-500"}`}
+                >
+                  {(overview?.orders.change || 0) >= 0 ? (
+                    <ArrowUp className="mr-1 h-4 w-4" />
+                  ) : (
+                    <ArrowDown className="mr-1 h-4 w-4" />
+                  )}
+                  {(overview?.orders.change || 0) >= 0 ? "+" : ""}
+                  {(overview?.orders.change || 0).toFixed(1)}%
                 </span>{" "}
                 par rapport au mois dernier
               </p>
@@ -346,9 +424,7 @@ export default function AdminDashboard() {
             <CardContent>
               <div className="text-2xl font-bold">{overview?.users.active || 0}</div>
               <p className="text-xs text-muted-foreground">
-                <span className="text-muted-foreground">
-                  sur {overview?.users.total || 0} utilisateurs total
-                </span>
+                <span className="text-muted-foreground">sur {overview?.users.total || 0} utilisateurs total</span>
               </p>
             </CardContent>
           </Card>
@@ -360,9 +436,11 @@ export default function AdminDashboard() {
             <TabsTrigger value="analytics">Analytiques</TabsTrigger>
             <TabsTrigger value="reports">Rapports</TabsTrigger>
             <TabsTrigger value="billing">Facturation</TabsTrigger>
+            {/* <TabsTrigger value="invoice-history">Historique Factures</TabsTrigger> */}
           </TabsList>
           <TabsContent value="overview" className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">              <Card className="col-span-4">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+              <Card className="col-span-4">
                 <CardHeader>
                   <CardTitle>Aperçu des ventes</CardTitle>
                 </CardHeader>
@@ -382,9 +460,7 @@ export default function AdminDashboard() {
                     {recentOrders.slice(0, 5).map((order) => (
                       <div key={order.orderId} className="flex items-center">
                         <div className="space-y-1">
-                          <p className="text-sm font-medium leading-none">
-                            {order.orderId}
-                          </p>
+                          <p className="text-sm font-medium leading-none">{order.orderId}</p>
                           <p className="text-sm text-muted-foreground">{order.bakeryName}</p>
                         </div>
                         <div className="ml-auto font-medium">€{(Number(order.amount) || 0).toFixed(2)}</div>
@@ -397,8 +473,10 @@ export default function AdminDashboard() {
                 </CardContent>
               </Card>
             </div>
-          </TabsContent>          <TabsContent value="analytics" className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">              <Card className="col-span-4">
+          </TabsContent>
+          <TabsContent value="analytics" className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+              <Card className="col-span-4">
                 <CardHeader>
                   <CardTitle>Performance des produits</CardTitle>
                   <CardDescription>Ventes par produit</CardDescription>
@@ -427,7 +505,7 @@ export default function AdminDashboard() {
                       <div key={i} className="bg-slate-50 dark:bg-slate-800 p-4 rounded-lg">
                         <p className="text-sm font-medium text-muted-foreground mb-1">{item.title}</p>
                         <p className="text-2xl font-bold">{item.value}</p>
-                        <p className={`text-xs flex items-center ${item.up ? 'text-emerald-500' : 'text-rose-500'}`}>
+                        <p className={`text-xs flex items-center ${item.up ? "text-emerald-500" : "text-rose-500"}`}>
                           {item.up ? <ArrowUp className="mr-1 h-3 w-3" /> : <ArrowDown className="mr-1 h-3 w-3" />}
                           {item.change}
                         </p>
@@ -437,7 +515,8 @@ export default function AdminDashboard() {
                 </CardContent>
               </Card>
             </div>
-          </TabsContent>          <TabsContent value="reports" className="space-y-4">
+          </TabsContent>
+          <TabsContent value="reports" className="space-y-4">
             <div className="grid gap-4 md:grid-cols-7">
               <Card className="col-span-7">
                 <CardHeader>
@@ -447,29 +526,32 @@ export default function AdminDashboard() {
                 <CardContent>
                   <div className="space-y-4">
                     {[
-                      { 
-                        id: 'sales',
-                        title: "Rapport mensuel des ventes", 
-                        description: "Analyse détaillée des ventes du mois par produit et boulangerie", 
-                        date: new Date().toLocaleDateString('fr-FR'), 
-                        status: "Prêt" 
+                      {
+                        id: "sales",
+                        title: "Rapport mensuel des ventes",
+                        description: "Analyse détaillée des ventes du mois par produit et boulangerie",
+                        date: new Date().toLocaleDateString("fr-FR"),
+                        status: "Prêt",
                       },
-                      { 
-                        id: 'products',
-                        title: "Rapport de performance des produits", 
-                        description: "Analyse des ventes et performances par produit", 
-                        date: new Date().toLocaleDateString('fr-FR'), 
-                        status: "Prêt" 
+                      {
+                        id: "products",
+                        title: "Rapport de performance des produits",
+                        description: "Analyse des ventes et performances par produit",
+                        date: new Date().toLocaleDateString("fr-FR"),
+                        status: "Prêt",
                       },
-                      { 
-                        id: 'financial',
-                        title: "Rapport financier trimestriel", 
-                        description: "États financiers et chiffre d'affaires par boulangerie", 
-                        date: new Date().toLocaleDateString('fr-FR'), 
-                        status: "Prêt" 
-                      }
+                      {
+                        id: "financial",
+                        title: "Rapport financier trimestriel",
+                        description: "États financiers et chiffre d'affaires par boulangerie",
+                        date: new Date().toLocaleDateString("fr-FR"),
+                        status: "Prêt",
+                      },
                     ].map((report) => (
-                      <div key={report.id} className="flex items-center justify-between p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
+                      <div
+                        key={report.id}
+                        className="flex items-center justify-between p-4 border border-slate-200 dark:border-slate-700 rounded-lg"
+                      >
                         <div>
                           <h4 className="font-medium text-base">{report.title}</h4>
                           <p className="text-sm text-muted-foreground">{report.description}</p>
@@ -477,12 +559,16 @@ export default function AdminDashboard() {
                         <div className="flex items-center gap-4">
                           <div className="text-right">
                             <p className="text-sm font-medium">{report.date}</p>
-                            <p className={`text-xs ${report.status === "Prêt" ? "text-emerald-500" : "text-amber-500"}`}>{report.status}</p>
+                            <p
+                              className={`text-xs ${report.status === "Prêt" ? "text-emerald-500" : "text-amber-500"}`}
+                            >
+                              {report.status}
+                            </p>
                           </div>
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handleExport(report.id as 'sales' | 'products' | 'financial')}
+                            onClick={() => handleExport(report.id as "sales" | "products" | "financial")}
                             disabled={exportLoading === report.id}
                           >
                             {exportLoading === report.id ? (
@@ -499,7 +585,6 @@ export default function AdminDashboard() {
               </Card>
             </div>
           </TabsContent>
-
           <TabsContent value="billing" className="space-y-4">
             <div className="grid gap-4">
               <Card>
@@ -509,7 +594,9 @@ export default function AdminDashboard() {
                     Facturation Hebdomadaire
                   </CardTitle>
                   <CardDescription>
-                    Générez des factures Excel par boulangerie pour une semaine donnée. Chaque boulangerie aura sa propre feuille dans le fichier Excel.
+                    Générez des factures Excel par boulangerie pour une semaine donnée. Chaque boulangerie aura sa
+                    propre feuille dans le fichier Excel. Les références de factures suivent le format FACT-YYYY-XXXX
+                    avec un numéro incrémental unique.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
@@ -520,7 +607,7 @@ export default function AdminDashboard() {
                         id="start-date"
                         type="date"
                         value={weeklyBillingDates.startDate}
-                        onChange={(e) => setWeeklyBillingDates(prev => ({ ...prev, startDate: e.target.value }))}
+                        onChange={(e) => setWeeklyBillingDates((prev) => ({ ...prev, startDate: e.target.value }))}
                       />
                     </div>
                     <div className="space-y-2">
@@ -529,7 +616,7 @@ export default function AdminDashboard() {
                         id="end-date"
                         type="date"
                         value={weeklyBillingDates.endDate}
-                        onChange={(e) => setWeeklyBillingDates(prev => ({ ...prev, endDate: e.target.value }))}
+                        onChange={(e) => setWeeklyBillingDates((prev) => ({ ...prev, endDate: e.target.value }))}
                       />
                     </div>
                     <div className="flex items-end">
@@ -556,30 +643,128 @@ export default function AdminDashboard() {
                   <div className="border-t pt-4">
                     <h4 className="font-medium mb-3">Raccourcis rapides</h4>
                     <div className="flex gap-2 flex-wrap">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setWeeklyBillingDates(getCurrentWeekDates())}
-                      >
+                      <Button variant="outline" size="sm" onClick={() => setWeeklyBillingDates(getCurrentWeekDates())}>
                         Semaine actuelle
                       </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setWeeklyBillingDates(getPreviousWeekDates())}
-                      >
+                      <Button variant="outline" size="sm" onClick={() => setWeeklyBillingDates(getPreviousWeekDates())}>
                         Semaine précédente
                       </Button>
                     </div>
                   </div>
 
                   <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg">
-                    <h4 className="font-medium text-blue-800 dark:text-blue-200 mb-2">ℹ️ À propos de la facturation hebdomadaire</h4>
+                    <h4 className="font-medium text-blue-800 dark:text-blue-200 mb-2">
+                      ℹ️ À propos de la facturation hebdomadaire
+                    </h4>
                     <p className="text-sm text-blue-700 dark:text-blue-300">
-                      Le fichier Excel généré contiendra une feuille séparée pour chaque boulangerie avec les détails de toutes leurs commandes pour la période sélectionnée. 
-                      Une feuille de résumé général sera également incluse. Ce fichier peut être imprimé et remis physiquement aux boulangeries pour le paiement.
+                      Le fichier Excel généré contiendra une feuille séparée pour chaque boulangerie avec les détails de
+                      toutes leurs commandes pour la période sélectionnée. Chaque facture reçoit une référence unique au
+                      format FACT-YYYY-XXXX qui reste identique lors des régénérations. Une feuille de résumé général
+                      sera également incluse. Ce fichier peut être imprimé et remis physiquement aux boulangeries pour
+                      le paiement.
                     </p>
                   </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+          <TabsContent value="invoice-history" className="space-y-4">
+            <div className="grid gap-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <History className="h-5 w-5" />
+                    Historique des Factures
+                  </CardTitle>
+                  <CardDescription>
+                    Consultez et retéléchargez les factures précédemment générées. Chaque facture conserve sa référence
+                    originale.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex justify-between items-center mb-4">
+                    <div className="text-sm text-muted-foreground">{invoiceHistory.length} facture(s) trouvée(s)</div>
+                    <Button variant="outline" size="sm" onClick={fetchInvoiceHistory} disabled={invoiceHistoryLoading}>
+                      {invoiceHistoryLoading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+
+                  {invoiceHistoryLoading ? (
+                    <div className="flex items-center justify-center h-32">
+                      <Loader2 className="h-8 w-8 animate-spin" />
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {invoiceHistory.length === 0 ? (
+                        <div className="text-center py-8 text-muted-foreground">
+                          Aucune facture trouvée. Générez votre première facture dans l'onglet Facturation.
+                        </div>
+                      ) : (
+                        invoiceHistory.map((invoice) => (
+                          <div
+                            key={invoice._id}
+                            className="flex items-center justify-between p-4 border border-slate-200 dark:border-slate-700 rounded-lg"
+                          >
+                            <div className="flex-1">
+                              <div className="flex items-center gap-4">
+                                <div>
+                                  <h4 className="font-medium text-base">{invoice.referenceNumber}</h4>
+                                  <p className="text-sm text-muted-foreground">{invoice.bakeryName}</p>
+                                </div>
+                                <div className="text-sm">
+                                  <p className="font-medium">€{invoice.totalAmount.toFixed(2)}</p>
+                                  <p className="text-muted-foreground">{invoice.orderCount} commande(s)</p>
+                                </div>
+                                <div className="text-sm">
+                                  <p className="font-medium">
+                                    {new Date(invoice.startDate).toLocaleDateString("fr-FR")} -{" "}
+                                    {new Date(invoice.endDate).toLocaleDateString("fr-FR")}
+                                  </p>
+                                  <p className="text-muted-foreground">
+                                    Créée le {new Date(invoice.createdAt).toLocaleDateString("fr-FR")}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-4">
+                              <div className="text-right">
+                                <p
+                                  className={`text-xs px-2 py-1 rounded-full ${
+                                    invoice.status === "downloaded"
+                                      ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                                      : "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200"
+                                  }`}
+                                >
+                                  {invoice.status === "downloaded" ? "Téléchargée" : "Générée"}
+                                </p>
+                                {invoice.lastDownloaded && (
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    Dernière fois: {new Date(invoice.lastDownloaded).toLocaleDateString("fr-FR")}
+                                  </p>
+                                )}
+                              </div>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleRegenerateInvoice(invoice.referenceNumber)}
+                                disabled={regeneratingInvoice === invoice.referenceNumber}
+                              >
+                                {regeneratingInvoice === invoice.referenceNumber ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Download className="h-4 w-4" />
+                                )}
+                              </Button>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>

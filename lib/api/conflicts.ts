@@ -73,19 +73,19 @@ export const getConflictOrders = async (token: string) => {
 }
 
 // Resolve a conflict (admin action)
-export const resolveConflict = async (orderId: string, resolutionData: ConflictResolution, token: string) => {
+export async function resolveConflict(orderId: string, resolution: ConflictResolution, token: string) {
   const response = await fetch(`${API_BASE}/orders/${orderId}/resolve-conflict`, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify(resolutionData)
+    body: JSON.stringify(resolution),
   })
 
   if (!response.ok) {
     const error = await response.json()
-    throw new Error(error.message || 'Failed to resolve conflict')
+    throw new Error(error.message || "Failed to resolve conflict")
   }
 
   return response.json()

@@ -346,13 +346,13 @@ export default function BakeryDashboard() {
             <p className="text-muted-foreground">Bienvenue sur votre tableau de bord boulangerie.</p>
           </div>
           <div className="flex items-center gap-2">
-            <Button 
+            {/* <Button 
               onClick={() => router.push('/bakery/orders')}
               size="sm"
             >
               <Plus className="h-4 w-4 mr-2" />
               Nouvelle commande
-            </Button>
+            </Button> */}
             <Button onClick={fetchOrdersData} variant="outline" size="sm" disabled={loading}>
               <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
               Actualiser
