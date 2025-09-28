@@ -5,7 +5,7 @@ The order creation interface was trying to fetch bakeries from `/api/bakery` end
 
 ## Root Cause
 - The `fetchBakeries` function was attempting to call `/api/bakery` via Next.js proxy
-- The proxy configuration in `next.config.mjs` routes `/api/*` to `http://localhost:5000/api/*`
+- The proxy configuration in `next.config.mjs` routes `/api/*` to `/api/*`
 - The backend at port 5000 doesn't have a `/api/bakery` endpoint implemented
 - This caused a 404 error that was being logged to console and showing error toasts
 

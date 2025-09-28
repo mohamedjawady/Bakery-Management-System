@@ -327,7 +327,7 @@ export default function AdminDashboard() {
     const testApiConnectivity = async () => {
       try {
         console.log("Testing API connectivity...")
-        const response = await fetch("http://localhost:5000/api/dashboard/test")
+        const response = await fetch("/api/dashboard/test")
         const data = await response.json()
         console.log("API test successful:", data)
       } catch (error) {

@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/dialog"
 import { Separator } from "@/components/ui/separator"
 
-const API_DELIVERIES_URL = "http://localhost:5000/api/deliveries"
+const API_DELIVERIES_URL = "/api/deliveries"
 
 export default function DeliveryDashboard() {
   const [deliveries, setDeliveries] = useState<Delivery[]>([])
@@ -130,7 +130,7 @@ export default function DeliveryDashboard() {
     }
 
     try {
-      const response = await fetch(`${"http://localhost:5000/orders"}/${deliveryId}`, {
+      const response = await fetch(`${"/orders"}/${deliveryId}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",

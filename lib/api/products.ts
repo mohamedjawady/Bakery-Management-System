@@ -1,7 +1,7 @@
 // lib/api/products.ts
 import { Product, ProductCreateInput, ProductUpdateInput, ProductFilters, ProductsResponse } from '@/types/product';
 
-const API_BASE_URL = 'http://localhost:5000/api/Products';
+const API_BASE_URL = '/api/Products';
 
 // Helper function to get auth token
 const getAuthToken = (): string | null => {

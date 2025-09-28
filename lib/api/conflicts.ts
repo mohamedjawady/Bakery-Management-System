@@ -35,7 +35,7 @@ export interface ConflictResolution {
 
 const API_BASE = process.env.NODE_ENV === 'production' 
   ? 'https://your-api-domain.com' 
-  : 'http://localhost:5000'
+  : ''
 
 // Report a conflict for an order
 export const reportConflict = async (orderId: string, conflictData: ConflictReport, token: string) => {

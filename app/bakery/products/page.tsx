@@ -5,7 +5,7 @@ import { DashboardLayout } from "@/components/layout/dashboard-layout"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useToast } from "@/hooks/use-toast"
-import { Plus, Loader2 } from 'lucide-react'
+import { Plus, Loader2 } from "lucide-react"
 
 // Import our new components and types
 import { ProductCard } from "@/components/products/product-card"
@@ -13,7 +13,7 @@ import { ProductFiltersComponent } from "@/components/products/product-filters"
 import { ProductModal } from "@/components/products/product-modal"
 import { ProductPagination } from "@/components/products/product-pagination"
 import { ExportButton } from "@/components/products/export-button"
-import { Product, ProductFilters } from "@/types/product"
+import type { Product, ProductFilters } from "@/types/product"
 import { getProducts, getProductCategories } from "@/lib/api/products"
 
 export default function BakeryProductsPage() {
@@ -22,61 +22,48 @@ export default function BakeryProductsPage() {
   const [categories, setCategories] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  
+
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
-  const [modalMode, setModalMode] = useState<'view' | 'edit' | 'create'>('view')
-  
+  const [modalMode, setModalMode] = useState<"view" | "edit" | "create">("view")
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(12)
   const [totalProducts, setTotalProducts] = useState(0)
-    // Filter state
+  // Filter state
   const [filters, setFilters] = useState<ProductFilters>({
-    search: '',
-    category: '',
+    search: "",
+    category: "",
     available: undefined,
     active: true, // Only show active products by default for bakery view
-    sortBy: 'name',
-    sortOrder: 'asc'
+    sortBy: "name",
+    sortOrder: "asc",
   })
 
   const { toast } = useToast()
-
-  // Check if user has admin/agent permissions for editing
-  const getUserRole = () => {
-    const userInfo = localStorage.getItem("userInfo")
-    if (userInfo) {
-      const parsed = JSON.parse(userInfo)
-      return parsed.role
-    }
-    return 'bakery'
-  }
-
-  const userRole = getUserRole()
-  const canEdit = userRole === 'admin' || userRole === 'agent'
 
   // Fetch products and categories
   const fetchProducts = async () => {
     try {
       setLoading(true)
       setError(null)
-        const [productsResponse, categoriesResponse] = await Promise.all([
+      const [productsResponse, categoriesResponse] = await Promise.all([
         getProducts({
           ...filters,
           page: currentPage,
-          limit: itemsPerPage
+          limit: itemsPerPage,
         }),
-        getProductCategories()
+        getProductCategories(),
       ])
 
       setProducts(productsResponse.data)
       setTotalProducts(productsResponse.pagination?.total || 0)
       setCategories(categoriesResponse)
     } catch (err) {
-      console.error('Error fetching products:', err)
-      setError('Erreur lors du chargement des produits')
+      console.error("Error fetching products:", err)
+      setError("Erreur lors du chargement des produits")
       toast({
         title: "Erreur",
         description: "Impossible de charger les produits",
@@ -111,35 +98,19 @@ export default function BakeryProductsPage() {
   // Modal handlers
   const handleViewProduct = (product: Product) => {
     setSelectedProduct(product)
-    setModalMode('view')
+    setModalMode("view")
     setIsModalOpen(true)
   }
 
   const handleEditProduct = (product: Product) => {
-    if (!canEdit) {
-      toast({
-        title: "Accès refusé",
-        description: "Vous n'avez pas les permissions pour modifier les produits",
-        variant: "destructive",
-      })
-      return
-    }
     setSelectedProduct(product)
-    setModalMode('edit')
+    setModalMode("edit")
     setIsModalOpen(true)
   }
 
   const handleCreateProduct = () => {
-    if (!canEdit) {
-      toast({
-        title: "Accès refusé",
-        description: "Vous n'avez pas les permissions pour créer des produits",
-        variant: "destructive",
-      })
-      return
-    }
     setSelectedProduct(null)
-    setModalMode('create')
+    setModalMode("create")
     setIsModalOpen(true)
   }
 
@@ -154,7 +125,7 @@ export default function BakeryProductsPage() {
     handleModalClose()
     toast({
       title: "Succès",
-      description: modalMode === 'create' ? "Produit créé avec succès" : "Produit modifié avec succès",
+      description: modalMode === "create" ? "Produit créé avec succès" : "Produit modifié avec succès",
     })
   }
 
@@ -179,26 +150,15 @@ export default function BakeryProductsPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <ExportButton 
-              currentFilters={filters}
-              variant="outline" 
-              size="sm"
-              disabled={loading}
-            />
-            {canEdit && (
-              <Button onClick={handleCreateProduct} className="w-full sm:w-auto">
-                <Plus className="h-4 w-4 mr-2" />
-                <span className="sm:inline">Nouveau produit</span>
-              </Button>
-            )}
+            <ExportButton currentFilters={filters} variant="outline" size="sm" disabled={loading} />
+            <Button onClick={handleCreateProduct} className="w-full sm:w-auto">
+              <Plus className="h-4 w-4 mr-2" />
+              <span className="sm:inline">Nouveau produit</span>
+            </Button>
           </div>
-        </div>        {/* Filters */}
-        <ProductFiltersComponent
-          filters={filters}
-          categories={categories}
-          onFiltersChange={handleFiltersChange}
-        />
-
+        </div>{" "}
+        {/* Filters */}
+        <ProductFiltersComponent filters={filters} categories={categories} onFiltersChange={handleFiltersChange} />
         {/* Products Content */}
         <Card>
           <CardHeader className="pb-3 sm:pb-4 px-4 sm:px-6">
@@ -206,7 +166,9 @@ export default function BakeryProductsPage() {
               <div>
                 <CardTitle className="text-lg sm:text-xl">Produits disponibles</CardTitle>
                 <CardDescription className="text-sm sm:text-base">
-                  {loading ? "Chargement..." : `${totalProducts} produit${totalProducts !== 1 ? 's' : ''} trouvé${totalProducts !== 1 ? 's' : ''}`}
+                  {loading
+                    ? "Chargement..."
+                    : `${totalProducts} produit${totalProducts !== 1 ? "s" : ""} trouvé${totalProducts !== 1 ? "s" : ""}`}
                 </CardDescription>
               </div>
             </div>
@@ -224,11 +186,7 @@ export default function BakeryProductsPage() {
             {error && !loading && (
               <div className="text-center py-6 sm:py-8 border rounded-md px-4">
                 <p className="text-destructive">{error}</p>
-                <Button 
-                  variant="outline" 
-                  onClick={fetchProducts}
-                  className="mt-4"
-                >
+                <Button variant="outline" onClick={fetchProducts} className="mt-4 bg-transparent">
                   Réessayer
                 </Button>
               </div>
@@ -238,16 +196,10 @@ export default function BakeryProductsPage() {
             {!loading && !error && products.length === 0 && (
               <div className="text-center py-6 sm:py-8 border rounded-md px-4">
                 <p>Aucun produit trouvé</p>
-                {canEdit && (
-                  <Button 
-                    variant="outline" 
-                    onClick={handleCreateProduct}
-                    className="mt-4"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Créer le premier produit
-                  </Button>
-                )}
+                <Button variant="outline" onClick={handleCreateProduct} className="mt-4 bg-transparent">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Créer le premier produit
+                </Button>
               </div>
             )}
 
@@ -255,11 +207,12 @@ export default function BakeryProductsPage() {
             {!loading && !error && products.length > 0 && (
               <>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
-                  {products.map((product) => (                    <ProductCard
+                  {products.map((product) => (
+                    <ProductCard
                       key={product._id}
                       product={product}
                       onView={handleViewProduct}
-                      onEdit={canEdit ? handleEditProduct : undefined}
+                      onEdit={handleEditProduct} // Removed canEdit condition - always pass edit handler
                       showActions={true}
                     />
                   ))}
@@ -277,7 +230,8 @@ export default function BakeryProductsPage() {
               </>
             )}
           </CardContent>
-        </Card>        {/* Product Modal */}
+        </Card>{" "}
+        {/* Product Modal */}
         <ProductModal
           isOpen={isModalOpen}
           onClose={handleModalClose}

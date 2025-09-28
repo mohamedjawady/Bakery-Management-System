@@ -54,7 +54,7 @@ interface LaboratoryFormData {
   isActive?: boolean
 }
 
-const API_BASE_URL = "http://localhost:5000/bakery"
+const API_BASE_URL = "/bakery"
 
 const initialFormData: LaboratoryFormData = {
   bakeryName: "",

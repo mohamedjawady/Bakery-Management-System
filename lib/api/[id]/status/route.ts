@@ -9,7 +9,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     console.log("  Status:", status)
     console.log("  Notes:", notes)
     console.log("  Payload being sent:", JSON.stringify({ status, notes }))
-    const externalApiUrl = process.env.EXTERNAL_DELIVERIES_API_URL || "http://localhost:5000/api/deliveries"
+    const externalApiUrl = process.env.EXTERNAL_DELIVERIES_API_URL || "/api/deliveries"
 
     const response = await fetch(`${externalApiUrl}/${id}/status`, {
       method: "PUT",

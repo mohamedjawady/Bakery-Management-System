@@ -101,7 +101,7 @@ This test script will:
 
 ## API Endpoints Used
 
-- **Orders API**: `http://localhost:5000/orders`
+- **Orders API**: `/orders`
   - Fetches all orders with delivery assignments
   - Used to check which users are assigned to orders
 

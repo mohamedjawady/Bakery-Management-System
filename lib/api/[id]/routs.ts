@@ -3,7 +3,7 @@ import { NextResponse } from "next/server"
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   const { id } = params
   try {
-    const externalApiUrl = process.env.EXTERNAL_DELIVERIES_API_URL || "http://localhost:5000/api/deliveries"
+    const externalApiUrl = process.env.EXTERNAL_DELIVERIES_API_URL || "/api/deliveries"
     const response = await fetch(`${externalApiUrl}/${id}`)
 
     if (!response.ok) {

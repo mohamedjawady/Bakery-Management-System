@@ -37,7 +37,7 @@ export default function BakeryDashboard() {
   // Function to fetch orders from the Next.js API route
   const fetchOrdersData = useCallback(async () => {
     try {
-      const response = await fetch(`http://localhost:5000/orders`, {
+      const response = await fetch(`/orders`, {
         cache: "no-store", // Ensure fresh data on each request
       })
 
@@ -256,7 +256,7 @@ export default function BakeryDashboard() {
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
       setLoading(true)
-      const response = await fetch(`http://localhost:5000/orders/${orderId}`, {
+      const response = await fetch(`/orders/${orderId}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -324,7 +324,7 @@ export default function BakeryDashboard() {
         <div className="flex flex-col gap-4 p-4">
           <div className="text-center text-red-500">{error}</div>
           <div className="text-center text-muted-foreground text-sm">
-            Please ensure your backend API is running at `http://localhost:5000/orders` and accessible.
+            Please ensure your backend API is running at `/orders` and accessible.
             <br />
             For the v0 preview, this API endpoint is not accessible. You will see data when running locally with your
             backend.

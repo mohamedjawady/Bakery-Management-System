@@ -8,7 +8,7 @@ import { Progress } from "@/components/ui/progress"
 import { ArrowRight, CheckCircle2, Clock, Filter, Search } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { useEffect, useState } from "react"
-// import type { Order, OrderProduct } from ".http://localhost:5000/orders/route" // Import the Order type
+// import type { Order, OrderProduct } from "./orders/route" // Import the Order type
 interface OrderProduct {
   productName: string
   productRef?: string
@@ -54,7 +54,7 @@ export default function LaboratoryDashboard() {
     setLoading(true)
     setError(null)
     try {
-      const response = await fetch("http://localhost:5000/orders")
+      const response = await fetch("/orders")
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
@@ -76,7 +76,7 @@ export default function LaboratoryDashboard() {
       }
       const { token } = JSON.parse(userInfo);
 
-      const response = await fetch('http://localhost:5000/api/laboratory-info/my-lab', {
+      const response = await fetch('/api/laboratory-info/my-lab', {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -129,7 +129,7 @@ export default function LaboratoryDashboard() {
 
   const updateOrderStatus = async (orderId: string, newStatus: Order["status"]) => {
     try {
-      const response = await fetch(`http://localhost:5000/orders/${orderId}`, {
+      const response = await fetch(`/orders/${orderId}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",

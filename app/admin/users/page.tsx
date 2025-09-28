@@ -90,7 +90,7 @@ export default function UsersPage() {
   const fetchBakeries = async () => {
     setIsLoadingBakeries(true)
     try {
-      const response = await fetch("http://localhost:5000/bakery")
+      const response = await fetch("/bakery")
       if (!response.ok) {
         throw new Error("Failed to fetch bakeries")
       }
@@ -113,7 +113,7 @@ export default function UsersPage() {
   const fetchLaboratories = async () => {
     setIsLoadingLaboratories(true)
     try {
-      const response = await fetch("http://localhost:5000/api/laboratory-info")
+      const response = await fetch("/api/laboratory-info")
       if (!response.ok) {
         throw new Error("Failed to fetch laboratories")
       }

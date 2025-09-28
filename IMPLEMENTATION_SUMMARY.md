@@ -6,7 +6,7 @@
 - **File**: `app/admin/delivery/validation/page.tsx`
 - **Features**:
   - Real-time validation of delivery user assignments
-  - Fetches data from both orders API (`http://localhost:5000/orders`) and users API (`/api/users`)
+  - Fetches data from both orders API (`/orders`) and users API (`/api/users`)
   - Detects 4 types of issues: INVALID_USER, INACTIVE_USER, MISSING_USER, MISMATCH
   - Provides severity levels (HIGH, MEDIUM, LOW) for prioritizing fixes
   - Tabbed interface with issues list, delivery users overview, and recommendations

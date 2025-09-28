@@ -112,7 +112,7 @@ export default function BakeryReclamationPage() {
         throw new Error("Authentication required")
       }
 
-      const response = await fetch("http://localhost:5000/orders", {
+      const response = await fetch("/orders", {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",

@@ -175,7 +175,7 @@ export default function LaboratoryProductionPage() {
       }
       const { token } = JSON.parse(userInfo);
 
-      const response = await fetch('http://localhost:5000/api/laboratory-info/my-lab', {
+      const response = await fetch('/api/laboratory-info/my-lab', {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -234,7 +234,7 @@ export default function LaboratoryProductionPage() {
       setLoading(true)
       setError(null)
 
-      const response = await fetch("http://localhost:5000/orders", {
+      const response = await fetch("/orders", {
         method: "GET",
         headers: {
           Accept: "application/json",
@@ -272,7 +272,7 @@ export default function LaboratoryProductionPage() {
 
   const testApiConnection = async () => {
     try {
-      const response = await fetch("http://localhost:5000/orders", {
+      const response = await fetch("/orders", {
         method: "GET",
         headers: {
           Accept: "application/json",
@@ -306,7 +306,7 @@ export default function LaboratoryProductionPage() {
       console.log(`Updating order ${orderId} to status: ${newStatus}`)
 
       // Make API call to update status
-      const response = await fetch(`http://localhost:5000/orders/${orderId}`, {
+      const response = await fetch(`/orders/${orderId}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",

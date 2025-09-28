@@ -66,7 +66,7 @@ function LaboratoryInformationContent() {
         }
         const { token } = JSON.parse(userInfo);
 
-        const fetchResponse = await fetch('http://localhost:5000/api/laboratory-info/my-lab', {
+        const fetchResponse = await fetch('/api/laboratory-info/my-lab', {
           headers: {
             'Authorization': `Bearer ${token}`,
           },
@@ -133,7 +133,7 @@ function LaboratoryInformationContent() {
       }
       const { token } = JSON.parse(userInfo);
 
-      const updateResponse = await fetch('http://localhost:5000/api/laboratory-info/my-lab', {
+      const updateResponse = await fetch('/api/laboratory-info/my-lab', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

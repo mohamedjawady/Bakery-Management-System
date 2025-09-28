@@ -63,7 +63,7 @@ export function ConnectionTest() {
 
         <div className="space-y-2 text-sm text-muted-foreground">
           <p>
-            <strong>Backend URL:</strong> {process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}
+            <strong>Backend URL:</strong> {process.env.NEXT_PUBLIC_API_URL || ""}
           </p>
           <p>
             <strong>Health Check:</strong> /health

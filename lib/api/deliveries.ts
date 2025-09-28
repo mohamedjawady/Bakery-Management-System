@@ -1,5 +1,5 @@
 // Delivery API service for frontend
-const API_BASE_URL = 'http://localhost:5000/api/deliveries';
+const API_BASE_URL = '/api/deliveries';
 
 // Types
 export interface Delivery {

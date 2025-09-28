@@ -50,7 +50,7 @@ export default function OrdersPage() {
     const fetchOrders = async () => {
       try {
         setIsLoading(true)
-        const response = await fetch("http://localhost:5000/orders")
+        const response = await fetch("/orders")
 
         if (!response.ok) {
           throw new Error(`Error: ${response.status}`)
@@ -170,7 +170,7 @@ console.log('filteredOrders',filteredOrders);
   // Handle status update
   const handleStatusUpdate = async (orderId: string, newStatus: Order["status"]) => {
     try {
-      const response = await fetch(`http://localhost:5000/orders/${orderId}`, {
+      const response = await fetch(`/orders/${orderId}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",

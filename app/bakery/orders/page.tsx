@@ -314,7 +314,7 @@ export default function BakeryOrdersPage() {
       const userInfo = localStorage.getItem("userInfo")
       const token = userInfo ? JSON.parse(userInfo).token : null
       
-      const response = await fetch("http://localhost:5000/api/laboratory-info", {
+      const response = await fetch("/api/laboratory-info", {
         headers: {
           "Content-Type": "application/json",
           ...(token && { Authorization: `Bearer ${token}` }),
@@ -359,7 +359,7 @@ export default function BakeryOrdersPage() {
           const token = user.token
           if (token) {
             // Fetch complete bakery info from API
-            const response = await fetch("http://localhost:5000/api/bakery-info", {
+            const response = await fetch("/api/bakery-info", {
               headers: {
                 Authorization: `Bearer ${token}`,
               },
@@ -407,7 +407,7 @@ export default function BakeryOrdersPage() {
       setIsLoading(true)
       setError(null)
       try {
-        const response = await fetch("http://localhost:5000/orders")
+        const response = await fetch("/orders")
         if (!response.ok) {
           throw new Error(`Failed to fetch orders: ${response.status}`)
         }
@@ -654,7 +654,7 @@ export default function BakeryOrdersPage() {
     }
 
     try {
-      const response = await fetch("http://localhost:5000/orders", {
+      const response = await fetch("/orders", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -690,7 +690,7 @@ export default function BakeryOrdersPage() {
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
       setIsLoading(true)
-      const response = await fetch(`http://localhost:5000/orders/${orderId}`, {
+      const response = await fetch(`/orders/${orderId}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",

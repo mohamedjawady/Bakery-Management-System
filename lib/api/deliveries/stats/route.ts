@@ -4,7 +4,7 @@ import type { Delivery } from "@/lib/api/deliveriess"
 // This Route Handler calculates and returns delivery statistics
 export async function GET() {
   try {
-    const externalApiUrl = process.env.EXTERNAL_DELIVERIES_API_URL || "http://localhost:5000/api/deliveries"
+    const externalApiUrl = process.env.EXTERNAL_DELIVERIES_API_URL || "/api/deliveries"
     const response = await fetch(externalApiUrl)
 
     if (!response.ok) {

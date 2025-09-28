@@ -64,7 +64,7 @@ You requested help to **check that orders (commandes) are being assigned to the 
 ### **For Command-Line Testing**:
 ```powershell
 # Make sure your servers are running:
-# Backend: http://localhost:5000
+# Backend: 
 # Frontend: http://localhost:3000
 
 node test-delivery-validation.js

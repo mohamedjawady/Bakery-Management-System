@@ -20,7 +20,7 @@ export default function DebugPage() {
 
     // Test 1: Health check
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/health`)
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/health`)
       const data = await response.json()
       results.push({
         test: "Health Check",
@@ -39,7 +39,7 @@ export default function DebugPage() {
 
     // Test 2: Test endpoint
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/test`)
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/test`)
       const data = await response.json()
       results.push({
         test: "Test Endpoint",
@@ -97,7 +97,7 @@ export default function DebugPage() {
             <CardContent className="space-y-2">
               <div className="space-y-1">
                 <p className="text-sm font-medium">Backend URL:</p>
-                <Badge variant="outline">{process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}</Badge>
+                <Badge variant="outline">{process.env.NEXT_PUBLIC_API_URL || ""}</Badge>
               </div>
               <div className="space-y-1">
                 <p className="text-sm font-medium">Environment:</p>
@@ -182,7 +182,7 @@ export default function DebugPage() {
             <div className="space-y-2">
               <h4 className="font-medium">2. Verify Environment Variables</h4>
               <p className="text-sm text-muted-foreground">Create a .env.local file in your Next.js project root:</p>
-              <code className="block bg-gray-100 p-2 rounded text-sm">NEXT_PUBLIC_API_URL=http://localhost:5000</code>
+              <code className="block bg-gray-100 p-2 rounded text-sm">NEXT_PUBLIC_API_URL=</code>
             </div>
 
             <div className="space-y-2">
@@ -192,34 +192,34 @@ export default function DebugPage() {
                 <li>
                   •{" "}
                   <a
-                    href="http://localhost:5000/health"
+                    href="/health"
                     target="_blank"
                     className="text-blue-600 hover:underline"
                     rel="noreferrer"
                   >
-                    http://localhost:5000/health
+                    /health
                   </a>
                 </li>
                 <li>
                   •{" "}
                   <a
-                    href="http://localhost:5000/api/test"
+                    href="/api/test"
                     target="_blank"
                     className="text-blue-600 hover:underline"
                     rel="noreferrer"
                   >
-                    http://localhost:5000/api/test
+                    /api/test
                   </a>
                 </li>
                 <li>
                   •{" "}
                   <a
-                    href="http://localhost:5000/api/announcements"
+                    href="/api/announcements"
                     target="_blank"
                     className="text-blue-600 hover:underline"
                     rel="noreferrer"
                   >
-                    http://localhost:5000/api/announcements
+                    /api/announcements
                   </a>
                 </li>
               </ul>
