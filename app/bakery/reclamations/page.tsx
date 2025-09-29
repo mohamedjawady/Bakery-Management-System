@@ -89,6 +89,7 @@ interface ConflictOrder {
 
 export default function BakeryReclamationPage() {
   const [orders, setOrders] = useState<Order[]>([])
+  const [ordersall, setOrdersall] = useState<Order[]>([])
   const [conflictOrders, setConflictOrders] = useState<ConflictOrder[]>([])
   const [loading, setLoading] = useState(true)
   const [loadingConflicts, setLoadingConflicts] = useState(true)
@@ -102,44 +103,58 @@ export default function BakeryReclamationPage() {
   const { toast } = useToast()
 
   // Fetch orders for the bakery
-  const fetchOrders = async () => {
-    setLoading(true)
-    try {
-      const userInfo = localStorage.getItem("userInfo")
-      const token = userInfo ? JSON.parse(userInfo).token : null
+ const fetchOrders = async () => {
+  setLoading(true)
+  try {
+    const userInfo = localStorage.getItem("userInfo")
+    const parsedUserInfo = userInfo ? JSON.parse(userInfo) : null
+    const token = parsedUserInfo?.token || null
+    const bakeryName = parsedUserInfo?.bakeryName || null
 
-      if (!token) {
-        throw new Error("Authentication required")
-      }
-
-      const response = await fetch("/orders", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      })
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch orders")
-      }
-
-      const ordersData = await response.json()
-      // Filter orders for delivered status where conflicts can be reported
-      const deliveredOrders = ordersData.filter(
-        (order: Order) => order.status === "DELIVERED" || order.status === "COMPLETED",
-      )
-      setOrders(deliveredOrders)
-    } catch (error) {
-      console.error("Error fetching orders:", error)
-      toast({
-        title: "Erreur de chargement",
-        description: error instanceof Error ? error.message : "Impossible de charger les commandes",
-        variant: "destructive",
-      })
-    } finally {
-      setLoading(false)
+    if (!token || !bakeryName) {
+      throw new Error("Authentication required")
     }
+
+    const response = await fetch("/orders", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    })
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch orders")
+    }
+
+    const ordersData = await response.json()
+
+    // Filter orders: status delivered/completed AND bakeryName matches
+    const filteredOrders = ordersData.filter(
+      (order: Order) =>
+        (order.status === "DELIVERED" || order.status === "COMPLETED") &&
+        order.bakeryName === bakeryName
+    )
+const filtered = ordersData.filter(
+      (order: Order) =>
+        (order.status === "DELIVERED" || order.status === "COMPLETED") &&
+        order.bakeryName === bakeryName &&
+        order.conflictStatus !== "NONE"
+    )
+    setOrders(filteredOrders)
+    setOrdersall(filtered)
+  } catch (error) {
+    console.error("Error fetching orders:", error)
+    toast({
+      title: "Erreur de chargement",
+      description:
+        error instanceof Error ? error.message : "Impossible de charger les commandes",
+      variant: "destructive",
+    })
+  } finally {
+    setLoading(false)
   }
+}
+
 
   // Fetch existing conflict orders for this bakery
   const fetchConflictOrders = async () => {
@@ -409,7 +424,7 @@ export default function BakeryReclamationPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredConflictOrders.length === 0 ? (
+                      {ordersall.length === 0 ? (
                         <TableRow>
                           <TableCell colSpan={5} className="text-center py-8">
                             {statusFilter === "RESOLVED"
@@ -418,7 +433,7 @@ export default function BakeryReclamationPage() {
                           </TableCell>
                         </TableRow>
                       ) : (
-                        filteredConflictOrders.map((conflict) => (
+                        ordersall.map((conflict) => (
                           <TableRow key={conflict._id}>
                             <TableCell className="font-medium">
                               <div>

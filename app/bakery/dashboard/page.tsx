@@ -448,9 +448,7 @@ export default function BakeryDashboard() {
                           <Button variant="outline" size="sm" onClick={() => handleViewDetails(order)}>
                             Détails
                           </Button>
-                          <Button size="sm" onClick={() => handleAcceptOrder(order._id)}>
-                            Accepter <ArrowRight className="ml-2 h-4 w-4" />
-                          </Button>
+                         
                         </CardFooter>
                       </Card>
                     ))

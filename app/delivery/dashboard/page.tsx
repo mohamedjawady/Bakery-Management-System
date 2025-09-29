@@ -114,56 +114,65 @@ export default function DeliveryDashboard() {
     fetchData()
   }, [fetchData])
 
-  const handleUpdateStatus = async (
-    deliveryId: string,
-    newStatus: DeliveryStatus,
-    successMessage: string,
-    errorMessage: string,
-    notes?: string,
-  ) => {
-    setIsActionLoading(true)
-    const token = getToken()
-    if (!token) {
-      handleAuthError()
-      setIsActionLoading(false)
-      return
-    }
+ const handleUpdateStatus = async (
+  deliveryId: string,
+  newStatus: DeliveryStatus,
+  successMessage: string,
+  errorMessage: string,
+  notes?: string,
+) => {
+  setIsActionLoading(true)
+  const token = getToken()
+  const userInfo = localStorage.getItem("userInfo")
+  const parsedUserInfo = userInfo ? JSON.parse(userInfo) : null
 
-    try {
-      const response = await fetch(`${"/orders"}/${deliveryId}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ status: newStatus, notes }),
-      })
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          handleAuthError()
-          return
-        }
-        const errorData = await response.json()
-        throw new Error(errorData.message || errorMessage)
-      }
-
-      toast({
-        title: "Succès",
-        description: successMessage,
-      })
-      fetchData() // Re-fetch all data to update the dashboard
-    } catch (error: any) {
-      console.error(`Error updating delivery status to ${newStatus}:`, error)
-      toast({
-        title: "Erreur",
-        description: error.message || errorMessage,
-        variant: "destructive",
-      })
-    } finally {
-      setIsActionLoading(false)
-    }
+  if (!token || !parsedUserInfo) {
+    handleAuthError()
+    setIsActionLoading(false)
+    return
   }
+
+  try {
+    const response = await fetch(`${"/orders"}/${deliveryId}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        status: newStatus,
+        notes,
+        deliveryUserId: parsedUserInfo.email, // 👈 email as ID
+        deliveryUserName: `${parsedUserInfo.firstName} ${parsedUserInfo.lastName}`, // 👈 full name
+      }),
+    })
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        handleAuthError()
+        return
+      }
+      const errorData = await response.json()
+      throw new Error(errorData.message || errorMessage)
+    }
+
+    toast({
+      title: "Succès",
+      description: successMessage,
+    })
+    fetchData()
+  } catch (error: any) {
+    console.error(`Error updating delivery status to ${newStatus}:`, error)
+    toast({
+      title: "Erreur",
+      description: error.message || errorMessage,
+      variant: "destructive",
+    })
+  } finally {
+    setIsActionLoading(false)
+  }
+}
+
 
   const handlePickUp = (deliveryId: string) => {
     handleUpdateStatus(
