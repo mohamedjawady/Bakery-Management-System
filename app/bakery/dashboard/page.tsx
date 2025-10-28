@@ -31,8 +31,25 @@ export default function BakeryDashboard() {
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false)
   const [viewingOrder, setViewingOrder] = useState<Order | null>(null)
   const [activeTab, setActiveTab] = useState("all")
+  const [bakeryName, setBakeryName] = useState<string>("Boulangerie") // State for bakery name
   const { toast } = useToast() // Initialize useToast
   const router = useRouter() // Initialize useRouter
+
+  // Fetch bakery name from localStorage on component mount
+  useEffect(() => {
+    try {
+      const userInfo = localStorage.getItem("userInfo") || localStorage.getItem("userData")
+      if (userInfo) {
+        const user = JSON.parse(userInfo)
+        if (user.bakeryName) {
+          setBakeryName(user.bakeryName)
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching bakery name from localStorage:", error)
+      setBakeryName("Boulangerie") // Fallback to default name
+    }
+  }, [])
 
   // Function to fetch orders from the Next.js API route
   const fetchOrdersData = useCallback(async () => {
@@ -339,7 +356,7 @@ export default function BakeryDashboard() {
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Boulangerie Saint-Michel</h1>
+            <h1 className="text-3xl font-bold tracking-tight">{bakeryName}</h1>
             <p className="text-muted-foreground">Bienvenue sur votre tableau de bord boulangerie.</p>
           </div>
           <div className="flex items-center gap-2">

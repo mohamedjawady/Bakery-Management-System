@@ -402,6 +402,56 @@ export default function BakeryOrdersPage() {
     fetchUserDataAndBakeryInfo()
   }, [])
 
+  // Re-fetch bakery info when dialog opens (in case it was reset)
+  useEffect(() => {
+    const ensureBakeryInfo = async () => {
+      // Only fetch if dialog is open and fields are empty
+      if (isCreateDialogOpen && (!bakeryName || !address)) {
+        try {
+          const userData = localStorage.getItem("userInfo") || localStorage.getItem("userData")
+          if (userData) {
+            const user = JSON.parse(userData)
+            
+            if (!bakeryName && user.bakeryName) {
+              setBakeryName(user.bakeryName)
+            }
+            
+            // Get token for API call
+            const token = user.token
+            if (token) {
+              const response = await fetch("/api/bakery-info", {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+              })
+              
+              if (response.ok) {
+                const bakeryData = await response.json()
+                if (bakeryData) {
+                  if (!bakeryName && bakeryData.name) {
+                    setBakeryName(bakeryData.name)
+                  }
+                  if (!address && bakeryData.address) {
+                    setAddress(bakeryData.address)
+                  }
+                }
+              }
+            }
+            
+            // Fallback to user data if API fails
+            if (!address && user.address) {
+              setAddress(user.address)
+            }
+          }
+        } catch (error) {
+          console.error("Error ensuring bakery info:", error)
+        }
+      }
+    }
+
+    ensureBakeryInfo()
+  }, [isCreateDialogOpen])
+
   useEffect(() => {
     const fetchOrders = async () => {
       setIsLoading(true)
@@ -491,14 +541,16 @@ export default function BakeryOrdersPage() {
   }
 
   // Update the resetOrderForm function to include the new state
+  // NOTE: We don't reset bakeryName and address as they should persist for the logged-in bakery
   const resetOrderForm = () => {
     setCurrentStep("laboratory")
     setSelectedLaboratory(null)
     setOrderProducts([])
     setOrderNotes("")
-    setBakeryName("")
+    // Don't reset bakeryName and address - they should remain auto-filled for subsequent orders
+    // setBakeryName("")
     setScheduledDate(new Date())
-    setAddress("")
+    // setAddress("")
     setFilteredProducts([])
     setProductSearchTerm("")
     setSelectedCategory("all")
