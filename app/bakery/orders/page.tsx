@@ -344,94 +344,188 @@ export default function BakeryOrdersPage() {
   }
 
   // Effects
-  useEffect(() => {
-    const fetchUserDataAndBakeryInfo = async () => {
-      try {
-        // First try to get basic info from localStorage
-        const userData = localStorage.getItem("userInfo") || localStorage.getItem("userData")
-        if (userData) {
-          const user = JSON.parse(userData)
-          if (user.bakeryName) {
-            setBakeryName(user.bakeryName)
-          }
-          
-          // Get token for API call
-          const token = user.token
-          if (token) {
-            // Fetch complete bakery info from API
-            const response = await fetch("/api/bakery-info", {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            })
-            
-            if (response.ok) {
-              const bakeryData = await response.json()
-              if (bakeryData) {
-                // Update with API data (more complete)
-                if (bakeryData.name) {
-                  setBakeryName(bakeryData.name)
-                }
-                if (bakeryData.address) {
-                  setAddress(bakeryData.address)
-                }
+useEffect(() => {
+  const fetchUserDataAndBakeryInfo = async () => {
+    try {
+      // Get user info from localStorage
+      const userData = localStorage.getItem("userInfo") || localStorage.getItem("userData")
+      if (userData) {
+        const user = JSON.parse(userData)
+        if (user.bakeryName) {
+          setBakeryName(user.bakeryName)
+        }
+
+        const token = user.token
+        if (token) {
+          // Fetch bakery data from API
+          const response = await fetch("/bakery", {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          })
+
+          if (response.ok) {
+            const bakeryData = await response.json()
+
+            // If bakeryData is an array, find the one that matches the user's bakery name
+            const matchedBakery = Array.isArray(bakeryData)
+              ? bakeryData.find((b) => b.name === user.bakeryName || b.bakeryName === user.bakeryName)
+              : bakeryData.name === user.bakeryName || bakeryData.bakeryName === user.bakeryName
+              ? bakeryData
+              : null
+
+            if (matchedBakery) {
+              if (matchedBakery.name) {
+                setBakeryName(matchedBakery.name)
+              }
+              if (matchedBakery.address) {
+                setAddress(matchedBakery.address)
               }
             }
           }
         }
-      } catch (error) {
-        console.error("Error fetching user data and bakery info:", error)
-        // Fallback to localStorage only
+      }
+    } catch (error) {
+      console.error("Error fetching user data and bakery info:", error)
+
+      // Fallback to localStorage only
+      const userData = localStorage.getItem("userInfo") || localStorage.getItem("userData")
+      if (userData) {
+        try {
+          const user = JSON.parse(userData)
+          if (user.bakeryName) {
+            setBakeryName(user.bakeryName)
+          }
+          if (user.address) {
+            setAddress(user.address)
+          }
+        } catch (parseError) {
+          console.error("Error parsing user data from localStorage:", parseError)
+        }
+      }
+    }
+  }
+
+  fetchUserDataAndBakeryInfo()
+}, [])
+
+  // Re-fetch bakery info when dialog opens (in case it was reset)
+  useEffect(() => {
+  const ensureBakeryInfo = async () => {
+    // Only fetch if dialog is open and fields are empty
+    if (isCreateDialogOpen && (!bakeryName || !address)) {
+      try {
         const userData = localStorage.getItem("userInfo") || localStorage.getItem("userData")
         if (userData) {
-          try {
-            const user = JSON.parse(userData)
-            if (user.bakeryName) {
-              setBakeryName(user.bakeryName)
+          const user = JSON.parse(userData)
+
+          if (!bakeryName && user.bakeryName) {
+            setBakeryName(user.bakeryName)
+          }
+
+          // Get token for API call
+          const token = user.token
+          if (token) {
+            const response = await fetch("/bakery", {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            })
+
+            if (response.ok) {
+              const bakeryData = await response.json()
+
+              // ✅ Filter to match the user's bakery name
+              const matchedBakery = Array.isArray(bakeryData)
+                ? bakeryData.find(
+                    (b) =>
+                      b.name === user.bakeryName ||
+                      b.bakeryName === user.bakeryName
+                  )
+                : bakeryData.name === user.bakeryName ||
+                  bakeryData.bakeryName === user.bakeryName
+                ? bakeryData
+                : null
+
+              if (matchedBakery) {
+                if (!bakeryName && matchedBakery.name) {
+                  setBakeryName(matchedBakery.name)
+                }
+                if (!address && matchedBakery.address) {
+                  setAddress(matchedBakery.address)
+                }
+              }
             }
-            if (user.address) {
-              setAddress(user.address)
-            }
-          } catch (parseError) {
-            console.error("Error parsing user data from localStorage:", parseError)
+          }
+
+          // Fallback to user data if API fails or no match found
+          if (!address && user.address) {
+            setAddress(user.address)
           }
         }
+      } catch (error) {
+        console.error("Error ensuring bakery info:", error)
       }
     }
+  }
 
-    fetchUserDataAndBakeryInfo()
-  }, [])
+  ensureBakeryInfo()
+}, [isCreateDialogOpen])
+
 
   useEffect(() => {
-    const fetchOrders = async () => {
-      setIsLoading(true)
-      setError(null)
-      try {
-        const response = await fetch("/orders")
-        if (!response.ok) {
-          throw new Error(`Failed to fetch orders: ${response.status}`)
-        }
-        const data = await response.json()
-        setOrders(data)
-      } catch (error) {
-        console.error("Error fetching orders:", error)
-        setError("Failed to load orders. Please try again later.")
-        toast({
-          title: "Error",
-          description: "Failed to load orders. Please try again later.",
-          variant: "destructive",
-        })
-      } finally {
-        setIsLoading(false)
+  const fetchOrders = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      // ✅ Get bakery info from localStorage
+      const storedUser = localStorage.getItem("userInfo") || localStorage.getItem("userData");
+      const bakeryName = storedUser ? JSON.parse(storedUser)?.bakeryName : null;
+
+      if (!bakeryName) {
+        setError("No bakery information found in local storage.");
+        setOrders([]);
+        setIsLoading(false);
+        return;
       }
-    }
 
-    const fetchAllData = async () => {
-      await Promise.all([fetchOrders(), fetchDeliveryUsers(), fetchProducts(), fetchBakeries(), fetchLaboratories()])
-    }
+      const response = await fetch("/orders", { cache: "no-store" });
+      if (!response.ok) {
+        throw new Error(`Failed to fetch orders: ${response.status}`);
+      }
 
-    fetchAllData()
-  }, [toast])
+      const data = await response.json();
+
+      // ✅ Filter orders by bakeryName
+      const filteredOrders = data.filter(order => order.bakeryName === bakeryName);
+
+      setOrders(filteredOrders);
+    } catch (error) {
+      console.error("Error fetching orders:", error);
+      setError("Failed to load orders. Please try again later.");
+      toast({
+        title: "Error",
+        description: "Failed to load orders. Please try again later.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchAllData = async () => {
+    await Promise.all([
+      fetchOrders(),
+      fetchDeliveryUsers(),
+      fetchProducts(),
+      fetchBakeries(),
+      fetchLaboratories(),
+    ]);
+  };
+
+  fetchAllData();
+}, [toast]);
+
 
   useEffect(() => {
     if (selectedLaboratory && products.length > 0) {
@@ -491,14 +585,16 @@ export default function BakeryOrdersPage() {
   }
 
   // Update the resetOrderForm function to include the new state
+  // NOTE: We don't reset bakeryName and address as they should persist for the logged-in bakery
   const resetOrderForm = () => {
     setCurrentStep("laboratory")
     setSelectedLaboratory(null)
     setOrderProducts([])
     setOrderNotes("")
-    setBakeryName("")
+    // Don't reset bakeryName and address - they should remain auto-filled for subsequent orders
+    // setBakeryName("")
     setScheduledDate(new Date())
-    setAddress("")
+    // setAddress("")
     setFilteredProducts([])
     setProductSearchTerm("")
     setSelectedCategory("all")
@@ -1242,6 +1338,7 @@ export default function BakeryOrdersPage() {
         <Textarea
           id="address"
           value={address}
+          readOnly
           onChange={(e) => setAddress(e.target.value)}
           placeholder="Entrez l'adresse de livraison"
           rows={3}

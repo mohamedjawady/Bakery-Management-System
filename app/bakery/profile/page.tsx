@@ -61,63 +61,84 @@ export default function ProfilePage() {
   })
 
   useEffect(() => {
-    const fetchBakeryInfo = async () => {
-      setIsLoadingData(true)
-      const token = getToken()
-      if (!token) {
-        router.push("/login")
-        return
-      }
+  const fetchBakeryInfo = async () => {
+    setIsLoadingData(true)
 
-      try {
-        const response = await fetch("/api/bakery-info", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-         
-          
-        })
-
-        if (!response.ok) {
-          if (response.status === 401) router.push("/login")
-          throw new Error("Failed to fetch bakery information")
-        }
-console.log(response);
-
-        const data = await response.json()
-        if (data) {
-          form.reset({
-            name: data.name || "",
-            address: data.address || "",
-            city: data.city || "",
-            postalCode: data.postalCode || "",
-            phone: data.phone || "",
-            email: data.email || "",
-            siret: data.siret || "",
-            vatNumber: data.vatNumber || "",
-            website: data.website || "",
-            logoUrl: data.logoUrl || "",
-          })
-        } else {
-          toast({
-            title: "Aucune information de boulangerie trouvée",
-            description: "Veuillez remplir le formulaire pour ajouter les informations.",
-          })
-        }
-      } catch (error: any) {
-        console.error("Error fetching bakery info:", error)
-        toast({
-          title: "Erreur de chargement",
-          description: error.message || "Impossible de charger les informations de la boulangerie.",
-          variant: "destructive",
-        })
-      } finally {
-        setIsLoadingData(false)
-      }
+    const token = getToken()
+    if (!token) {
+      router.push("/login")
+      return
     }
 
-    fetchBakeryInfo()
-  }, [form, toast, router])
+    try {
+      // Get bakery name from localStorage
+      const userData = localStorage.getItem("userInfo") || localStorage.getItem("userData")
+      if (!userData) {
+        throw new Error("Aucune donnée utilisateur trouvée.")
+      }
+
+      const user = JSON.parse(userData)
+      const bakeryName = user.bakeryName
+      if (!bakeryName) {
+        throw new Error("Nom de la boulangerie introuvable dans les données utilisateur.")
+      }
+
+      // ✅ Call API with bakery name
+      const response = await fetch(
+        `/bakery/name/${(bakeryName)}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      )
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          router.push("/login")
+          return
+        }
+        throw new Error("Échec de la récupération des informations de la boulangerie.")
+      }
+
+      const data = await response.json()
+      console.log("✅ Bakery info loaded:", data)
+
+      if (data) {
+        form.reset({
+          name: data.bakeryName || "",
+          address: data.address || "",
+          city: data.city || "",
+          postalCode: data.postalCode || "",
+          phone: data.phone || "",
+          email: data.email || "",
+          siret: data.siret || "",
+          vatNumber: data.vatNumber || "",
+          website: data.website || "",
+          logoUrl: data.logoUrl || "",
+        })
+      } else {
+        toast({
+          title: "Aucune information de boulangerie trouvée",
+          description: "Veuillez remplir le formulaire pour ajouter les informations.",
+        })
+      }
+    } catch (error: any) {
+      console.error("Error fetching bakery info:", error)
+      toast({
+        title: "Erreur de chargement",
+        description: error.message || "Impossible de charger les informations de la boulangerie.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoadingData(false)
+    }
+  }
+
+  fetchBakeryInfo()
+}, [form, toast, router])
+
 
   async function onProfileSubmit(data: BakeryProfileFormValues) {
     setIsSaving(true)

@@ -4,51 +4,20 @@ import { DashboardLayout } from "@/components/layout/dashboard-layout"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
-import { ArrowRight, CheckCircle2, Clock, Filter, Search } from "lucide-react"
+import { ArrowRight, CheckCircle2, Clock, Download, Printer, Filter, Search } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { useEffect, useState } from "react"
-// import type { Order, OrderProduct } from "./orders/route" // Import the Order type
-interface OrderProduct {
-  productName: string
-  productRef?: string
-  laboratory: string
-  unitPriceHT: number
-  unitPriceTTC: number
-  taxRate: number
-  quantity: number
-  totalPriceHT: number
-  taxAmount: number
-  totalPriceTTC: number
-  totalPrice: number // For backward compatibility, same as totalPriceTTC
-}
+import { BakeryRecapTable } from "@/components/bakery-recap-table"
+import { generateExcelFile, downloadExcel, printExcel } from "@/lib/excel-export"
+import type { Order, OrderProduct } from "@/types/order"
 
-interface Order {
-  _id: string // Simulating MongoDB _id
-  orderId: string
-  orderReferenceId: string
-  bakeryName: string
-  deliveryUserId: string
-  deliveryUserName: string
-  scheduledDate: string // Using string for simplicity, can be Date
-  actualDeliveryDate: string | null
-  status: "PENDING" | "IN_PROGRESS" | "READY_FOR_DELIVERY" | "DELIVERED"
-  notes?: string
-  address: string
-  products: OrderProduct[]
-  orderTotalHT: number
-  orderTaxAmount: number
-  orderTotalTTC: number
-  createdAt: string
-  updatedAt: string
-}
 export default function LaboratoryDashboard() {
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [userLabName, setUserLabName] = useState<string | null>(null)
-  const [labData, setLabData] = useState<any>(null)
+  const [isExporting, setIsExporting] = useState(false)
 
   const fetchOrders = async () => {
     setLoading(true)
@@ -68,64 +37,30 @@ export default function LaboratoryDashboard() {
   }
 
   const fetchLaboratoryInfo = async () => {
-    try {
-      const userInfo = localStorage.getItem('userInfo');
-      if (!userInfo) {
-        console.error('No userInfo found in localStorage');
-        return;
-      }
-      const { token } = JSON.parse(userInfo);
+  try {
+    const userInfoString = localStorage.getItem("userInfo")
+    if (!userInfoString) return null
 
-      const response = await fetch('/api/laboratory-info/my-lab', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch laboratory info');
-      }
-      
-      const data = await response.json();
-      console.log('Laboratory API Response:', data);
-      
-      // Handle both array and single object responses
-      let laboratoryData;
-      if (Array.isArray(data)) {
-        const activeLab = data.find(lab => lab.isActive) || data[0];
-        laboratoryData = activeLab;
-      } else {
-        laboratoryData = data;
-      }
-      
-      if (laboratoryData) {
-        setLabData(laboratoryData);
-        setUserLabName(laboratoryData.labName);
-        console.log('Set lab name to:', laboratoryData.labName);
-      }
-    } catch (error) {
-      console.error('Error fetching laboratory info:', error);
-      // Fallback to localStorage user data if API fails
-      const userDataString = localStorage.getItem("user")
-      if (userDataString) {
-        try {
-          const userData = JSON.parse(userDataString)
-          if (userData && userData.labName) {
-            setUserLabName(userData.labName)
-          }
-        } catch (e) {
-          console.error("Failed to parse user data from local storage", e)
-        }
-      }
+    const userInfo = JSON.parse(userInfoString)
+    if (userInfo && userInfo.labName) {
+      setUserLabName(userInfo.labName)
+      return userInfo.labName   // ⬅️ return it
     }
-  }
 
-  useEffect(() => {
-    // Fetch laboratory info first, then orders
-    fetchLaboratoryInfo().then(() => {
-      fetchOrders()
-    })
-  }, [])
+    return null
+  } catch (error) {
+    console.error("Error:", error)
+    return null
+  }
+}
+
+
+useEffect(() => {
+  fetchLaboratoryInfo().then((lab) => {
+    if (lab) fetchOrders(lab)
+  })
+}, [])
+
 
   const updateOrderStatus = async (orderId: string, newStatus: Order["status"]) => {
     try {
@@ -164,6 +99,53 @@ export default function LaboratoryDashboard() {
   const inProductionOrders = filteredOrders.filter((order) => order.status === "IN_PROGRESS")
   const readyForDeliveryOrders = filteredOrders.filter((order) => order.status === "READY_FOR_DELIVERY")
 
+  const productTotals = pendingOrders.reduce(
+    (acc, order) => {
+      order.products.forEach((product) => {
+        if (!acc[product.productName]) {
+          acc[product.productName] = {
+            productName: product.productName,
+            productRef: product.productRef,
+            totalQuantity: 0,
+          }
+        }
+        acc[product.productName].totalQuantity += product.quantity
+      })
+      return acc
+    },
+    {} as Record<string, { productName: string; productRef?: string; totalQuantity: number }>,
+  )
+
+  const productTotalsArray = Object.values(productTotals).sort((a, b) => a.productName.localeCompare(b.productName))
+
+  const handleExportExcel = async () => {
+    setIsExporting(true)
+    try {
+      const buffer = await generateExcelFile(filteredOrders, userLabName, pendingOrders, productTotalsArray)
+      const filename = `production_report_${new Date().toISOString().split("T")[0]}.xlsx`
+      downloadExcel(buffer, filename)
+    } catch (error) {
+      console.error("Error exporting Excel:", error)
+      setError("Erreur lors de l'export Excel")
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
+  const handlePrintExcel = async () => {
+    setIsExporting(true)
+    try {
+      const buffer = await generateExcelFile(filteredOrders, userLabName, pendingOrders, productTotalsArray)
+      const filename = `production_report_${new Date().toISOString().split("T")[0]}.xlsx`
+      printExcel(buffer, filename)
+    } catch (error) {
+      console.error("Error printing Excel:", error)
+      setError("Erreur lors de l'impression")
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
   if (loading) {
     return (
       <DashboardLayout role="laboratory">
@@ -196,8 +178,8 @@ export default function LaboratoryDashboard() {
               {new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="relative w-full md:w-auto">
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="relative">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 type="search"
@@ -210,6 +192,24 @@ export default function LaboratoryDashboard() {
             <Button variant="outline" size="icon">
               <Filter className="h-4 w-4" />
               <span className="sr-only">Filtrer</span>
+            </Button>
+            <Button
+              onClick={handleExportExcel}
+              disabled={isExporting}
+              className="flex items-center gap-2 bg-transparent"
+              variant="outline"
+            >
+              <Download className="h-4 w-4" />
+              Excel
+            </Button>
+            <Button
+              onClick={handlePrintExcel}
+              disabled={isExporting}
+              className="flex items-center gap-2 bg-transparent"
+              variant="outline"
+            >
+              <Printer className="h-4 w-4" />
+              Imprimer
             </Button>
           </div>
         </div>
@@ -244,6 +244,9 @@ export default function LaboratoryDashboard() {
           </Card>
         </div>
 
+        <h2 className="text-xl font-semibold mt-4">Récapitulatif des commandes</h2>
+        <BakeryRecapTable orders={filteredOrders} />
+
         <h2 className="text-xl font-semibold mt-4">Tableau de production</h2>
 
         <div className="grid gap-4">
@@ -258,6 +261,22 @@ export default function LaboratoryDashboard() {
               </div>
             </CardHeader>
             <CardContent className="p-0">
+              {productTotalsArray.length > 0 && (
+                <div className="p-4 bg-muted/50 border-b">
+                  <h4 className="font-semibold mb-3 text-sm">Total par produit</h4>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                    {productTotalsArray.map((product, idx) => (
+                      <div key={idx} className="flex items-center justify-between bg-background rounded-md p-3 border">
+                        <span className="text-sm font-medium truncate mr-2">{product.productName}</span>
+                        <Badge variant="secondary" className="shrink-0">
+                          {product.totalQuantity}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="divide-y">
                 {pendingOrders.length > 0 ? (
                   pendingOrders.map((order) => (
@@ -332,9 +351,7 @@ export default function LaboratoryDashboard() {
                               <span>
                                 {product.productName} (x{product.quantity})
                               </span>
-                              
                             </div>
-                            
                           </div>
                         ))}
                       </div>
@@ -391,7 +408,7 @@ export default function LaboratoryDashboard() {
                     </div>
                   ))
                 ) : (
-                  <p className="p-4 text-muted-foreground">Aucune commande prête pour livraison.</p>
+                  <p className="p-4 text-muted-foreground">Aucune commande prêtes pour livraison.</p>
                 )}
               </div>
             </CardContent>

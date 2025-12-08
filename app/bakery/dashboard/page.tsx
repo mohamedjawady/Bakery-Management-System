@@ -22,6 +22,7 @@ import type { Order } from "@/types/order" // Corrected import path
 export default function BakeryDashboard() {
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
+  const [name, setName] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false)
@@ -36,35 +37,54 @@ export default function BakeryDashboard() {
 
   // Function to fetch orders from the Next.js API route
   const fetchOrdersData = useCallback(async () => {
-    try {
-      const response = await fetch(`/orders`, {
-        cache: "no-store", // Ensure fresh data on each request
-      })
+  setLoading(true);
 
-      if (!response.ok) {
-        console.error("Failed to fetch orders from API route:", response.status, response.statusText)
-        try {
-          const errorBody = await response.json()
-          console.error("Error details:", errorBody)
-        } catch (e) {
-          console.error("Could not parse error body.")
-        }
-        setError("Failed to load orders. Please check your backend server.")
-        setOrders([])
-        return
-      }
+  try {
+    // Retrieve bakery info from localStorage
+    const storedUser = localStorage.getItem("userInfo");
+    const bakeryName = storedUser ? JSON.parse(storedUser)?.bakeryName : null;
 
-      const orders: Order[] = await response.json()
-      setOrders(orders)
-      setError(null) // Clear any previous errors
-    } catch (err) {
-      setError("Failed to load orders. Please check your backend server.")
-      console.error("Error fetching orders:", err)
-      setOrders([])
-    } finally {
-      setLoading(false)
+    if (!bakeryName) {
+      setError("No bakery information found in local storage.");
+      setOrders([]);
+      setLoading(false);
+      return;
     }
-  }, [])
+setName(bakeryName)
+    const response = await fetch(`/orders`, {
+      cache: "no-store", // Always get fresh data
+    });
+
+    if (!response.ok) {
+      console.error("Failed to fetch orders from API route:", response.status, response.statusText);
+      try {
+        const errorBody = await response.json();
+        console.error("Error details:", errorBody);
+      } catch (e) {
+        console.error("Could not parse error body.");
+      }
+      setError("Failed to load orders. Please check your backend server.");
+      setOrders([]);
+      return;
+    }
+
+    // Parse response
+    const orders: Order[] = await response.json();
+
+    // ✅ Filter by bakery name
+    const filteredOrders = orders.filter(order => order.bakeryName === bakeryName);
+
+    setOrders(filteredOrders);
+    setError(null); // Clear previous errors
+  } catch (err) {
+    console.error("Error fetching orders:", err);
+    setError("Failed to load orders. Please check your backend server.");
+    setOrders([]);
+  } finally {
+    setLoading(false);
+  }
+}, []);
+
 
   useEffect(() => {
     fetchOrdersData()
@@ -339,7 +359,7 @@ export default function BakeryDashboard() {
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Boulangerie Saint-Michel</h1>
+            <h1 className="text-3xl font-bold tracking-tight">{name}</h1>
             <p className="text-muted-foreground">Bienvenue sur votre tableau de bord boulangerie.</p>
           </div>
           <div className="flex items-center gap-2">
@@ -381,30 +401,7 @@ export default function BakeryDashboard() {
               <p className="text-xs text-muted-foreground">Vendu 128 fois cette semaine</p>
             </CardContent>
           </Card>
-          {/* <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Prochaine livraison</CardTitle>
-              <Clock className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              {nextDelivery ? (
-                <>
-                  <div className="text-2xl font-bold">
-                    {format(new Date(nextDelivery.scheduledDate), "HH:mm", { locale: fr })}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Dans{" "}
-                    {differenceInHours(new Date(nextDelivery.scheduledDate), new Date()) > 0
-                      ? `${differenceInHours(new Date(nextDelivery.scheduledDate), new Date())} heures et `
-                      : ""}
-                    {differenceInMinutes(new Date(nextDelivery.scheduledDate), new Date()) % 60} minutes
-                  </p>
-                </>
-              ) : (
-                <div className="text-2xl font-bold">Aucune</div>
-              )}
-            </CardContent>
-          </Card> */}
+        
         </div>
         <Tabs defaultValue="pending" className="space-y-4">
           <TabsList>
@@ -412,51 +409,7 @@ export default function BakeryDashboard() {
             <TabsTrigger value="processing">En préparation</TabsTrigger>
             <TabsTrigger value="completed">Terminées</TabsTrigger>
           </TabsList>
-          <TabsContent value="pending" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Commandes en attente</CardTitle>
-                <CardDescription>Vous avez {pendingOrders.length} commandes en attente de traitement.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {pendingOrders.length === 0 ? (
-                    <div className="text-center text-muted-foreground py-4">Aucune commande en attente.</div>
-                  ) : (
-                    pendingOrders.map((order) => (
-                      <Card key={order._id} className="overflow-hidden">
-                        <CardHeader className="p-4 pb-2">
-                          <div className="flex items-center justify-between">
-                            <CardTitle className="text-base">Commande #{order.orderId}</CardTitle>
-                            <Badge>En attente</Badge>
-                          </div>
-                          <CardDescription>
-                            Reçue il y a {differenceInMinutes(new Date(), new Date(order.createdAt))} minutes
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent className="p-4 pt-2">
-                          <ul className="space-y-1 text-sm">
-                            {order.products.map((product, idx) => (
-                              <li key={idx} className="flex justify-between">
-                                <span>{product.productName}</span>
-                                <span>x{product.quantity}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </CardContent>
-                        <CardFooter className="p-4 pt-0 flex justify-between">
-                          <Button variant="outline" size="sm" onClick={() => handleViewDetails(order)}>
-                            Détails
-                          </Button>
-                         
-                        </CardFooter>
-                      </Card>
-                    ))
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+         
           <TabsContent value="processing" className="space-y-4">
             <Card>
               <CardHeader>
@@ -767,34 +720,7 @@ export default function BakeryDashboard() {
               </div>
             </ScrollArea>
           )}
-          {/* <DialogFooter className="flex flex-col sm:flex-row gap-2">
-            <div className="flex flex-col sm:flex-row gap-2 flex-1">
-              <Label htmlFor="status-update" className="text-sm font-medium mt-2 sm:mt-0 sm:mr-2">
-                Mettre à jour le statut:
-              </Label>
-              <Select
-                onValueChange={(value) => viewingOrder && updateOrderStatus(viewingOrder._id, value)}
-                defaultValue={viewingOrder?.status || ""}
-                disabled={!viewingOrder}
-              >
-                <SelectTrigger id="status-update" className="w-full sm:w-[200px]">
-                  <SelectValue placeholder="Sélectionner un statut" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="PENDING">En attente</SelectItem>
-                  <SelectItem value="IN_PROGRESS">En préparation</SelectItem>
-                  <SelectItem value="READY_FOR_DELIVERY">Prêt à livrer</SelectItem>
-                  <SelectItem value="DISPATCHED">Dispatché</SelectItem>
-                  <SelectItem value="DELIVERING">En livraison</SelectItem>
-                  <SelectItem value="DELIVERED">Livré</SelectItem>
-                  <SelectItem value="CANCELLED">Annulé</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <Button onClick={() => setIsViewDialogOpen(false)} className="w-full sm:w-auto">
-              Fermer
-            </Button>
-          </DialogFooter> */}
+       
         </DialogContent>
       </Dialog>
     </DashboardLayout>

@@ -8,7 +8,7 @@
 const fetch = require('node-fetch');
 
 const ORDERS_API = '/orders';
-const USERS_API = 'http://localhost:3000/api/users';
+const USERS_API = '/api/users';
 
 async function testDeliveryValidation() {
   console.log('🚀 Starting Delivery Assignment Validation Test\n');

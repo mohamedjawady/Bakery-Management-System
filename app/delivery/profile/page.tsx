@@ -257,7 +257,7 @@ export default function DeliveryProfilePage() {
                   </p>
                   <div className="flex flex-col gap-2">
                     <Button asChild variant="outline" className="w-full">
-                      <Link href="/profile/change-password">
+                      <Link href="/deliveryChangePassword">
                         Changer le mot de passe
                       </Link>
                     </Button>

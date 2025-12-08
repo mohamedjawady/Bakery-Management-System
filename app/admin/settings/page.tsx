@@ -180,72 +180,73 @@ export default function SettingsPage() {
           </TabsList>
 
           <TabsContent value="general">
-            <Card>
-              <CardHeader>
-                <CardTitle>User Information</CardTitle>
-                <CardDescription>Manage your personal account information</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="firstName">First Name</Label>
-                  <Input
-                    id="firstName"
-                    value={settings.userInfo.firstName}
-                    onChange={(e) =>
-                      setSettings({
-                        ...settings,
-                        userInfo: { ...settings.userInfo, firstName: e.target.value },
-                      })
-                    }
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="lastName">Last Name</Label>
-                  <Input
-                    id="lastName"
-                    value={settings.userInfo.lastName}
-                    onChange={(e) =>
-                      setSettings({
-                        ...settings,
-                        userInfo: { ...settings.userInfo, lastName: e.target.value },
-                      })
-                    }
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={settings.userInfo.email}
-                    onChange={(e) =>
-                      setSettings({
-                        ...settings,
-                        userInfo: { ...settings.userInfo, email: e.target.value },
-                      })
-                    }
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="role">Role</Label>
-                  <Input id="role" value={settings.userInfo.role} disabled className="bg-muted" />
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="isActive"
-                    checked={settings.userInfo.isActive}
-                    onCheckedChange={(checked) =>
-                      setSettings({
-                        ...settings,
-                        userInfo: { ...settings.userInfo, isActive: checked },
-                      })
-                    }
-                  />
-                  <Label htmlFor="isActive">Account Active</Label>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+  <Card>
+    <CardHeader>
+      <CardTitle>Informations de l’utilisateur</CardTitle>
+      <CardDescription>Gérez les informations personnelles de votre compte</CardDescription>
+    </CardHeader>
+    <CardContent className="space-y-4">
+      <div className="grid gap-2">
+        <Label htmlFor="firstName">Prénom</Label>
+        <Input
+          id="firstName"
+          value={settings.userInfo.firstName}
+          onChange={(e) =>
+            setSettings({
+              ...settings,
+              userInfo: { ...settings.userInfo, firstName: e.target.value },
+            })
+          }
+        />
+      </div>
+      <div className="grid gap-2">
+        <Label htmlFor="lastName">Nom</Label>
+        <Input
+          id="lastName"
+          value={settings.userInfo.lastName}
+          onChange={(e) =>
+            setSettings({
+              ...settings,
+              userInfo: { ...settings.userInfo, lastName: e.target.value },
+            })
+          }
+        />
+      </div>
+      <div className="grid gap-2">
+        <Label htmlFor="email">Email</Label>
+        <Input
+          id="email"
+          type="email"
+          value={settings.userInfo.email}
+          onChange={(e) =>
+            setSettings({
+              ...settings,
+              userInfo: { ...settings.userInfo, email: e.target.value },
+            })
+          }
+        />
+      </div>
+      <div className="grid gap-2">
+        <Label htmlFor="role">Rôle</Label>
+        <Input id="role" value={settings.userInfo.role} disabled className="bg-muted" />
+      </div>
+      <div className="flex items-center space-x-2">
+        <Switch
+          id="isActive"
+          checked={settings.userInfo.isActive}
+          onCheckedChange={(checked) =>
+            setSettings({
+              ...settings,
+              userInfo: { ...settings.userInfo, isActive: checked },
+            })
+          }
+        />
+        <Label htmlFor="isActive">Compte actif</Label>
+      </div>
+    </CardContent>
+  </Card>
+</TabsContent>
+
 
           <TabsContent value="notifications">
             <Card>
@@ -318,43 +319,15 @@ export default function SettingsPage() {
                 <CardDescription>Manage your account security settings</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="twoFactor"
-                    checked={settings.security.twoFactor}
-                    onCheckedChange={(checked) =>
-                      setSettings({
-                        ...settings,
-                        security: { ...settings.security, twoFactor: checked },
-                      })
-                    }
-                  />
-                  <Label htmlFor="twoFactor">Two-factor authentication</Label>
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="sessionTimeout">Session timeout (minutes)</Label>
-                  <Input
-                    id="sessionTimeout"
-                    type="number"
-                    min="5"
-                    max="120"
-                    value={settings.security.sessionTimeout}
-                    onChange={(e) =>
-                      setSettings({
-                        ...settings,
-                        security: { ...settings.security, sessionTimeout: Number.parseInt(e.target.value) },
-                      })
-                    }
-                  />
-                </div>
-                <Separator className="my-4" />
+
                 <div className="space-y-2">
-                  <Label>Password</Label>
-                  <p className="text-sm text-muted-foreground">Change your password for better security</p>
-                  <Button variant="outline" onClick={() => (window.location.href = "/profile/change-password")}>
-                    Change Password
+                  <Label>Mot de passe</Label>
+                  <p className="text-sm text-muted-foreground">Modifiez votre mot de passe pour une meilleure sécurité</p>
+                  <Button variant="outline" onClick={() => (window.location.href = "/adminChangePassword")}>
+                    Changer le mot de passe
                   </Button>
                 </div>
+
               </CardContent>
             </Card>
           </TabsContent>
@@ -362,7 +335,7 @@ export default function SettingsPage() {
 
         <div className="flex justify-end">
           <Button onClick={handleSave} disabled={saving}>
-            {saving ? "Saving..." : "Save Changes"}
+            {saving ? "Sauvegarde..." : "Enregistrer les modifications"}
           </Button>
         </div>
       </div>

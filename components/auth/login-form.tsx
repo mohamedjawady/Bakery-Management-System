@@ -171,11 +171,12 @@ export function LoginForm() {
                 </FormItem>
               )}
             />
-            <div className="text-right">
+            {/* Forgot password link hidden as per user request */}
+            {/* <div className="text-right">
               <Link href="/forgot-password" className="text-sm text-muted-foreground hover:text-primary">
                 Mot de passe oublié ?
               </Link>
-            </div>
+            </div> */}
           </CardContent>
           <CardFooter>
             <Button disabled={isLoading} className="w-full" type="submit">

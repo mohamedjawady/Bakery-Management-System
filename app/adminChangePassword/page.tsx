@@ -225,7 +225,7 @@ function ChangePasswordContent() {
 
 export default function ChangePasswordPage() {
   return (
-    <DashboardLayout role="laboratory">
+    <DashboardLayout role="admin">
       <ChangePasswordContent />
     </DashboardLayout>
   );

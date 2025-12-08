@@ -166,53 +166,32 @@ export default function LaboratoryProductionPage() {
   const [userData, setUserData] = useState<UserData | null>(null)
   const [userLabName, setUserLabName] = useState<string | null>(null)
 
-  const fetchLaboratoryInfo = async () => {
-    try {
-      const userInfo = localStorage.getItem('userInfo');
-      if (!userInfo) {
-        console.error('No userInfo found in localStorage');
-        return;
-      }
-      const { token } = JSON.parse(userInfo);
-
-      const response = await fetch('/api/laboratory-info/my-lab', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch laboratory info');
-      }
-      
-      const data = await response.json();
-      console.log('Laboratory API Response:', data);
-      
-      // Handle both array and single object responses
-      let laboratoryData;
-      if (Array.isArray(data)) {
-        const activeLab = data.find(lab => lab.isActive) || data[0];
-        laboratoryData = activeLab;
-      } else {
-        laboratoryData = data;
-      }
-      
-      if (laboratoryData) {
-        setUserLabName(laboratoryData.labName);
-        console.log('Set lab name to:', laboratoryData.labName);
-        return laboratoryData.labName;
-      }
-    } catch (error) {
-      console.error('Error fetching laboratory info:', error);
-      // Fallback to localStorage user data if API fails
-      const user = getUserFromStorage();
-      if (user && user.labName) {
-        setUserLabName(user.labName);
-        return user.labName;
-      }
+const fetchLaboratoryInfo = async () => {
+  try {
+    const userInfo = localStorage.getItem('userInfo');
+    if (!userInfo) {
+      console.error('No userInfo found in localStorage');
+      return null;
     }
-    return null;
+
+    const parsedUser = JSON.parse(userInfo);
+    console.log('Loaded user info from localStorage:', parsedUser);
+
+    if (parsedUser && parsedUser.labName) {
+      setUserLabName(parsedUser.labName);
+      console.log('Set lab name to:', parsedUser.labName);
+      return parsedUser.labName;
+    } else {
+      console.warn('No labName found in userInfo');
+    }
+
+  } catch (error) {
+    console.error('Error loading laboratory info from localStorage:', error);
   }
+
+  return null;
+};
+
 
   const getUserFromStorage = (): UserData | null => {
     try {
