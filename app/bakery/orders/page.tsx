@@ -47,6 +47,7 @@ import type { Product } from "@/types/product"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
+
 import { Separator } from "@/components/ui/separator"
 import { StatusBadge } from "./status-badge"
 
@@ -226,6 +227,12 @@ export default function BakeryOrdersPage() {
           unitPrice: 1.2,
           category: "Viennoiserie",
           laboratory: "Laboratoire Central Paris",
+          ingredients: ["Farine", "Beurre", "Eau", "Levure", "Sel"],
+          taxRate: 0.055,
+          active: true,
+          isAvailable: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
         },
         {
           _id: "2",
@@ -234,6 +241,12 @@ export default function BakeryOrdersPage() {
           unitPrice: 2.43,
           category: "Pain",
           laboratory: "Laboratoire Central Paris",
+          ingredients: ["Farine", "Eau", "Levure", "Sel"],
+          taxRate: 0.055,
+          active: true,
+          isAvailable: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
         },
         {
           _id: "3",
@@ -242,6 +255,12 @@ export default function BakeryOrdersPage() {
           unitPrice: 0.7,
           category: "Petits-fours",
           laboratory: "Laboratoire Central Paris",
+          ingredients: ["Farine", "Beurre", "Pommes", "Sucre"],
+          taxRate: 0.055,
+          active: true,
+          isAvailable: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
         },
         {
           _id: "4",
@@ -250,6 +269,12 @@ export default function BakeryOrdersPage() {
           unitPrice: 3.04,
           category: "Pâtisserie",
           laboratory: "Laboratoire Central Paris",
+          ingredients: ["Farine", "Beurre", "Lait", "Oeufs", "Sucre", "Vanille"],
+          taxRate: 0.055,
+          active: true,
+          isAvailable: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
         },
       ])
     } finally {
@@ -273,25 +298,25 @@ export default function BakeryOrdersPage() {
   const fetchDeliveryUsers = async () => {
     try {
       setIsLoadingUsers(true)
-      
+
       // Get token from localStorage
       const userInfo = localStorage.getItem("userInfo")
       const token = userInfo ? JSON.parse(userInfo).token : null
-      
+
       if (!token) {
         throw new Error("No authentication token found")
       }
-      
+
       const response = await fetch("/api/users/delivery", {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       })
-      
+
       if (!response.ok) {
         throw new Error(`Failed to fetch delivery users: ${response.status}`)
       }
-      
+
       const deliveryUsers = await response.json()
       setDeliveryUsersFromAPI(deliveryUsers)
     } catch (error) {
@@ -309,18 +334,18 @@ export default function BakeryOrdersPage() {
   const fetchLaboratories = async () => {
     try {
       setIsLoadingLabs(true)
-      
+
       // Get token from localStorage
       const userInfo = localStorage.getItem("userInfo")
       const token = userInfo ? JSON.parse(userInfo).token : null
-      
+
       const response = await fetch("/api/laboratory-info", {
         headers: {
           "Content-Type": "application/json",
           ...(token && { Authorization: `Bearer ${token}` }),
         },
       })
-      
+
       if (!response.ok) {
         throw new Error("Failed to fetch laboratories")
       }
@@ -344,88 +369,20 @@ export default function BakeryOrdersPage() {
   }
 
   // Effects
-useEffect(() => {
-  const fetchUserDataAndBakeryInfo = async () => {
-    try {
-      // Get user info from localStorage
-      const userData = localStorage.getItem("userInfo") || localStorage.getItem("userData")
-      if (userData) {
-        const user = JSON.parse(userData)
-        if (user.bakeryName) {
-          setBakeryName(user.bakeryName)
-        }
-
-        const token = user.token
-        if (token) {
-          // Fetch bakery data from API
-          const response = await fetch("/bakery", {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          })
-
-          if (response.ok) {
-            const bakeryData = await response.json()
-
-            // If bakeryData is an array, find the one that matches the user's bakery name
-            const matchedBakery = Array.isArray(bakeryData)
-              ? bakeryData.find((b) => b.name === user.bakeryName || b.bakeryName === user.bakeryName)
-              : bakeryData.name === user.bakeryName || bakeryData.bakeryName === user.bakeryName
-              ? bakeryData
-              : null
-
-            if (matchedBakery) {
-              if (matchedBakery.name) {
-                setBakeryName(matchedBakery.name)
-              }
-              if (matchedBakery.address) {
-                setAddress(matchedBakery.address)
-              }
-            }
-          }
-        }
-      }
-    } catch (error) {
-      console.error("Error fetching user data and bakery info:", error)
-
-      // Fallback to localStorage only
-      const userData = localStorage.getItem("userInfo") || localStorage.getItem("userData")
-      if (userData) {
-        try {
+  useEffect(() => {
+    const fetchUserDataAndBakeryInfo = async () => {
+      try {
+        // Get user info from localStorage
+        const userData = localStorage.getItem("userInfo") || localStorage.getItem("userData")
+        if (userData) {
           const user = JSON.parse(userData)
           if (user.bakeryName) {
             setBakeryName(user.bakeryName)
           }
-          if (user.address) {
-            setAddress(user.address)
-          }
-        } catch (parseError) {
-          console.error("Error parsing user data from localStorage:", parseError)
-        }
-      }
-    }
-  }
 
-  fetchUserDataAndBakeryInfo()
-}, [])
-
-  // Re-fetch bakery info when dialog opens (in case it was reset)
-  useEffect(() => {
-  const ensureBakeryInfo = async () => {
-    // Only fetch if dialog is open and fields are empty
-    if (isCreateDialogOpen && (!bakeryName || !address)) {
-      try {
-        const userData = localStorage.getItem("userInfo") || localStorage.getItem("userData")
-        if (userData) {
-          const user = JSON.parse(userData)
-
-          if (!bakeryName && user.bakeryName) {
-            setBakeryName(user.bakeryName)
-          }
-
-          // Get token for API call
           const token = user.token
           if (token) {
+            // Fetch bakery data from API
             const response = await fetch("/bakery", {
               headers: {
                 Authorization: `Bearer ${token}`,
@@ -435,96 +392,164 @@ useEffect(() => {
             if (response.ok) {
               const bakeryData = await response.json()
 
-              // ✅ Filter to match the user's bakery name
+              // If bakeryData is an array, find the one that matches the user's bakery name
               const matchedBakery = Array.isArray(bakeryData)
-                ? bakeryData.find(
-                    (b) =>
-                      b.name === user.bakeryName ||
-                      b.bakeryName === user.bakeryName
-                  )
-                : bakeryData.name === user.bakeryName ||
-                  bakeryData.bakeryName === user.bakeryName
-                ? bakeryData
-                : null
+                ? bakeryData.find((b) => b.name === user.bakeryName || b.bakeryName === user.bakeryName)
+                : bakeryData.name === user.bakeryName || bakeryData.bakeryName === user.bakeryName
+                  ? bakeryData
+                  : null
 
               if (matchedBakery) {
-                if (!bakeryName && matchedBakery.name) {
+                if (matchedBakery.name) {
                   setBakeryName(matchedBakery.name)
                 }
-                if (!address && matchedBakery.address) {
+                if (matchedBakery.address) {
                   setAddress(matchedBakery.address)
                 }
               }
             }
           }
-
-          // Fallback to user data if API fails or no match found
-          if (!address && user.address) {
-            setAddress(user.address)
-          }
         }
       } catch (error) {
-        console.error("Error ensuring bakery info:", error)
+        console.error("Error fetching user data and bakery info:", error)
+
+        // Fallback to localStorage only
+        const userData = localStorage.getItem("userInfo") || localStorage.getItem("userData")
+        if (userData) {
+          try {
+            const user = JSON.parse(userData)
+            if (user.bakeryName) {
+              setBakeryName(user.bakeryName)
+            }
+            if (user.address) {
+              setAddress(user.address)
+            }
+          } catch (parseError) {
+            console.error("Error parsing user data from localStorage:", parseError)
+          }
+        }
       }
     }
-  }
 
-  ensureBakeryInfo()
-}, [isCreateDialogOpen])
+    fetchUserDataAndBakeryInfo()
+  }, [])
+
+  // Re-fetch bakery info when dialog opens (in case it was reset)
+  useEffect(() => {
+    const ensureBakeryInfo = async () => {
+      // Only fetch if dialog is open and fields are empty
+      if (isCreateDialogOpen && (!bakeryName || !address)) {
+        try {
+          const userData = localStorage.getItem("userInfo") || localStorage.getItem("userData")
+          if (userData) {
+            const user = JSON.parse(userData)
+
+            if (!bakeryName && user.bakeryName) {
+              setBakeryName(user.bakeryName)
+            }
+
+            // Get token for API call
+            const token = user.token
+            if (token) {
+              const response = await fetch("/bakery", {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+              })
+
+              if (response.ok) {
+                const bakeryData = await response.json()
+
+                // ✅ Filter to match the user's bakery name
+                const matchedBakery = Array.isArray(bakeryData)
+                  ? bakeryData.find(
+                    (b) =>
+                      b.name === user.bakeryName ||
+                      b.bakeryName === user.bakeryName
+                  )
+                  : bakeryData.name === user.bakeryName ||
+                    bakeryData.bakeryName === user.bakeryName
+                    ? bakeryData
+                    : null
+
+                if (matchedBakery) {
+                  if (!bakeryName && matchedBakery.name) {
+                    setBakeryName(matchedBakery.name)
+                  }
+                  if (!address && matchedBakery.address) {
+                    setAddress(matchedBakery.address)
+                  }
+                }
+              }
+            }
+
+            // Fallback to user data if API fails or no match found
+            if (!address && user.address) {
+              setAddress(user.address)
+            }
+          }
+        } catch (error) {
+          console.error("Error ensuring bakery info:", error)
+        }
+      }
+    }
+
+    ensureBakeryInfo()
+  }, [isCreateDialogOpen])
 
 
   useEffect(() => {
-  const fetchOrders = async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      // ✅ Get bakery info from localStorage
-      const storedUser = localStorage.getItem("userInfo") || localStorage.getItem("userData");
-      const bakeryName = storedUser ? JSON.parse(storedUser)?.bakeryName : null;
+    const fetchOrders = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        // ✅ Get bakery info from localStorage
+        const storedUser = localStorage.getItem("userInfo") || localStorage.getItem("userData");
+        const bakeryName = storedUser ? JSON.parse(storedUser)?.bakeryName : null;
 
-      if (!bakeryName) {
-        setError("No bakery information found in local storage.");
-        setOrders([]);
+        if (!bakeryName) {
+          setError("No bakery information found in local storage.");
+          setOrders([]);
+          setIsLoading(false);
+          return;
+        }
+
+        const response = await fetch("/orders", { cache: "no-store" });
+        if (!response.ok) {
+          throw new Error(`Failed to fetch orders: ${response.status}`);
+        }
+
+        const data: Order[] = await response.json();
+
+        // ✅ Filter orders by bakeryName
+        const filteredOrders = data.filter((order) => order.bakeryName === bakeryName);
+
+        setOrders(filteredOrders);
+      } catch (error) {
+        console.error("Error fetching orders:", error);
+        setError("Failed to load orders. Please try again later.");
+        toast({
+          title: "Error",
+          description: "Failed to load orders. Please try again later.",
+          variant: "destructive",
+        });
+      } finally {
         setIsLoading(false);
-        return;
       }
+    };
 
-      const response = await fetch("/orders", { cache: "no-store" });
-      if (!response.ok) {
-        throw new Error(`Failed to fetch orders: ${response.status}`);
-      }
+    const fetchAllData = async () => {
+      await Promise.all([
+        fetchOrders(),
+        fetchDeliveryUsers(),
+        fetchProducts(),
+        fetchBakeries(),
+        fetchLaboratories(),
+      ]);
+    };
 
-      const data = await response.json();
-
-      // ✅ Filter orders by bakeryName
-      const filteredOrders = data.filter(order => order.bakeryName === bakeryName);
-
-      setOrders(filteredOrders);
-    } catch (error) {
-      console.error("Error fetching orders:", error);
-      setError("Failed to load orders. Please try again later.");
-      toast({
-        title: "Error",
-        description: "Failed to load orders. Please try again later.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const fetchAllData = async () => {
-    await Promise.all([
-      fetchOrders(),
-      fetchDeliveryUsers(),
-      fetchProducts(),
-      fetchBakeries(),
-      fetchLaboratories(),
-    ]);
-  };
-
-  fetchAllData();
-}, [toast]);
+    fetchAllData();
+  }, [toast]);
 
 
   useEffect(() => {
@@ -852,11 +877,11 @@ useEffect(() => {
     if (!showBothPrices) {
       return formatPrice(product.unitPriceTTC || product.unitPrice)
     }
-    
+
     // Use backend calculated values
     const htPrice = product.unitPrice // This is HT from backend
     const ttcPrice = product.unitPriceTTC || (product.unitPrice * (1 + (product.taxRate || TAX_RATE)))
-    
+
     return (
       <div className="flex flex-col items-end text-sm">
         <div className="text-muted-foreground">{formatPrice(htPrice)} HT</div>
@@ -870,7 +895,7 @@ useEffect(() => {
     if (!showBothPrices) {
       return formatPrice(ttcPrice)
     }
-    
+
     const htPrice = calculateHTPriceFromTTC(ttcPrice)
     return (
       <div className="flex flex-col items-end text-sm">
@@ -918,11 +943,10 @@ useEffect(() => {
 
     return (
       <Card
-        className={`transition-all duration-200 hover:shadow-md ${
-          isSelected
-            ? "border-2 border-primary bg-primary/5"
-            : "border hover:border-primary/30"
-        }`}
+        className={`transition-all duration-200 hover:shadow-md ${isSelected
+          ? "border-2 border-primary bg-primary/5"
+          : "border hover:border-primary/30"
+          }`}
       >
         <CardContent className="p-4">
           <div className="space-y-3">
@@ -959,7 +983,7 @@ useEffect(() => {
                   <span className="font-medium text-sm">Quantité:</span>
                   <span className="text-lg font-bold text-primary">{quantity}</span>
                 </div>
-                
+
                 <div className="flex items-center justify-center gap-2">
                   <Button
                     variant="outline"
@@ -1042,7 +1066,7 @@ useEffect(() => {
                     </Button>
                   ))}
                 </div>
-                
+
                 <div className="flex items-center gap-2">
                   <Input
                     type="number"
@@ -1055,7 +1079,7 @@ useEffect(() => {
                       if (e.key === "Enter") {
                         const qty = Number.parseInt((e.target as HTMLInputElement).value) || 1
                         addProductToOrder(product._id, qty)
-                        ;(e.target as HTMLInputElement).value = ""
+                          ; (e.target as HTMLInputElement).value = ""
                       }
                     }}
                   />
@@ -1376,7 +1400,7 @@ useEffect(() => {
                     {formatPrice(product.unitPriceTTC)} par unité
                   </div>
                 </div>
-                
+
                 {/* Quantity controls */}
                 <div className="flex items-center gap-3">
                   <div className="flex items-center gap-2">
@@ -1410,14 +1434,14 @@ useEffect(() => {
                       <Plus className="h-4 w-4" />
                     </Button>
                   </div>
-                  
+
                   <div className="text-right min-w-[100px]">
                     {formatTotalPriceWithTax(product.totalPrice, false)}
                     <div className="text-xs text-muted-foreground mt-1">
                       {formatPrice(calculateHTPriceFromTTC(product.totalPrice))} HT
                     </div>
                   </div>
-                  
+
                   <Button
                     variant="ghost"
                     size="sm"
@@ -1565,13 +1589,12 @@ useEffect(() => {
                     {["laboratory", "products", "details"].map((step, index) => (
                       <div key={step} className="flex items-center">
                         <div
-                          className={`w-10 h-10 rounded-full flex items-center justify-center border-2 text-sm font-medium ${
-                            currentStep === step
-                              ? "border-primary bg-primary text-white"
-                              : index < ["laboratory", "products", "details"].indexOf(currentStep)
-                                ? "border-green-500 bg-green-500 text-white"
-                                : "border-muted-foreground text-muted-foreground"
-                          }`}
+                          className={`w-10 h-10 rounded-full flex items-center justify-center border-2 text-sm font-medium ${currentStep === step
+                            ? "border-primary bg-primary text-white"
+                            : index < ["laboratory", "products", "details"].indexOf(currentStep)
+                              ? "border-green-500 bg-green-500 text-white"
+                              : "border-muted-foreground text-muted-foreground"
+                            }`}
                         >
                           {index + 1}
                         </div>
@@ -1815,7 +1838,7 @@ useEffect(() => {
                         <span>Sous-total HT:</span>
                         <span>
                           {formatPrice(
-                            viewingOrder.orderTotalHT || 
+                            viewingOrder.orderTotalHT ||
                             (viewingOrder.products || []).reduce((total, product) => total + (product.totalPriceHT || 0), 0)
                           )}
                         </span>
@@ -1824,7 +1847,7 @@ useEffect(() => {
                         <span>TVA (6%):</span>
                         <span>
                           {formatPrice(
-                            viewingOrder.orderTaxAmount || 
+                            viewingOrder.orderTaxAmount ||
                             ((viewingOrder.products || []).reduce((total, product) => total + (product.taxAmount || 0), 0))
                           )}
                         </span>
@@ -1833,7 +1856,7 @@ useEffect(() => {
                         <span>Total TTC:</span>
                         <span className="text-primary">
                           {formatPrice(
-                            viewingOrder.orderTotalTTC || 
+                            viewingOrder.orderTotalTTC ||
                             (viewingOrder.products || []).reduce((total, product) => total + (product.totalPriceTTC || product.totalPrice || 0), 0)
                           )}
                         </span>

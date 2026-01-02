@@ -24,6 +24,8 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog"
 import { Separator } from "@/components/ui/separator"
+import { priceVisible } from "@/lib/config"
+import { formatPrice } from "@/lib/utils"
 
 const API_DELIVERIES_URL = "/api/deliveries"
 
@@ -114,64 +116,64 @@ export default function DeliveryDashboard() {
     fetchData()
   }, [fetchData])
 
- const handleUpdateStatus = async (
-  deliveryId: string,
-  newStatus: DeliveryStatus,
-  successMessage: string,
-  errorMessage: string,
-  notes?: string,
-) => {
-  setIsActionLoading(true)
-  const token = getToken()
-  const userInfo = localStorage.getItem("userInfo")
-  const parsedUserInfo = userInfo ? JSON.parse(userInfo) : null
+  const handleUpdateStatus = async (
+    deliveryId: string,
+    newStatus: DeliveryStatus,
+    successMessage: string,
+    errorMessage: string,
+    notes?: string,
+  ) => {
+    setIsActionLoading(true)
+    const token = getToken()
+    const userInfo = localStorage.getItem("userInfo")
+    const parsedUserInfo = userInfo ? JSON.parse(userInfo) : null
 
-  if (!token || !parsedUserInfo) {
-    handleAuthError()
-    setIsActionLoading(false)
-    return
-  }
-
-  try {
-    const response = await fetch(`${"/orders"}/${deliveryId}`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        status: newStatus,
-        notes,
-        deliveryUserId: parsedUserInfo.email, // 👈 email as ID
-        deliveryUserName: `${parsedUserInfo.firstName} ${parsedUserInfo.lastName}`, // 👈 full name
-      }),
-    })
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        handleAuthError()
-        return
-      }
-      const errorData = await response.json()
-      throw new Error(errorData.message || errorMessage)
+    if (!token || !parsedUserInfo) {
+      handleAuthError()
+      setIsActionLoading(false)
+      return
     }
 
-    toast({
-      title: "Succès",
-      description: successMessage,
-    })
-    fetchData()
-  } catch (error: any) {
-    console.error(`Error updating delivery status to ${newStatus}:`, error)
-    toast({
-      title: "Erreur",
-      description: error.message || errorMessage,
-      variant: "destructive",
-    })
-  } finally {
-    setIsActionLoading(false)
+    try {
+      const response = await fetch(`${"/orders"}/${deliveryId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          status: newStatus,
+          notes,
+          deliveryUserId: parsedUserInfo.email, // 👈 email as ID
+          deliveryUserName: `${parsedUserInfo.firstName} ${parsedUserInfo.lastName}`, // 👈 full name
+        }),
+      })
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          handleAuthError()
+          return
+        }
+        const errorData = await response.json()
+        throw new Error(errorData.message || errorMessage)
+      }
+
+      toast({
+        title: "Succès",
+        description: successMessage,
+      })
+      fetchData()
+    } catch (error: any) {
+      console.error(`Error updating delivery status to ${newStatus}:`, error)
+      toast({
+        title: "Erreur",
+        description: error.message || errorMessage,
+        variant: "destructive",
+      })
+    } finally {
+      setIsActionLoading(false)
+    }
   }
-}
 
 
   const handlePickUp = (deliveryId: string) => {
@@ -569,7 +571,9 @@ export default function DeliveryDashboard() {
                       <span>
                         {product.productName} (x{product.quantity})
                       </span>
-                      <span className="font-medium">{(product.totalPriceTTC || product.totalPrice).toFixed(2)}€</span>
+                      {priceVisible && (
+                        <span className="font-medium">{formatPrice(product.totalPriceTTC || product.totalPrice)}</span>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -579,18 +583,22 @@ export default function DeliveryDashboard() {
 
               <Separator className="my-2" />
 
-              <div className="grid grid-cols-4 items-center gap-4">
-                <span className="text-sm font-medium col-span-1">Total HT:</span>
-                <span className="col-span-3">{selectedDelivery.orderTotalHT?.toFixed(2) || "N/A"}€</span>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <span className="text-sm font-medium col-span-1">Montant TVA:</span>
-                <span className="col-span-3">{selectedDelivery.orderTaxAmount?.toFixed(2) || "N/A"}€</span>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <span className="text-sm font-medium col-span-1">Total TTC:</span>
-                <span className="col-span-3">{selectedDelivery.orderTotalTTC?.toFixed(2) || "N/A"}€</span>
-              </div>
+              {priceVisible && (
+                <>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <span className="text-sm font-medium col-span-1">Total HT:</span>
+                    <span className="col-span-3">{formatPrice(selectedDelivery.orderTotalHT || 0)}</span>
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <span className="text-sm font-medium col-span-1">Montant TVA:</span>
+                    <span className="col-span-3">{formatPrice(selectedDelivery.orderTaxAmount || 0)}</span>
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <span className="text-sm font-medium col-span-1">Total TTC:</span>
+                    <span className="col-span-3">{formatPrice(selectedDelivery.orderTotalTTC || 0)}</span>
+                  </div>
+                </>
+              )}
             </div>
           ) : (
             <div className="text-center py-8">Chargement des détails...</div>

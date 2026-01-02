@@ -3,6 +3,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { priceVisible } from "@/lib/config"
 
 interface OrderProduct {
   productName: string
@@ -99,8 +100,13 @@ export function BakeryRecapTable({ orders }: BakeryRecapTableProps) {
                   <h3 className="font-semibold text-lg">{bakery.bakeryName}</h3>
                   <p className="text-sm text-muted-foreground">
                     {bakery.orderCount} commande{bakery.orderCount > 1 ? "s" : ""} • {bakery.articleCount} article
-                    {bakery.articleCount > 1 ? "s" : ""} • Total:{" "}
-                    {bakery.totalAmount.toLocaleString("fr-FR", { style: "currency", currency: "EUR" })}
+                    {bakery.articleCount > 1 ? "s" : ""}
+                    {priceVisible && (
+                      <>
+                        {" • Total: "}
+                        {bakery.totalAmount.toLocaleString("fr-FR", { style: "currency", currency: "EUR" })}
+                      </>
+                    )}
                   </p>
                 </div>
 

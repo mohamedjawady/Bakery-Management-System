@@ -1,14 +1,14 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
- 
+
   output: "export",
-   trailingSlash: true,
+  trailingSlash: true,
   async rewrites() {
     return [
       {
         source: '/api/:path*',
         destination: '/api/:path*',
-      },
+      }
     ]
   },
   eslint: {

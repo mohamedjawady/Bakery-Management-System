@@ -18,6 +18,8 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import type { Order } from "@/types/order" // Corrected import path
+import { priceVisible } from "@/lib/config"
+import { formatPrice } from "@/lib/utils"
 
 export default function BakeryDashboard() {
   const [orders, setOrders] = useState<Order[]>([])
@@ -37,53 +39,53 @@ export default function BakeryDashboard() {
 
   // Function to fetch orders from the Next.js API route
   const fetchOrdersData = useCallback(async () => {
-  setLoading(true);
+    setLoading(true);
 
-  try {
-    // Retrieve bakery info from localStorage
-    const storedUser = localStorage.getItem("userInfo");
-    const bakeryName = storedUser ? JSON.parse(storedUser)?.bakeryName : null;
+    try {
+      // Retrieve bakery info from localStorage
+      const storedUser = localStorage.getItem("userInfo");
+      const bakeryName = storedUser ? JSON.parse(storedUser)?.bakeryName : null;
 
-    if (!bakeryName) {
-      setError("No bakery information found in local storage.");
-      setOrders([]);
-      setLoading(false);
-      return;
-    }
-setName(bakeryName)
-    const response = await fetch(`/orders`, {
-      cache: "no-store", // Always get fresh data
-    });
-
-    if (!response.ok) {
-      console.error("Failed to fetch orders from API route:", response.status, response.statusText);
-      try {
-        const errorBody = await response.json();
-        console.error("Error details:", errorBody);
-      } catch (e) {
-        console.error("Could not parse error body.");
+      if (!bakeryName) {
+        setError("No bakery information found in local storage.");
+        setOrders([]);
+        setLoading(false);
+        return;
       }
+      setName(bakeryName)
+      const response = await fetch(`/orders`, {
+        cache: "no-store", // Always get fresh data
+      });
+
+      if (!response.ok) {
+        console.error("Failed to fetch orders from API route:", response.status, response.statusText);
+        try {
+          const errorBody = await response.json();
+          console.error("Error details:", errorBody);
+        } catch (e) {
+          console.error("Could not parse error body.");
+        }
+        setError("Failed to load orders. Please check your backend server.");
+        setOrders([]);
+        return;
+      }
+
+      // Parse response
+      const orders: Order[] = await response.json();
+
+      // ✅ Filter by bakery name
+      const filteredOrders = orders.filter(order => order.bakeryName === bakeryName);
+
+      setOrders(filteredOrders);
+      setError(null); // Clear previous errors
+    } catch (err) {
+      console.error("Error fetching orders:", err);
       setError("Failed to load orders. Please check your backend server.");
       setOrders([]);
-      return;
+    } finally {
+      setLoading(false);
     }
-
-    // Parse response
-    const orders: Order[] = await response.json();
-
-    // ✅ Filter by bakery name
-    const filteredOrders = orders.filter(order => order.bakeryName === bakeryName);
-
-    setOrders(filteredOrders);
-    setError(null); // Clear previous errors
-  } catch (err) {
-    console.error("Error fetching orders:", err);
-    setError("Failed to load orders. Please check your backend server.");
-    setOrders([]);
-  } finally {
-    setLoading(false);
-  }
-}, []);
+  }, []);
 
 
   useEffect(() => {
@@ -113,13 +115,6 @@ setName(bakeryName)
 
   // Standard French VAT rate for bakery products
   const TAX_RATE = 0.06 // 6%
-
-  const formatPrice = (price: number): string => {
-    return new Intl.NumberFormat("fr-FR", {
-      style: "currency",
-      currency: "EUR",
-    }).format(price)
-  }
 
   // Helper function to calculate HT price from TTC price
   const calculateHTPriceFromTTC = (ttcPrice: number): number => {
@@ -178,10 +173,7 @@ setName(bakeryName)
       (activeTab === "pending" && order.status === "PENDING") ||
       (activeTab === "in_progress" && order.status === "IN_PROGRESS") ||
       (activeTab === "ready" && order.status === "READY_FOR_DELIVERY") ||
-      (activeTab === "dispatched" && order.status === "DISPATCHED") ||
-      (activeTab === "delivering" && order.status === "DELIVERING") ||
-      (activeTab === "delivered" && order.status === "DELIVERED") ||
-      (activeTab === "cancelled" && order.status === "CANCELLED")
+      (activeTab === "delivered" && order.status === "DELIVERED")
 
     return matchesSearch && matchesStatus && matchesTab
   })
@@ -207,12 +199,7 @@ setName(bakeryName)
               <span>Date prévue:</span>
               <span className="font-medium">{formatDate(order.scheduledDate)}</span>
             </div>
-            {order.laboratory && (
-              <div className="flex justify-between">
-                <span>Laboratoire:</span>
-                <span className="font-medium">{order.laboratory}</span>
-              </div>
-            )}
+
             <div className="flex justify-between">
               <span>Livreur:</span>
               <span className="font-medium">{order.deliveryUserName}</span>
@@ -224,14 +211,18 @@ setName(bakeryName)
               </span>
             </div>
             <div className="space-y-1">
-              <div className="flex justify-between text-sm">
-                <span>Total HT:</span>
-                <span>{formatPrice(calculateHTPriceFromTTC(totalPrice))}</span>
-              </div>
-              <div className="flex justify-between font-bold text-primary">
-                <span>Total TTC:</span>
-                <span>{formatPrice(totalPrice)}</span>
-              </div>
+              {priceVisible && (
+                <>
+                  <div className="flex justify-between text-sm">
+                    <span>Total HT:</span>
+                    <span>{formatPrice(calculateHTPriceFromTTC(totalPrice))}</span>
+                  </div>
+                  <div className="flex justify-between font-bold text-primary">
+                    <span>Total TTC:</span>
+                    <span>{formatPrice(totalPrice)}</span>
+                  </div>
+                </>
+              )}
             </div>
           </div>
           <div className="flex justify-end mt-4">
@@ -346,8 +337,6 @@ setName(bakeryName)
           <div className="text-center text-muted-foreground text-sm">
             Please ensure your backend API is running at `/orders` and accessible.
             <br />
-            For the v0 preview, this API endpoint is not accessible. You will see data when running locally with your
-            backend.
           </div>
         </div>
       </DashboardLayout>
@@ -401,7 +390,7 @@ setName(bakeryName)
               <p className="text-xs text-muted-foreground">Vendu 128 fois cette semaine</p>
             </CardContent>
           </Card>
-        
+
         </div>
         <Tabs defaultValue="pending" className="space-y-4">
           <TabsList>
@@ -409,7 +398,7 @@ setName(bakeryName)
             <TabsTrigger value="processing">En préparation</TabsTrigger>
             <TabsTrigger value="completed">Terminées</TabsTrigger>
           </TabsList>
-         
+
           <TabsContent value="processing" className="space-y-4">
             <Card>
               <CardHeader>
@@ -501,7 +490,7 @@ setName(bakeryName)
                           <Button variant="outline" size="sm" onClick={() => handleViewDetails(order)}>
                             Détails
                           </Button>
-                      
+
                         </CardFooter>
                       </Card>
                     ))
@@ -624,12 +613,7 @@ setName(bakeryName)
                           <span className="text-muted-foreground">Boulangerie:</span>
                           <span>{viewingOrder.bakeryName}</span>
                         </div>
-                        {viewingOrder.laboratory && (
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Laboratoire:</span>
-                            <span>{viewingOrder.laboratory}</span>
-                          </div>
-                        )}
+
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Livreur:</span>
                           <span>{viewingOrder.deliveryUserName}</span>
@@ -672,19 +656,25 @@ setName(bakeryName)
                       >
                         <div className="flex-1">
                           <div className="font-medium text-sm">{product.productName}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {formatPrice(product.unitPriceTTC)} × {product.quantity}
-                          </div>
+                          {priceVisible && (
+                            <div className="text-xs text-muted-foreground">
+                              {formatPrice(product.unitPriceTTC)} × {product.quantity}
+                            </div>
+                          )}
                         </div>
-                        <div className="text-right">
-                          <div className="font-bold text-sm">{formatPrice(product.totalPrice)}</div>
-                          <div className="text-xs text-muted-foreground mt-1">
-                            {formatPrice(calculateHTPriceFromTTC(product.totalPrice))} HT
+                        {priceVisible && (
+                          <div className="text-right">
+                            <div className="font-bold text-sm">{formatPrice(product.totalPrice)}</div>
+                            <div className="text-xs text-muted-foreground mt-1">
+                              {formatPrice(calculateHTPriceFromTTC(product.totalPrice))} HT
+                            </div>
                           </div>
-                        </div>
+                        )}
                       </div>
                     ))}
                   </div>
+                </div>
+                {priceVisible && (
                   <div className="space-y-2 pt-3 border-t">
                     <div className="flex justify-between items-center text-sm">
                       <span>Sous-total HT:</span>
@@ -716,11 +706,11 @@ setName(bakeryName)
                       </span>
                     </div>
                   </div>
-                </div>
+                )}
               </div>
             </ScrollArea>
           )}
-       
+
         </DialogContent>
       </Dialog>
     </DashboardLayout>

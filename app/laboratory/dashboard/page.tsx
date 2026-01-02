@@ -4,12 +4,29 @@ import { DashboardLayout } from "@/components/layout/dashboard-layout"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { ArrowRight, CheckCircle2, Clock, Download, Printer, Filter, Search } from "lucide-react"
+import { ArrowRight, CheckCircle2, Clock, Download, Printer, Filter, Search, Calendar as CalendarIcon } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { useEffect, useState } from "react"
 import { BakeryRecapTable } from "@/components/bakery-recap-table"
 import { generateExcelFile, downloadExcel, printExcel } from "@/lib/excel-export"
 import type { Order, OrderProduct } from "@/types/order"
+import { format, addDays } from "date-fns"
+import { fr } from "date-fns/locale"
+import { Calendar } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { cn } from "@/lib/utils"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import { priceVisible } from "@/lib/config"
 
 export default function LaboratoryDashboard() {
   const [orders, setOrders] = useState<Order[]>([])
@@ -18,6 +35,8 @@ export default function LaboratoryDashboard() {
   const [searchTerm, setSearchTerm] = useState("")
   const [userLabName, setUserLabName] = useState<string | null>(null)
   const [isExporting, setIsExporting] = useState(false)
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date())
+  const [isBulkUpdating, setIsBulkUpdating] = useState(false)
 
   const fetchOrders = async () => {
     setLoading(true)
@@ -37,29 +56,29 @@ export default function LaboratoryDashboard() {
   }
 
   const fetchLaboratoryInfo = async () => {
-  try {
-    const userInfoString = localStorage.getItem("userInfo")
-    if (!userInfoString) return null
+    try {
+      const userInfoString = localStorage.getItem("userInfo")
+      if (!userInfoString) return null
 
-    const userInfo = JSON.parse(userInfoString)
-    if (userInfo && userInfo.labName) {
-      setUserLabName(userInfo.labName)
-      return userInfo.labName   // ⬅️ return it
+      const userInfo = JSON.parse(userInfoString)
+      if (userInfo && userInfo.labName) {
+        setUserLabName(userInfo.labName)
+        return userInfo.labName   // ⬅️ return it
+      }
+
+      return null
+    } catch (error) {
+      console.error("Error:", error)
+      return null
     }
-
-    return null
-  } catch (error) {
-    console.error("Error:", error)
-    return null
   }
-}
 
 
-useEffect(() => {
-  fetchLaboratoryInfo().then((lab) => {
-    if (lab) fetchOrders(lab)
-  })
-}, [])
+  useEffect(() => {
+    fetchLaboratoryInfo().then((lab) => {
+      if (lab) fetchOrders()
+    })
+  }, [])
 
 
   const updateOrderStatus = async (orderId: string, newStatus: Order["status"]) => {
@@ -92,7 +111,15 @@ useEffect(() => {
       order.orderId.toLowerCase().includes(searchTerm.toLowerCase()) ||
       order.products.some((product) => product.productName.toLowerCase().includes(searchTerm.toLowerCase()))
 
-    return matchesLab && matchesSearchTerm
+    // Filter by selected date
+    const orderDate = new Date(order.scheduledDate)
+    const matchesDate = selectedDate
+      ? orderDate.getDate() === selectedDate.getDate() &&
+      orderDate.getMonth() === selectedDate.getMonth() &&
+      orderDate.getFullYear() === selectedDate.getFullYear()
+      : true
+
+    return matchesLab && matchesSearchTerm && matchesDate
   })
 
   const pendingOrders = filteredOrders.filter((order) => order.status === "PENDING")
@@ -118,11 +145,32 @@ useEffect(() => {
 
   const productTotalsArray = Object.values(productTotals).sort((a, b) => a.productName.localeCompare(b.productName))
 
+
+  const handleBulkComplete = async () => {
+    setIsBulkUpdating(true)
+    try {
+      // Create an array of promises to update all orders in parallel
+      const ordersToUpdate = [...pendingOrders, ...inProductionOrders]
+      const updatePromises = ordersToUpdate.map(order =>
+        updateOrderStatus(order._id, "READY_FOR_DELIVERY")
+      )
+
+      await Promise.all(updatePromises)
+
+    } catch (error) {
+      console.error("Error in bulk update:", error)
+      setError("Erreur lors de la mise à jour massive")
+    } finally {
+      setIsBulkUpdating(false)
+    }
+  }
+
   const handleExportExcel = async () => {
     setIsExporting(true)
     try {
       const buffer = await generateExcelFile(filteredOrders, userLabName, pendingOrders, productTotalsArray)
-      const filename = `production_report_${new Date().toISOString().split("T")[0]}.xlsx`
+      const dateStr = selectedDate ? format(selectedDate, "yyyy-MM-dd") : new Date().toISOString().split("T")[0]
+      const filename = `production_report_${dateStr}.xlsx`
       downloadExcel(buffer, filename)
     } catch (error) {
       console.error("Error exporting Excel:", error)
@@ -136,7 +184,8 @@ useEffect(() => {
     setIsExporting(true)
     try {
       const buffer = await generateExcelFile(filteredOrders, userLabName, pendingOrders, productTotalsArray)
-      const filename = `production_report_${new Date().toISOString().split("T")[0]}.xlsx`
+      const dateStr = selectedDate ? format(selectedDate, "yyyy-MM-dd") : new Date().toISOString().split("T")[0]
+      const filename = `production_report_${dateStr}.xlsx`
       printExcel(buffer, filename)
     } catch (error) {
       console.error("Error printing Excel:", error)
@@ -175,7 +224,9 @@ useEffect(() => {
             <h1 className="text-3xl font-bold tracking-tight">{userLabName || "Laboratoire Central"}</h1>
             <p className="text-muted-foreground">
               Tableau de production du{" "}
-              {new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}
+              {selectedDate
+                ? format(selectedDate, "EEEE d MMMM yyyy", { locale: fr })
+                : "Toutes les dates"}
             </p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
@@ -193,6 +244,45 @@ useEffect(() => {
               <Filter className="h-4 w-4" />
               <span className="sr-only">Filtrer</span>
             </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSelectedDate(addDays(new Date(), 1))}
+              className={cn(
+                "h-10",
+                selectedDate &&
+                  format(selectedDate, "yyyy-MM-dd") === format(addDays(new Date(), 1), "yyyy-MM-dd")
+                  ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                  : ""
+              )}
+            >
+              Demain
+            </Button>
+
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={"outline"}
+                  className={cn(
+                    "w-[240px] justify-start text-left font-normal",
+                    !selectedDate && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {selectedDate ? format(selectedDate, "PPP", { locale: fr }) : <span>Choisir une date</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={setSelectedDate}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+
             <Button
               onClick={handleExportExcel}
               disabled={isExporting}
@@ -326,7 +416,34 @@ useEffect(() => {
                   <CardTitle>En production</CardTitle>
                   <CardDescription>Commandes en cours de préparation</CardDescription>
                 </div>
-                <Badge variant="secondary">En cours</Badge>
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary">En cours</Badge>
+                  {(pendingOrders.length > 0 || inProductionOrders.length > 0) && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button size="sm" variant="default" disabled={isBulkUpdating}>
+                          <CheckCircle2 className="h-4 w-4 mr-1" />
+                          Tout terminer
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Confirmer la validation massive</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Êtes-vous sûr de vouloir marquer ces {pendingOrders.length + inProductionOrders.length} commandes comme prêtes pour livraison ?
+                            Cette action ne peut pas être annulée.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Annuler</AlertDialogCancel>
+                          <AlertDialogAction onClick={handleBulkComplete}>
+                            {isBulkUpdating ? "Traitement..." : "Confirmer"}
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
+                </div>
               </div>
             </CardHeader>
             <CardContent className="p-0">
@@ -415,6 +532,6 @@ useEffect(() => {
           </Card>
         </div>
       </div>
-    </DashboardLayout>
+    </DashboardLayout >
   )
 }

@@ -6,8 +6,13 @@ import { DashboardLayout } from "@/components/layout/dashboard-layout"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { ArrowRight, CheckCircle, CookingPot, PackageCheck, Loader2 } from "lucide-react"
+import { ArrowRight, CheckCircle, CookingPot, PackageCheck, Loader2, Calendar as CalendarIcon } from "lucide-react"
 import { useState, useEffect } from "react"
+import { format, addDays } from "date-fns"
+import { fr } from "date-fns/locale"
+import { Calendar } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { cn } from "@/lib/utils"
 
 interface OrderProduct {
   productName: string
@@ -165,32 +170,33 @@ export default function LaboratoryProductionPage() {
   const [isUpdating, setIsUpdating] = useState(false)
   const [userData, setUserData] = useState<UserData | null>(null)
   const [userLabName, setUserLabName] = useState<string | null>(null)
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date())
 
-const fetchLaboratoryInfo = async () => {
-  try {
-    const userInfo = localStorage.getItem('userInfo');
-    if (!userInfo) {
-      console.error('No userInfo found in localStorage');
-      return null;
+  const fetchLaboratoryInfo = async () => {
+    try {
+      const userInfo = localStorage.getItem('userInfo');
+      if (!userInfo) {
+        console.error('No userInfo found in localStorage');
+        return null;
+      }
+
+      const parsedUser = JSON.parse(userInfo);
+      console.log('Loaded user info from localStorage:', parsedUser);
+
+      if (parsedUser && parsedUser.labName) {
+        setUserLabName(parsedUser.labName);
+        console.log('Set lab name to:', parsedUser.labName);
+        return parsedUser.labName;
+      } else {
+        console.warn('No labName found in userInfo');
+      }
+
+    } catch (error) {
+      console.error('Error loading laboratory info from localStorage:', error);
     }
 
-    const parsedUser = JSON.parse(userInfo);
-    console.log('Loaded user info from localStorage:', parsedUser);
-
-    if (parsedUser && parsedUser.labName) {
-      setUserLabName(parsedUser.labName);
-      console.log('Set lab name to:', parsedUser.labName);
-      return parsedUser.labName;
-    } else {
-      console.warn('No labName found in userInfo');
-    }
-
-  } catch (error) {
-    console.error('Error loading laboratory info from localStorage:', error);
-  }
-
-  return null;
-};
+    return null;
+  };
 
 
   const getUserFromStorage = (): UserData | null => {
@@ -229,7 +235,7 @@ const fetchLaboratoryInfo = async () => {
 
       // Use provided labName or the state value
       const currentLabName = labName || userLabName;
-      
+
       if (currentLabName) {
         const filteredOrders = filterOrdersByLab(data, currentLabName)
         setOrders(filteredOrders)
@@ -316,10 +322,10 @@ const fetchLaboratoryInfo = async () => {
         prevOrders.map((order) =>
           order._id === orderId
             ? {
-                ...order,
-                status:
-                  order.status === newStatus ? (newStatus === "IN_PROGRESS" ? "PENDING" : "IN_PROGRESS") : order.status,
-              }
+              ...order,
+              status:
+                order.status === newStatus ? (newStatus === "IN_PROGRESS" ? "PENDING" : "IN_PROGRESS") : order.status,
+            }
             : order,
         ),
       )
@@ -344,6 +350,16 @@ const fetchLaboratoryInfo = async () => {
       }
     })
   }, [])
+
+  const filteredOrders = orders.filter((order) => {
+    if (!selectedDate) return true
+    const orderDate = new Date(order.scheduledDate)
+    return (
+      orderDate.getDate() === selectedDate.getDate() &&
+      orderDate.getMonth() === selectedDate.getMonth() &&
+      orderDate.getFullYear() === selectedDate.getFullYear()
+    )
+  })
 
   if (loading) {
     return (
@@ -381,13 +397,53 @@ const fetchLaboratoryInfo = async () => {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Suivi de Production</h1>
             <p className="text-muted-foreground">
-              Gérez l'état d'avancement des commandes en laboratoire.
+              Production du {selectedDate ? format(selectedDate, "EEEE d MMMM yyyy", { locale: fr }) : "Toutes les dates"}
               {userData && <span className="font-medium"> - Laboratoire: {userData.labName}</span>}
             </p>
           </div>
-          <Button onClick={handleRefreshOrders} variant="outline" size="sm">
-            Actualiser
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSelectedDate(addDays(new Date(), 1))}
+              className={cn(
+                "h-10",
+                selectedDate &&
+                  format(selectedDate, "yyyy-MM-dd") === format(addDays(new Date(), 1), "yyyy-MM-dd")
+                  ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                  : ""
+              )}
+            >
+              Demain
+            </Button>
+
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={"outline"}
+                  className={cn(
+                    "w-[240px] justify-start text-left font-normal h-10",
+                    !selectedDate && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {selectedDate ? format(selectedDate, "PPP", { locale: fr }) : <span>Choisir une date</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={setSelectedDate}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+
+            <Button onClick={handleRefreshOrders} variant="outline" size="sm" className="h-10">
+              Actualiser
+            </Button>
+          </div>
         </div>
 
         {error && (
@@ -399,7 +455,7 @@ const fetchLaboratoryInfo = async () => {
         <div className="flex gap-4 flex-1 overflow-x-auto pb-4">
           <KanbanColumn
             title="À Produire"
-            orders={orders}
+            orders={filteredOrders}
             status="PENDING"
             onUpdateStatus={handleUpdateStatus}
             icon={CookingPot}
@@ -407,7 +463,7 @@ const fetchLaboratoryInfo = async () => {
           />
           <KanbanColumn
             title="En Production"
-            orders={orders}
+            orders={filteredOrders}
             status="IN_PROGRESS"
             onUpdateStatus={handleUpdateStatus}
             icon={CookingPot}
@@ -415,7 +471,7 @@ const fetchLaboratoryInfo = async () => {
           />
           <KanbanColumn
             title="Prêt pour Livraison"
-            orders={orders}
+            orders={filteredOrders}
             status="READY_FOR_DELIVERY"
             onUpdateStatus={handleUpdateStatus}
             icon={PackageCheck}

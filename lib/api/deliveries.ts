@@ -2,6 +2,7 @@
 const API_BASE_URL = '/api/deliveries';
 
 // Types
+export type DeliveryStatus = 'PENDING' | 'IN_PROGRESS' | 'READY_FOR_DELIVERY' | 'IN_TRANSIT' | 'DELIVERED' | 'FAILED' | 'CANCELLED';
 export interface Delivery {
   _id: string;
   orderId: string;
@@ -11,7 +12,7 @@ export interface Delivery {
   deliveryUserName: string;
   scheduledDate: string;
   actualDeliveryDate?: string | null;
-  status: 'PENDING' | 'IN_PROGRESS' | 'READY_FOR_DELIVERY' | 'IN_TRANSIT' | 'DELIVERED' | 'FAILED' | 'CANCELLED';
+  status: DeliveryStatus;
   notes?: string;
   address: string;
   products: Array<{
@@ -19,11 +20,14 @@ export interface Delivery {
     pricePerUnit: number;
     quantity: number;
     totalPrice: number;
-    totalPriceTTC:number;
-   
+    totalPriceTTC: number;
+
   }>;
   createdAt: string;
   updatedAt: string;
+  orderTotalHT?: number;
+  orderTaxAmount?: number;
+  orderTotalTTC?: number;
 }
 
 export interface DeliveryUpdateRequest {
@@ -163,7 +167,7 @@ class DeliveryAPI {
   }> {
     try {
       const deliveries = await this.getAllDeliveries();
-      
+
       return {
         total: deliveries.length,
         ready: deliveries.filter(d => d.status === 'READY_FOR_DELIVERY').length,
@@ -210,7 +214,7 @@ export const getStatusColor = (status: Delivery['status']): string => {
 
 export const formatDeliveryDate = (dateString: string | null | undefined): string => {
   if (!dateString) return 'Non défini';
-  
+
   const date = new Date(dateString);
   return new Intl.DateTimeFormat('fr-FR', {
     day: '2-digit',
