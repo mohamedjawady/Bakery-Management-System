@@ -145,7 +145,7 @@ export default function BakeryOrdersPage() {
   const [address, setAddress] = useState("")
 
   // Laboratory selection state
-  const [currentStep, setCurrentStep] = useState<"laboratory" | "products" | "details">("laboratory")
+  const [currentStep, setCurrentStep] = useState<"date" | "laboratory" | "products" | "details">("date")
   const [laboratories, setLaboratories] = useState<Laboratory[]>([])
   const [selectedLaboratory, setSelectedLaboratory] = useState<Laboratory | null>(null)
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([])
@@ -603,28 +603,49 @@ export default function BakeryOrdersPage() {
     return matchesSearch && matchesStatus && matchesTab
   })
 
+  const resetOrderForm = () => {
+    setCurrentStep("date")
+    setOrderProducts([])
+    setOrderNotes("")
+    setScheduledDate(undefined)
+    setSelectedLaboratory(null)
+    setFilteredProducts([])
+    setProductSearchTerm("")
+    setSelectedCategory("all")
+  }
+
+  const renderDateStep = () => (
+    <div className="space-y-4 py-4">
+      <div className="flex flex-col items-center justify-center space-y-4">
+        <div className="text-center space-y-2">
+          <h3 className="text-lg font-medium">Choisissez une date de livraison</h3>
+          <p className="text-sm text-muted-foreground">
+            Veuillez sélectionner la date à laquelle vous souhaitez recevoir votre commande.
+          </p>
+        </div>
+        <div className="border rounded-md p-4 bg-background">
+          <CalendarComponent
+            mode="single"
+            selected={scheduledDate}
+            onSelect={setScheduledDate}
+            disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+            initialFocus
+            className="rounded-md border shadow"
+          />
+        </div>
+
+      </div>
+    </div>
+  )
+
+
   // Order management functions
   const handleLaboratorySelect = (laboratory: Laboratory) => {
     setSelectedLaboratory(laboratory)
     setCurrentStep("products")
   }
 
-  // Update the resetOrderForm function to include the new state
-  // NOTE: We don't reset bakeryName and address as they should persist for the logged-in bakery
-  const resetOrderForm = () => {
-    setCurrentStep("laboratory")
-    setSelectedLaboratory(null)
-    setOrderProducts([])
-    setOrderNotes("")
-    // Don't reset bakeryName and address - they should remain auto-filled for subsequent orders
-    // setBakeryName("")
-    setScheduledDate(new Date())
-    // setAddress("")
-    setFilteredProducts([])
-    setProductSearchTerm("")
-    setSelectedCategory("all")
-    setSortBy("name")
-  }
+
 
   const addProductToOrder = (productId: string, initialQuantity = 1) => {
     const product = filteredProducts.find((p) => p._id === productId)
@@ -1336,26 +1357,7 @@ export default function BakeryOrdersPage() {
         />
       </div>
 
-      <div className="space-y-2">
-        <Label>Date de livraison prévue</Label>
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant={"outline"} className="w-full justify-start text-left font-normal">
-              <Calendar className="mr-2 h-4 w-4" />
-              <span>{scheduledDate ? format(scheduledDate, "PPP", { locale: fr }) : "Sélectionner une date"}</span>
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            <CalendarComponent
-              mode="single"
-              selected={scheduledDate}
-              onSelect={setScheduledDate}
-              disabled={(date) => date < new Date()}
-              initialFocus
-            />
-          </PopoverContent>
-        </Popover>
-      </div>
+
 
       <div className="space-y-2">
         <Label htmlFor="address">Adresse de livraison</Label>
@@ -1610,6 +1612,7 @@ export default function BakeryOrdersPage() {
 
               <ScrollArea className="flex-1 px-6">
                 <div className="pb-4">
+                  {currentStep === "date" && renderDateStep()}
                   {currentStep === "laboratory" && renderLaboratoryStep()}
                   {currentStep === "products" && renderProductsStep()}
                   {currentStep === "details" && renderDetailsStep()}
@@ -1638,6 +1641,23 @@ export default function BakeryOrdersPage() {
                       Continuer la commande
                     </Button>
                   )}
+
+                  {(currentStep === "date" || currentStep === "laboratory") && (
+                    <Button
+                      onClick={() => {
+                        if (currentStep === "date") setCurrentStep("laboratory")
+                        if (currentStep === "laboratory") setCurrentStep("products")
+                      }}
+                      disabled={
+                        (currentStep === "date" && !scheduledDate) ||
+                        (currentStep === "laboratory" && !selectedLaboratory)
+                      }
+                      className="w-full sm:w-auto"
+                    >
+                      Suivant
+                    </Button>
+                  )}
+
                   {currentStep === "details" && (
                     <Button
                       onClick={handleCreateOrder}
